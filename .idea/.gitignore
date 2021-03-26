@@ -1,0 +1,8 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+# Datasource local storage ignored files
+/../../../../../../../../../../../:\Users\Rehan\OneDrive - TU Eindhoven\Documents\Masters - Data Science in Engineering\Master Thesis\Replication\GenerativeLSTM\GenerativeLSTM-1.1.0\.idea/dataSources/
+/dataSources.local.xml
+# Editor-based HTTP Client requests
+/httpRequests/
