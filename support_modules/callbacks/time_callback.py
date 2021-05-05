@@ -32,4 +32,3 @@ class TimingCallback(Callback):
             sup.create_csv_file(data, log_file, mode='a')
         else:
             sup.create_csv_file_header(data, log_file)
-        

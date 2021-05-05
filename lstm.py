@@ -49,9 +49,16 @@ def main(argv):
     parameters['one_timestamp'] = True  # Only one timestamp in the log
     # Similarity btw the resources profile execution (Song e.t. all)
     parameters['rp_sim'] = 0.85
-    parameters['batch_size'] = 32 # Usually 32/64/128/256
-    parameters['epochs'] = 2
+    parameters['batch_size'] = 15 # Usually 16/32/64/128/256
+    parameters['epochs'] = 200 #v1 200, for embedded training it's 100.
     # Parameters setting manual fixed or catched by console
+    '''
+        **Concept**
+        One Epoch is when an ENTIRE dataset is passed forward and backward through the neural network only ONCE. Since one epoch is too big to feed to the computer at once we divide it in several smaller batches.
+        Batch size is total number of training examples present in a single batch and Iterations is the number of batches needed to complete one epoch.
+        e.g : For 2000 training examples we can divide the dataset of 2000 examples into batches of 500 then it will take 4 iterations to complete 1 epoch. Where Batch Size is 500 and Iterations is 4, for 1 complete epoch.
+        Conclusion : Lower the Batch size higher will be the Epoch Value
+    '''
     if not argv:
         # Type of LSTM task -> training, pred_log
         # pred_sfx, predict_next
@@ -69,22 +76,21 @@ def main(argv):
             # Specific model training parameters
             if parameters['activity'] == 'training':
                 parameters['imp'] = 2  # keras lstm implementation 1 cpu,2 gpu
-                parameters['lstm_act'] = 'relu'  # optimization function Keras, None in v1
-                parameters['dense_act'] = None  # optimization function Keras
-                parameters['optim'] = 'Adam'  # optimization function Keras, Nadam in v1
-                parameters['norm_method'] = 'lognorm'  # max, lognorm
+                parameters['lstm_act'] = 'relu' # optimization function Keras, None in v1, 'relu' in v1.1
+                parameters['dense_act'] = 'linear'  # optimization function Keras, None in v1
+                parameters['optim'] = 'Nadam'  # optimization function Keras, Nadam in v1, Adam in v1.1
+                parameters['norm_method'] = 'max'  # max, lognorm
                 # Model types --> shared_cat, specialized, concatenated, 
-                # shared_cat_gru, specialized_gru, concatenated_gru
-                parameters['model_type'] = 'shared_cat'
+                #                 shared_cat_gru, specialized_gru, concatenated_gru
+                parameters['model_type'] = 'concatenated'
                 parameters['n_size'] = 5  # n-gram size
-                parameters['l_size'] = 100  # LSTM layer sizes
+                parameters['l_size'] = 50  # LSTM layer sizes
                 # Generation parameters
         elif parameters['activity'] in ['pred_log', 'pred_sfx', 'predict_next']:
-            parameters['folder'] = '20210325_D1BCD634_A2D9_4726_AD88_ADD2BC7D403E'
-            parameters['model_file'] = 'model_shared_cat_01-1.82.h5'
+            parameters['folder'] = '20210406_CB2879C6_4D32_447C_9CF1_A4131150CF4A'
+            parameters['model_file'] = 'model_shared_cat_01-2.09.h5'
             parameters['is_single_exec'] = False  # single or batch execution
-            # variants and repetitions to be tested random_choice, arg_max
-            parameters['variant'] = 'random_choice'
+            parameters['variant'] = 'random_choice'  # random_choice, arg_max for variants and repetitions to be tested
             parameters['rep'] = 1
         else:
             raise ValueError(parameters['activity'])

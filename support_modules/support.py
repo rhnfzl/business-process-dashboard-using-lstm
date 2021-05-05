@@ -9,6 +9,7 @@ import json
 import platform as pl
 import time
 
+#Utilities used for pre-processing of event logs
 
 def folder_id():
     return datetime.datetime.today().strftime('%Y%m%d_') + str(uuid.uuid4()).upper().replace('-', '_')

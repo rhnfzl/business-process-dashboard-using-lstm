@@ -165,8 +165,13 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
                                    min_delta=0.0001,
                                    cooldown=0,
                                    min_lr=0)
+    #To automatically calculate the batch size if the batch size is set to default i.e 0
+    if args['batch_size'] == 0:
+        batch_size = vec['prefixes']['activities'].shape[1]
+    else:
+        batch_size = args['batch_size']
+    print("Batch Size : ", batch_size)
 
-    batch_size = args['batch_size']
     model.fit({'ac_input': vec['prefixes']['activities'],
                 'rl_input': vec['prefixes']['roles'],
                 't_input': vec['prefixes']['times']},
