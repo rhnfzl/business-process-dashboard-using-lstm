@@ -152,7 +152,7 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
     model_checkpoint = ModelCheckpoint(output_file_path,
                                        monitor='val_loss',
                                        verbose=0,
-                                       save_best_only=True,
+                                       save_best_only=True, #saves when the model is considered the "best" and the latest best model according to the quantity monitored will not be overwritten.
                                        save_weights_only=False,
                                        mode='auto')
     lr_reducer = ReduceLROnPlateau(monitor='val_loss',

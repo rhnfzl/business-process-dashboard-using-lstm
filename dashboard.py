@@ -1,19 +1,17 @@
-# -*- coding: utf-8 -*-
-"""
-@author: Manuel Camargo
-"""
-
-#---Workaround for Not creating XLA devices, tf_xla_enable_xla_devices not set
 import os
 os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices'
-#---
-
 import sys
 import getopt
+import streamlit as st
+import tkinter as tk
+from tkinter import filedialog
+
+import pandas as pd
+import numpy as np
+import configparser as cp
 
 from model_prediction import model_predictor as pr
 from model_training import model_trainer as tr
-
 
 #---Workaround for "tensorflow.python.framework.errors_impl.UnknownError: Fail to find the dnn implementation."
 from tensorflow.compat.v1 import ConfigProto
@@ -40,7 +38,12 @@ def catch_parameter(opt):
 
 # --setup--
 def main(argv):
-    """Main aplication method"""
+
+    #Dashboard Title
+    st.title("Next Event Activity Prediction Dashboard") #Adding title bar
+    st.sidebar.title("App Control Menu")  #Adding the header to the sidebar as well as the sidebar
+    st.markdown("This dashboard is used to *predict* and *recommend* next event for the provided eventlog")
+
     parameters = dict()
     column_names = {'Case ID': 'caseid',
                     'Activity': 'task',
@@ -48,50 +51,59 @@ def main(argv):
                     'Resource': 'user'}
     parameters['one_timestamp'] = True  # Only one timestamp in the log
     # Similarity btw the resources profile execution (Song e.t. all)
-    parameters['rp_sim'] = 0.85
-    parameters['batch_size'] = 128 # Usually 16/32/64/128/256
-    parameters['epochs'] = 200 #v1 200, for embedded training it's 100.
+    #parameters['rp_sim'] = 0.85
+    #parameters['batch_size'] = 128 # Usually 16/32/64/128/256
+    #parameters['epochs'] = 200 #v1 200, for embedded training it's 100.
     # Parameters setting manual fixed or catched by console
-    '''
-        **Concept**
-        One Epoch is when an ENTIRE dataset is passed forward and backward through the neural network only ONCE. Since one epoch is too big to feed to the computer at once we divide it in several smaller batches.
-        Batch size is total number of training examples present in a single batch and Iterations is the number of batches needed to complete one epoch.
-        e.g : For 2000 training examples we can divide the dataset of 2000 examples into batches of 500 then it will take 4 iterations to complete 1 epoch. Where Batch Size is 500 and Iterations is 4, for 1 complete epoch.
-        Conclusion : Lower the Batch size higher will be the Epoch Value
-    '''
+
+    st.sidebar.subheader("Choose Activity")
+    #dropdown list and the options are in the tuples of string
+    classifier = st.sidebar.selectbox("Activity", ('predict_next','pred_log', 'pred_sfx'), )
+
     if not argv:
         # Type of LSTM task -> training, pred_log
         # pred_sfx, predict_next
-        parameters['activity'] = 'predict_next' #Change Here
+        parameters['activity'] = classifier  # Change Here
         # Event-log reading parameters
         parameters['read_options'] = {
             'timeformat': '%Y-%m-%dT%H:%M:%S.%f',
             'column_names': column_names,
             'one_timestamp': parameters['one_timestamp'],
             'ns_include': True}
-        # General training parameters
-        if parameters['activity'] in ['training']:
-            # Event-log parameters
-            parameters['file_name'] = 'Helpdesk.xes' #Change Here
-            # Specific model training parameters
-            if parameters['activity'] == 'training':
-                parameters['imp'] = 2  # keras lstm implementation 1 cpu,2 gpu
-                parameters['lstm_act'] = 'relu' # optimization function Keras, None in v1, 'relu' in v1.1
-                parameters['dense_act'] = 'linear'  # optimization function Keras, used at output layer
-                parameters['optim'] = 'Nadam'  # optimization function Keras
-                parameters['norm_method'] = 'max'  # max, lognorm
-                # Model types --> shared_cat, specialized, concatenated, 
-                #                 shared_cat_gru, specialized_gru, concatenated_gru
-                parameters['model_type'] = 'concatenated'
-                parameters['n_size'] = 5  # n-gram size
-                parameters['l_size'] = 50  # LSTM layer sizes
-                # Generation parameters
-        elif parameters['activity'] in ['pred_log', 'pred_sfx', 'predict_next']:
-            parameters['folder'] = '20210428_68D85C7D_E0B5_47F8_92BC_79732E5F58C5'
-            parameters['model_file'] = 'model_concatenated_10-1.50.h5'
-            parameters['is_single_exec'] = True  # single or batch execution
-            parameters['variant'] = 'random_choice'  # random_choice, arg_max for variants and repetitions to be tested
+
+        # Folder picker button
+        if parameters['activity'] in ['pred_log', 'pred_sfx', 'predict_next']:
+            variant_opt = st.sidebar.selectbox("Variant", ('random_choice', 'arg_max'), key='variant_opt')
+            parameters['variant'] = variant_opt  # random_choice, arg_max for variants and repetitions to be tested
+
+            iskey = st.sidebar.radio("Single Exec", (True, False), key='iskey')
+            parameters['is_single_exec'] = iskey  # single or batch execution
+
             parameters['rep'] = 1
+            ml_model = st.sidebar.file_uploader("Upload ML Model", type=['h5'])
+            if ml_model is not None:
+                parameters['model_file'] = ml_model.name
+
+            # Set up tkinter
+            root = tk.Tk()
+            root.withdraw()
+            # Make folder picker dialog appear on top of other windows
+            root.wm_attributes('-topmost', 1)
+
+            #Option to choose the folder where model and test log is kept
+
+            #st.sidebar.title('Folder Picker')
+            #st.sidebar.write('Please select a folder:')
+            #clicked = st.sidebar.button('Folder Picker')
+            #if clicked:
+            #    dirname = st.sidebar.text_input('Selected folder:', filedialog.askdirectory(master=root))
+            #    path, folder_name = os.path.split(dirname)
+            #    parameters['folder'] = folder_name
+            #    print("folder_name : ", folder_name)
+
+            folder_name  = st.sidebar.text_input('Folder Name')
+            parameters['folder'] = folder_name
+
         else:
             raise ValueError(parameters['activity'])
     else:
@@ -127,15 +139,18 @@ def main(argv):
             print('Invalid option')
             sys.exit(2)
 #   Execution
-    if parameters['activity'] == 'training':
-        print(parameters)
-        trainer = tr.ModelTrainer(parameters)
-        print(trainer.output, trainer.model, sep=' ')
-    elif parameters['activity'] in ['predict_next', 'pred_sfx', 'pred_log']:
-        print(parameters)
-        print(parameters['folder'])
-        print(parameters['model_file'])
-        predictor = pr.ModelPredictor(parameters)
-        print(predictor.acc)
+    if parameters['activity'] in ['predict_next', 'pred_sfx', 'pred_log']:
+        if st.sidebar.button("Process"):
+            print(parameters)
+            print(parameters['folder'])
+            print(parameters['model_file'])
+            with st.spinner(text='In progress'):
+                predictor = pr.ModelPredictor(parameters)
+                st.sidebar.write("Prediction Accuracy : ", (predictor.acc *100), " %")
+                print(predictor.acc)
+                st.success('Done')
 if __name__ == "__main__":
     main(sys.argv[1:])
+
+
+#streamlit run dashboard.py

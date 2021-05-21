@@ -37,7 +37,7 @@ class LogReader(object):
         reads all the data from the log depending
         the extension of the file
         """
-        # TODO: esto se puede manejar mejor con un patron de diseno
+        # TODO: this can best be handled with a layout pattern
         if self.file_extension == '.xes':
             self.get_xes_events_data()
         elif self.file_extension == '.csv':
@@ -384,7 +384,7 @@ class LogReader(object):
 #             data.append(dict(caseid=x['caseid'], task=x['task'], event_type=x['event_type'],
 #                              user=x['user'], start_timestamp=x['start_timestamp'], end_timestamp=y['start_timestamp']))
 #         return data
-#     # TODO manejo de excepciones
+#     # TODO: exception handling
 #     def find_first_task(self):
 #         """finds the first task"""
 #         cases = list()

@@ -7,6 +7,7 @@ Created on Tue Mar 17 10:49:28 2020
 import os
 import json
 
+import streamlit as st
 import pandas as pd
 import numpy as np
 import configparser as cp
@@ -16,13 +17,14 @@ from tensorflow.keras.models import load_model
 from support_modules.readers import log_reader as lr
 from support_modules import support as sup
 
+from model_training import features_manager as feat
 from model_prediction import interfaces as it
 from model_prediction.analyzers import sim_evaluator as ev
 
 
 class ModelPredictor():
     """
-    This is the man class encharged of the model evaluation
+    This is the main class encharged of the model evaluation
     """
 
     def __init__(self, parms):
@@ -50,11 +52,19 @@ class ModelPredictor():
         # create examples for next event and suffix
         if self.parms['activity'] == 'pred_log':
             self.parms['num_cases'] = len(self.log.caseid.unique())
+            self.parms['start_time'] = self.log.start_timestamp.min() #added from v1.2
         else:
+            feat_mannager = feat.FeaturesMannager(self.parms)
+            feat_mannager.register_scaler(self.parms['model_type'],
+                                          self.model_def['vectorizer'])
+            #self.log, _ = feat_mannager.calculate(
+            #    self.log, self.parms['additional_columns']) #added from v1.2
+
             sampler = it.SamplesCreator()
             sampler.create(self, self.parms['activity'])
+        self.parms['caseid'] = np.array(self.log.caseid) #adding caseid to the parms
         # predict
-        self.imp = self.parms ['variant']
+        self.imp = self.parms['variant']
         self.run_num = 0
         for i in range(0, self.parms['rep']):
             self.predict_values()
@@ -65,11 +75,11 @@ class ModelPredictor():
         evaluator = EvaluateTask()
         if self.parms['activity'] == 'pred_log':
             data = self.append_sources(self.log, self.predictions,
-                                        self.parms['one_timestamp'])
+                                       self.parms['one_timestamp'])
             data['caseid'] = data['caseid'].astype(str)
             return evaluator.evaluate(self.parms, data)
         else:
-            return evaluator.evaluate(self.parms, self.predictions) 
+            return evaluator.evaluate(self.parms, self.predictions)
 
     def predict_values(self):
         # Predict values
@@ -107,6 +117,7 @@ class ModelPredictor():
                                       for k, v in data['index_ac'].items()}
             self.parms['index_rl'] = {int(k): v
                                       for k, v in data['index_rl'].items()}
+
             file.close()
             self.ac_index = {v: k for k, v in self.parms['index_ac'].items()}
             self.rl_index = {v: k for k, v in self.parms['index_rl'].items()}
@@ -124,9 +135,11 @@ class ModelPredictor():
                                       self.samples,
                                       self.imp,
                                       self.model_def['vectorizer'])
+
         results = pd.DataFrame(results)
         results['run_num'] = self.run_num
         results['implementation'] = self.imp
+        st.write(results)  # writing the results to dashboard
         if self.predictions is None:
             self.predictions = results
         else:
@@ -172,14 +185,14 @@ class ModelPredictor():
             log[feature + '_log'] = np.log1p(log[feature])
             max_value = scale_args['max_value']
             min_value = scale_args['min_value']
-            log[feature+'_norm'] = np.divide(
-                    np.subtract(log[feature+'_log'], min_value), (max_value - min_value))
+            log[feature + '_norm'] = np.divide(
+                np.subtract(log[feature + '_log'], min_value), (max_value - min_value))
             log = log.drop((feature + '_log'), axis=1)
         elif method == 'normal':
             max_value = scale_args['max_value']
             min_value = scale_args['min_value']
-            log[feature+'_norm'] = np.divide(
-                    np.subtract(log[feature], min_value), (max_value - min_value))
+            log[feature + '_norm'] = np.divide(
+                np.subtract(log[feature], min_value), (max_value - min_value))
         elif method == 'standard':
             mean = scale_args['mean']
             std = scale_args['std']
@@ -190,7 +203,7 @@ class ModelPredictor():
             log[feature + '_norm'] = (np.divide(log[feature], max_value)
                                       if max_value > 0 else 0)
         elif method is None:
-            log[feature+'_norm'] = log[feature]
+            log[feature + '_norm'] = log[feature]
         else:
             raise ValueError(method)
         if replace:
@@ -200,11 +213,12 @@ class ModelPredictor():
     def read_model_definition(self, model_type):
         Config = cp.ConfigParser(interpolation=None)
         Config.read('models_spec.ini')
-        #File name with extension
+        # File name with extension
         self.model_def['additional_columns'] = sup.reduce_list(
-            Config.get(model_type,'additional_columns'), dtype='str')
+            Config.get(model_type, 'additional_columns'), dtype='str')
         self.model_def['vectorizer'] = Config.get(model_type, 'vectorizer')
-        
+
+
 class EvaluateTask():
 
     def evaluate(self, parms, data):
@@ -228,7 +242,7 @@ class EvaluateTask():
         rl_sim = evaluator.measure('accuracy', data, 'rl')
         mean_ac = ac_sim.accuracy.mean()
         exp_desc = pd.DataFrame([exp_desc])
-        exp_desc = pd.concat([exp_desc]*len(ac_sim), ignore_index=True)
+        exp_desc = pd.concat([exp_desc] * len(ac_sim), ignore_index=True)
         ac_sim = pd.concat([ac_sim, exp_desc], axis=1).to_dict('records')
         rl_sim = pd.concat([rl_sim, exp_desc], axis=1).to_dict('records')
         self.save_results(ac_sim, 'ac', parms)
@@ -253,7 +267,7 @@ class EvaluateTask():
         rl_sim = evaluator.measure('similarity', data, 'rl')
         mean_sim = ac_sim['mean'].mean()
         exp_desc = pd.DataFrame([exp_desc])
-        exp_desc = pd.concat([exp_desc]*len(ac_sim), ignore_index=True)
+        exp_desc = pd.concat([exp_desc] * len(ac_sim), ignore_index=True)
         ac_sim = pd.concat([ac_sim, exp_desc], axis=1).to_dict('records')
         rl_sim = pd.concat([rl_sim, exp_desc], axis=1).to_dict('records')
         self.save_results(ac_sim, 'ac', parms)
@@ -279,7 +293,7 @@ class EvaluateTask():
         mean_els = els.els.mean()
         mae = evaluator.measure('mae_log', data)
         exp_desc = pd.DataFrame([exp_desc])
-        exp_desc = pd.concat([exp_desc]*len(dl), ignore_index=True)
+        exp_desc = pd.concat([exp_desc] * len(dl), ignore_index=True)
         # exp_desc = pd.concat([exp_desc]*len(els), ignore_index=True)
         dl = pd.concat([dl, exp_desc], axis=1).to_dict('records')
         els = pd.concat([els, exp_desc], axis=1).to_dict('records')
@@ -317,17 +331,18 @@ class EvaluateTask():
                     measurements,
                     os.path.join(
                         output_route,
-                        model_name+'_'+feature+'_'+parms['activity']+'.csv'))
+                        model_name + '_' + feature + '_' + parms['activity'] + '.csv'))
+                print("output_route : ", output_route)
             else:
                 if os.path.exists(os.path.join(
-                        'output_files', feature+'_'+parms['activity']+'.csv')):
+                        'output_files', feature + '_' + parms['activity'] + '.csv')):
                     sup.create_csv_file(
                         measurements,
                         os.path.join('output_files',
-                                     feature+'_'+parms['activity']+'.csv'),
+                                     feature + '_' + parms['activity'] + '.csv'),
                         mode='a')
                 else:
                     sup.create_csv_file_header(
                         measurements,
                         os.path.join('output_files',
-                                     feature+'_'+parms['activity']+'.csv'))
+                                     feature + '_' + parms['activity'] + '.csv'))

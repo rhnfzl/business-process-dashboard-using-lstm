@@ -5,6 +5,7 @@ Created on Tue Mar 17 20:35:53 2020
 @author: Manuel Camargo
 """
 import numpy as np
+import streamlit as st
 
 from support_modules import support as sup
 
@@ -18,11 +19,18 @@ class NextEventPredictor():
         self.imp = 'arg_max'
 
     def predict(self, params, model, spl, imp, vectorizer):
+        #print("params : ", params)
+        #print("spl : ", spl)
+        #print("imp : ", imp)
+        #print("vectorizer : ", vectorizer)
         self.model = model
         self.spl = spl
         self.imp = imp
         predictor = self._get_predictor(params['model_type'])
+        #print("params['model_type'] : ", params['model_type'])
         sup.print_performed_task('Predicting next events')
+
+        #print("caseid_next :", params['caseid'])
         return predictor(params, vectorizer)
 
     def _get_predictor(self, model_type):
@@ -41,6 +49,7 @@ class NextEventPredictor():
         """
         # Generation of predictions
         results = list()
+
         for i, _ in enumerate(self.spl['prefixes']['activities']):
             # Activities and roles input shape(1,5)
             x_ac_ngram = (np.append(
@@ -68,6 +77,7 @@ class NextEventPredictor():
             # add intercase features if necessary
             if vectorizer in ['basic']:
                 inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram]
+
             elif vectorizer in ['inter']:
                 # times input shape(1,5,1)
                 inter_attr_num = (self.spl['prefixes']['inter_attr'][i]
@@ -81,36 +91,57 @@ class NextEventPredictor():
                             (parameters['dim']['time_dim'], inter_attr_num))]
                     )
                 inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram, x_inter_ngram]
+            #print("input_time : ", x_t_ngram)
             # predict
             preds = self.model.predict(inputs)
+            print("preds : ", preds)
             if self.imp == 'random_choice':
                 # Use this to get a random choice following as PDF
                 pos = np.random.choice(np.arange(0, len(preds[0][0])),
                                        p=preds[0][0])
+                pos_prob = preds[0][0][pos]
                 pos1 = np.random.choice(np.arange(0, len(preds[1][0])),
                                         p=preds[1][0])
+                pos1_prob = preds[1][0][pos1]
+
             elif self.imp == 'arg_max':
                 # Use this to get the max prediction
                 pos = np.argmax(preds[0][0])
+
+                pos_prob = preds[0][0][pos]
                 pos1 = np.argmax(preds[1][0])
+                pos1_prob = preds[1][0][pos1]
+
+
+            # elif self.imp == 'top3':
+            #     # Use this to get the max prediction
+            #     pos = np.argmax(preds[0][0])
+            #     pos1 = np.argmax(preds[1][0])
+            #     print("pos arg:", pos)
+            #     print("pos arg :", pos)
 
             # save results
-            predictions = [pos, pos1, preds[2][0][0]]
+            predictions = [pos, pos1, preds[2][0][0], pos_prob, pos1_prob]
             if not parameters['one_timestamp']:
                 predictions.extend([preds[2][0][1]])
-            results.append(
-                self.create_result_record(i, self.spl, predictions, parameters))
+            #print("preds[2][0][0] :", preds[2][0])
+
+            #if ph.button("Next", key='nextbutton'):
+            results.append(self.create_result_record(i, self.spl, predictions, parameters))
         sup.print_done_task()
         return results
 
     def create_result_record(self, index, spl, preds, parms):
         record = dict()
+        record['caseid'] = parms['caseid'][index]
         record['ac_prefix'] = spl['prefixes']['activities'][index]
         record['ac_expect'] = spl['next_evt']['activities'][index]
         record['ac_pred'] = preds[0]
+        record['ac_prob'] = preds[3]
         record['rl_prefix'] = spl['prefixes']['roles'][index]
         record['rl_expect'] = spl['next_evt']['roles'][index]
         record['rl_pred'] = preds[1]
+        record['rl_prob'] = preds[4]
         if parms['one_timestamp']:
             record['tm_prefix'] = [self.rescale(
                 x, parms, parms['scale_args']) 
