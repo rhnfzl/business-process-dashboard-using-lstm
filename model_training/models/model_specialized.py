@@ -25,7 +25,7 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
         bool: The return value. True for success, False otherwise.
     """
 
-    print('Build model...')
+    print('Build model - specialized')
     print(args)
 # =============================================================================
 #     Input layer

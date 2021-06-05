@@ -10,18 +10,7 @@ import numpy as np
 import itertools
 from operator import itemgetter
 
-#from support_modules import role_discovery as rl
-
-try:
-    from support_modules import role_discovery as rl
-except:
-    import os
-    from importlib import util
-    spec = util.spec_from_file_location(
-        'role_discovery',
-        os.path.join(os.getcwd(), 'support_modules', 'role_discovery.py'))
-    rl = util.module_from_spec(spec)
-    spec.loader.exec_module(rl)
+from support_modules import role_discovery as rl
 
 
 class FeaturesMannager():
@@ -39,12 +28,11 @@ class FeaturesMannager():
                                  'inter': self._scale_inter}
 
     def calculate(self, log, add_cols):
-        log = self.add_resources(log) #removed in v1.2
+        log = self.add_resources(log)
         log = self.add_calculated_times(log)
         log = self.filter_features(log, add_cols)
         return self.scale_features(log, add_cols)
 
-    @staticmethod
     def add_resources(self, log):
         # Resource pool discovery
         res_analyzer = rl.ResourcePoolAnalyser(log, sim_threshold=self.rp_sim)
@@ -113,7 +101,6 @@ class FeaturesMannager():
                 time = events[i][ordk].time()
                 time = time.second + time.minute*60 + time.hour*3600
                 events[i]['daytime'] = time
-                #events[i]['weekday'] = events[i]['start_timestamp'].weekday() #added from v1.2
         return pd.DataFrame.from_dict(log)
 
     def scale_features(self, log, add_cols):
@@ -152,8 +139,6 @@ class FeaturesMannager():
         for col in add_cols:
             if col == 'daytime':
                 log, _ = self.scale_feature(log, 'daytime', 'day_secs', True)
-            #elif col == 'weekday': #added from v1.2
-            #    continue
             else:
                 log, _ = self.scale_feature(log, col, self.norm_method, True)
         return log, scale_args

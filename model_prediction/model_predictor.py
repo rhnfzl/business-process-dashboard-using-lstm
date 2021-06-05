@@ -11,16 +11,17 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import configparser as cp
+import plotly.express as px
+import plotly.graph_objects as go
 
 from tensorflow.keras.models import load_model
 
 from support_modules.readers import log_reader as lr
 from support_modules import support as sup
 
-from model_training import features_manager as feat
+#from model_training import features_manager as feat
 from model_prediction import interfaces as it
 from model_prediction.analyzers import sim_evaluator as ev
-
 
 class ModelPredictor():
     """
@@ -52,19 +53,16 @@ class ModelPredictor():
         # create examples for next event and suffix
         if self.parms['activity'] == 'pred_log':
             self.parms['num_cases'] = len(self.log.caseid.unique())
-            self.parms['start_time'] = self.log.start_timestamp.min() #added from v1.2
         else:
-            feat_mannager = feat.FeaturesMannager(self.parms)
-            feat_mannager.register_scaler(self.parms['model_type'],
-                                          self.model_def['vectorizer'])
-            #self.log, _ = feat_mannager.calculate(
-            #    self.log, self.parms['additional_columns']) #added from v1.2
-
             sampler = it.SamplesCreator()
             sampler.create(self, self.parms['activity'])
+
         self.parms['caseid'] = np.array(self.log.caseid) #adding caseid to the parms
+        #self.parms['caseid'] = np.array(self.log.caseid.unique()) #adding caseid to the parms
+        #print("parms :", self.parms)
         # predict
-        self.imp = self.parms['variant']
+
+        self.imp = self.parms['variant'] #passes value arg_max and random_choice
         self.run_num = 0
         for i in range(0, self.parms['rep']):
             self.predict_values()
@@ -79,7 +77,10 @@ class ModelPredictor():
             data['caseid'] = data['caseid'].astype(str)
             return evaluator.evaluate(self.parms, data)
         else:
+            results_copy = self.predictions.copy()
+            self.dashboard_prediction(results_copy, self.parms)
             return evaluator.evaluate(self.parms, self.predictions)
+
 
     def predict_values(self):
         # Predict values
@@ -91,8 +92,12 @@ class ModelPredictor():
         df_test = lr.LogReader(
             os.path.join(output_route, 'parameters', 'test_log.csv'),
             parms['read_options'])
-        df_test = pd.DataFrame(df_test.data)
-        df_test = df_test[~df_test.task.isin(['Start', 'End'])]
+        if parms['mode'] == 'next':
+            df_test = pd.DataFrame(df_test.data)
+            df_test = df_test[~df_test.task.isin(['Start', 'End']) & df_test.caseid.isin([parms['nextcaseid']])]
+        elif parms['mode'] == 'batch':
+            df_test = pd.DataFrame(df_test.data)
+            df_test = df_test[~df_test.task.isin(['Start', 'End'])]
         return df_test
 
     def load_parameters(self):
@@ -137,14 +142,102 @@ class ModelPredictor():
                                       self.model_def['vectorizer'])
 
         results = pd.DataFrame(results)
+        #print("Output of the predictions before :", results)
+        #print("Output of the predictions after :", results)
         results['run_num'] = self.run_num
         results['implementation'] = self.imp
-        st.write(results)  # writing the results to dashboard
         if self.predictions is None:
             self.predictions = results
         else:
             self.predictions = self.predictions.append(results,
                                                        ignore_index=True)
+
+    @staticmethod
+    def dashboard_prediction(pred_results_df, parms):
+        #Removing 'ac_prefix', 'rl_prefix', 'tm_prefix'
+        results_dash = pred_results_df[['ac_prefix', 'rl_prefix', 'tm_prefix', 'run_num', 'implementation']].copy()
+        results_dash = pred_results_df.drop(['ac_prefix', 'rl_prefix', 'tm_prefix', 'run_num', 'implementation'], axis=1)
+
+        #Replacing from Dictionary Values to it's original name
+        results_dash['ac_expect'] = results_dash.ac_expect.replace(parms['index_ac'])
+        results_dash['rl_expect'] = results_dash.rl_expect.replace(parms['index_rl'])
+
+        if parms['variant'] in ['top3']:
+             #--------------------results_dash['ac_pred'] = results_dash.ac_pred.replace(parms['index_ac'])
+             for ix in range(len(results_dash['ac_pred'])):
+                 for jx in range(len(results_dash['ac_pred'][ix])):
+                     #replacing the value from the parms dictionary
+                     results_dash['ac_pred'][ix].append(parms['index_ac'][results_dash.ac_pred[ix][jx]])
+                     # Converting probability into percentage
+                     results_dash['ac_prob'][ix][jx] = (results_dash['ac_prob'][ix][jx] * 100)
+                 #ppping out the values from the list
+                 ln = int(len(results_dash['ac_pred'][ix])/2)
+                 del results_dash['ac_pred'][ix][:ln]
+                 results_dash[['ac_pred1', 'ac_pred2', 'ac_pred3']] = pd.DataFrame(results_dash.ac_pred.tolist(),
+                                                                                  index=results_dash.index)
+                 results_dash[['ac_prob1', 'ac_prob2', 'ac_prob3']] = pd.DataFrame(results_dash.ac_prob.tolist(),
+                                                                                  index=results_dash.index)
+
+
+             #--------------------results_dash['rl_pred'] = results_dash.rl_pred.replace(parms['index_rl'])
+             for ix in range(len(results_dash['rl_pred'])):
+                 for jx in range(len(results_dash['rl_pred'][ix])):
+                     # replacing the value from the parms dictionary
+                     results_dash['rl_pred'][ix].append(parms['index_rl'][results_dash.rl_pred[ix][jx]])
+                     # Converting probability into percentage
+                     results_dash['rl_prob'][ix][jx] = (results_dash['rl_prob'][ix][jx] * 100)
+                 # ppping out the values from the list
+                 ln = int(len(results_dash['rl_pred'][ix])/2)
+                 del results_dash['rl_pred'][ix][:ln]
+                 results_dash[['rl_pred1', 'rl_pred2', 'rl_pred3']] = pd.DataFrame(results_dash.rl_pred.tolist(),
+                                                                                   index=results_dash.index)
+                 results_dash[['rl_prob1', 'rl_prob2', 'rl_prob3']] = pd.DataFrame(results_dash.rl_prob.tolist(),
+                                                                                   index=results_dash.index)
+             results_dash.drop(['ac_pred', 'ac_prob', 'rl_pred', 'rl_prob'], axis=1, inplace=True)
+             results_dash = results_dash[['caseid', 'ac_expect', 'ac_pred1', 'ac_prob1', 'ac_pred2', 'ac_prob2', 'ac_pred3', 'ac_prob3',
+                                          'rl_pred1', 'rl_prob1', 'rl_pred2', 'rl_prob2', 'rl_pred3', 'rl_prob3',
+                                          "tm_expect", 'tm_pred']]
+
+             #------------------------------------------------------------------------------------------------------------------------------------------------
+             # results_dash.rename(
+             #     columns={'caseid': 'Case_ID', 'ac_expect': 'Expected', 'ac_pred1': 'Prediction_1', 'ac_prob1': 'Confidence_1',
+             #              'ac_pred2': 'Prediction_2', 'ac_prob2': 'Confidence_2', 'ac_pred3': 'Prediction_3', 'ac_prob3': 'Confidence_3',
+             #              'rl_expect': 'Expected', 'rl_pred1': 'Predicted_1', 'rl_prob1': 'Confidence_1',
+             #              'rl_pred2': 'Predicted_2', 'rl_prob2': 'Confidence_2', 'rl_pred3': 'Predicted_3', 'rl_prob3': 'Confidence_3',
+             #              "tm_expect": 'Expected', 'tm_pred': 'Predicted'}, inplace=True)
+             # results_dash.columns = pd.MultiIndex.from_tuples(
+             #     zip(['', 'Activity', '', '', '', '', '', '', 'Role', '', '', '', '', '', '', 'Time', ''],
+             #         results_dash.columns))
+             # ------------------------------------------------------------------------------------------------------------------------------------------------
+        else:
+            results_dash['ac_pred'] = results_dash.ac_pred.replace(parms['index_ac'])
+            results_dash['rl_pred'] = results_dash.rl_pred.replace(parms['index_rl'])
+            results_dash['ac_prob'] = (results_dash['ac_prob'] * 100)
+            results_dash['rl_prob'] = (results_dash['rl_prob'] * 100)
+            results_dash.rename(
+            columns={'caseid': 'Case_ID', 'ac_expect': 'Expected', 'ac_pred': 'Predicted', 'ac_prob': 'Confidence',
+                    'rl_expect': 'Expected', 'rl_pred': 'Predicted', 'rl_prob': 'Confidence',
+                    "tm_expect": 'Expected', 'tm_pred': 'Predicted'}, inplace=True)
+
+            results_dash.columns = pd.MultiIndex.from_tuples(
+                zip(['', 'Activity', '', '', 'Role', '', '', 'Time', ''],
+                    results_dash.columns))
+
+        #columns_results_dash = [('Case_ID', ''), ('Activity', 'Expected'), ('Activity', 'Predicted'), ('Activity', 'Confidence'),
+        #           ('Role', 'Expected'), ('Role', 'Predicted'), ('Role', 'Confidence'),
+        #           ('Time', 'Expected'), ('Time', 'Predicted')]
+        #results_dash.columns = pd.MultiIndex.from_tuples(columns_results_dash)
+        #results_dash.set_index('Case_ID', inplace=True)
+        #results_dash.assign(idx='').set_index('idx')
+        #results_dash.set_index('', inplace=True)
+
+        #Temporary Solution for multi column
+        st.table(results_dash)
+        # if parms['mode'] in ['next']:
+        #     st.table(results_dash)
+        #     #st.dataframe(results_dash)
+        # elif parms['mode'] in ['batch']:
+        #     st.table(results_dash)
 
     def export_predictions(self):
         output_folder = os.path.join(self.output_route, 'results')
@@ -167,8 +260,8 @@ class ModelPredictor():
         columns = log.columns
         predictions = predictions[columns]
         return log.append(predictions, ignore_index=True)
-
     @staticmethod
+    #------This Can be removed as it is not getting used anywhere------
     def scale_feature(log, feature, parms, replace=False):
         """Scales a number given a technique.
         Args:
@@ -223,6 +316,10 @@ class EvaluateTask():
 
     def evaluate(self, parms, data):
         sampler = self._get_evaluator(parms['activity'])
+        if parms['variant'] in ['top3']:
+            data['ac_expect'] = data.ac_expect.replace(parms['index_ac'])
+            data['rl_expect'] = data.rl_expect.replace(parms['index_rl'])
+        print("Evaluate Data:", data)
         return sampler(data, parms)
 
     def _get_evaluator(self, activity):
@@ -237,11 +334,18 @@ class EvaluateTask():
 
     def _evaluate_predict_next(self, data, parms):
         exp_desc = self.clean_parameters(parms.copy())
-        evaluator = ev.Evaluator(parms['one_timestamp'])
+        evaluator = ev.Evaluator(parms['one_timestamp'], parms['variant'])
+
         ac_sim = evaluator.measure('accuracy', data, 'ac')
         rl_sim = evaluator.measure('accuracy', data, 'rl')
+
         mean_ac = ac_sim.accuracy.mean()
+        mean_rl = rl_sim.accuracy.mean()
         exp_desc = pd.DataFrame([exp_desc])
+
+        st.sidebar.write("Activity Prediction Accuracy : ", round((mean_ac * 100),2), " %")
+        st.sidebar.write("Role Prediction Accuracy : ", round((mean_rl * 100),2), " %")
+
         exp_desc = pd.concat([exp_desc] * len(ac_sim), ignore_index=True)
         ac_sim = pd.concat([ac_sim, exp_desc], axis=1).to_dict('records')
         rl_sim = pd.concat([rl_sim, exp_desc], axis=1).to_dict('records')
@@ -258,11 +362,12 @@ class EvaluateTask():
             wait_mae = pd.concat([wait_mae, exp_desc], axis=1).to_dict('records')
             self.save_results(dur_mae, 'dur', parms)
             self.save_results(wait_mae, 'wait', parms)
+        st.sidebar.write("Time MAE : ", round(tm_mae[0]['mae'],2))
         return mean_ac
 
     def _evaluate_pred_sfx(self, data, parms):
         exp_desc = self.clean_parameters(parms.copy())
-        evaluator = ev.Evaluator(parms['one_timestamp'])
+        evaluator = ev.Evaluator(parms['one_timestamp'], parms['variant'])
         ac_sim = evaluator.measure('similarity', data, 'ac')
         rl_sim = evaluator.measure('similarity', data, 'rl')
         mean_sim = ac_sim['mean'].mean()
@@ -287,7 +392,7 @@ class EvaluateTask():
 
     def _evaluate_predict_log(self, data, parms):
         exp_desc = self.clean_parameters(parms.copy())
-        evaluator = ev.Evaluator(parms['one_timestamp'])
+        evaluator = ev.Evaluator(parms['one_timestamp'], parms['variant'])
         dl = evaluator.measure('dl', data)
         els = evaluator.measure('els', data)
         mean_els = els.els.mean()

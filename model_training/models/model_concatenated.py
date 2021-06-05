@@ -25,7 +25,7 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
         bool: The return value. True for success, False otherwise.
     """
 
-    print('Build model...')
+    print('Build model - concatenated')
     print(args)
 # =============================================================================
 #     Input layer
@@ -34,8 +34,11 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
     rl_input = Input(shape=(vec['prefixes']['roles'].shape[1], ), name='rl_input')
     t_input = Input(shape=(vec['prefixes']['times'].shape[1],
                            vec['prefixes']['times'].shape[2]), name='t_input')
+    print("***ac_input Inputs*** :", ac_input)
+    print("***rl_input Inputs*** :", rl_input)
+    print("***t_input Inputs*** :", t_input)
 
-# =============================================================================
+#=============================================================================
 #    Embedding layer for categorical attributes
 # =============================================================================
     ac_embedding = Embedding(ac_weights.shape[0],
@@ -91,12 +94,25 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
                  implementation=args['imp'])(batch1)
 
 #   The layer specialized in role prediction
-    l2_3 = LSTM(args['l_size'],
-                activation=args['lstm_act'],
-                kernel_initializer='glorot_uniform',
-                return_sequences=False,
-                dropout=0.2,
-                implementation=args['imp'])(batch1)
+#     l2_3 = LSTM(args['l_size'],
+#                 activation=args['lstm_act'],
+#                 kernel_initializer='glorot_uniform',
+#                 return_sequences=False,
+#                 dropout=0.2,
+#                 implementation=args['imp'])(batch1)
+    if args['lstm_act'] is not None:
+        l2_3 = LSTM(args['l_size'],
+                    activation=args['lstm_act'],
+                    kernel_initializer='glorot_uniform',
+                    return_sequences=False,
+                    dropout=0.2,
+                    implementation=args['imp'])(batch1)
+    else:
+        l2_3 = LSTM(args['l_size'],
+                    kernel_initializer='glorot_uniform',
+                    return_sequences=False,
+                    dropout=0.2,
+                    implementation=args['imp'])(batch1)
 
 # =============================================================================
 # Output Layer
@@ -120,7 +136,6 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
         time_output = Dense(vec['next_evt']['times'].shape[1],
                             kernel_initializer='glorot_uniform',
                             name='time_output')(l2_3)
-
     model = Model(inputs=[ac_input, rl_input, t_input],
                   outputs=[act_output, role_output, time_output])
 
@@ -169,7 +184,10 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
     else:
         batch_size = args['batch_size']
     print("Batch Size : ", batch_size)
-
+    #print("Input Activities :", vec['prefixes']['activities'])
+    #print("Input Roles :", vec['prefixes']['roles'])
+    #print("Input Prefixes Times :", vec['prefixes']['times'])
+    #print("Input Next Event Times :", vec['next_evt']['times'])
     model.fit({'ac_input': vec['prefixes']['activities'],
                'rl_input': vec['prefixes']['roles'],
                't_input': vec['prefixes']['times']},

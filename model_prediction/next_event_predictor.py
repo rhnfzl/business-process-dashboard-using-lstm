@@ -5,7 +5,7 @@ Created on Tue Mar 17 20:35:53 2020
 @author: Manuel Camargo
 """
 import numpy as np
-import streamlit as st
+#import streamlit as st
 
 from support_modules import support as sup
 
@@ -19,18 +19,12 @@ class NextEventPredictor():
         self.imp = 'arg_max'
 
     def predict(self, params, model, spl, imp, vectorizer):
-        #print("params : ", params)
-        #print("spl : ", spl)
-        #print("imp : ", imp)
-        #print("vectorizer : ", vectorizer)
         self.model = model
         self.spl = spl
         self.imp = imp
         predictor = self._get_predictor(params['model_type'])
-        #print("params['model_type'] : ", params['model_type'])
         sup.print_performed_task('Predicting next events')
 
-        #print("caseid_next :", params['caseid'])
         return predictor(params, vectorizer)
 
     def _get_predictor(self, model_type):
@@ -94,7 +88,7 @@ class NextEventPredictor():
             #print("input_time : ", x_t_ngram)
             # predict
             preds = self.model.predict(inputs)
-            print("preds : ", preds)
+            #print("Predictions :", preds)
             if self.imp == 'random_choice':
                 # Use this to get a random choice following as PDF
                 pos = np.random.choice(np.arange(0, len(preds[0][0])),
@@ -107,32 +101,51 @@ class NextEventPredictor():
             elif self.imp == 'arg_max':
                 # Use this to get the max prediction
                 pos = np.argmax(preds[0][0])
-
                 pos_prob = preds[0][0][pos]
+
                 pos1 = np.argmax(preds[1][0])
                 pos1_prob = preds[1][0][pos1]
 
+            elif self.imp == 'top3':
+                #change it to get the number of predictions
+                nx = 3
 
-            # elif self.imp == 'top3':
-            #     # Use this to get the max prediction
-            #     pos = np.argmax(preds[0][0])
-            #     pos1 = np.argmax(preds[1][0])
-            #     print("pos arg:", pos)
-            #     print("pos arg :", pos)
+                #changing array to numpy
+                acx = np.array(preds[0][0])
+                rlx = np.array(preds[1][0])
+
+                pos = (-acx).argsort()[:nx].tolist()
+                pos1 = (-rlx).argsort()[:nx].tolist()
+
+                pos_prob = []
+                pos1_prob = []
+
+                for ix in range(len(pos)):
+                    # probability of activity
+                    pos_prob.append(acx[pos[ix]])
+                for jx in range(len(pos1)):
+                    # probability of role
+                    pos1_prob.append(rlx[pos1[jx]])
+
+                #print("activity = ", posac)
+                #print("activity probability = ", pos_probac)
+
+                #print("role = ", pos1rl)
+                #print("role probability = ", pos1_probrl)
 
             # save results
             predictions = [pos, pos1, preds[2][0][0], pos_prob, pos1_prob]
+
             if not parameters['one_timestamp']:
                 predictions.extend([preds[2][0][1]])
-            #print("preds[2][0][0] :", preds[2][0])
 
-            #if ph.button("Next", key='nextbutton'):
             results.append(self.create_result_record(i, self.spl, predictions, parameters))
         sup.print_done_task()
         return results
 
     def create_result_record(self, index, spl, preds, parms):
         record = dict()
+
         record['caseid'] = parms['caseid'][index]
         record['ac_prefix'] = spl['prefixes']['activities'][index]
         record['ac_expect'] = spl['next_evt']['activities'][index]
@@ -142,15 +155,23 @@ class NextEventPredictor():
         record['rl_expect'] = spl['next_evt']['roles'][index]
         record['rl_pred'] = preds[1]
         record['rl_prob'] = preds[4]
+
+        # print("ac_pred : ", record['ac_pred'])
+        # print('ac_prob : ', record['ac_prob'])
+        # print('rl_pred : ', record['rl_pred'])
+        # print('rl_prob :', record['rl_prob'])
+
         if parms['one_timestamp']:
             record['tm_prefix'] = [self.rescale(
-                x, parms, parms['scale_args']) 
-                for x in spl['prefixes']['times'][index]]
+               x, parms, parms['scale_args'])
+               for x in spl['prefixes']['times'][index]]
             record['tm_expect'] = self.rescale(
                 spl['next_evt']['times'][index][0],
                 parms, parms['scale_args'])
+            #print("Predicted :", preds)
             record['tm_pred'] = self.rescale(
                 preds[2], parms, parms['scale_args'])
+
         else:
             # Duration
             record['dur_prefix'] = [self.rescale(

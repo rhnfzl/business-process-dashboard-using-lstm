@@ -20,6 +20,8 @@ class LogReader(object):
 
     def __init__(self, input, settings):
         """constructor"""
+        #print("log reader input :", self.input)
+        print("log reader settings :", settings)
         self.input = input
         self.file_name, self.file_extension = self.define_ftype()
         self.timeformat = settings['timeformat']
@@ -99,7 +101,8 @@ class LogReader(object):
                                 timestamp, self.timeformat)
                 # By default remove Start and End events
                 # but will be added to standardize
-                if task not in ['0', '-1', 'Start', 'End', 'start', 'end']:
+                #if task not in ['0', '-1', 'Start', 'End', 'start', 'end']: #should only have -1 and 0
+                if task not in ['0', '-1']:  # should only have -1 and 0
                     if ((not self.one_timestamp) or
                         (self.one_timestamp and event_type == 'complete')):
                         temp_trace.append(dict(caseid=caseid,
@@ -119,8 +122,10 @@ class LogReader(object):
         """
         this method match the duplicated events on the .xes log
         """
+        print("Re-ordering xes log file")
         temp_data = pd.DataFrame(temp_data)
         ordered_event_log = list()
+        print("Status of One timestamp :", self.one_timestamp)
         if self.one_timestamp:
             self.column_names['Complete Timestamp'] = 'end_timestamp'
             temp_data = temp_data[temp_data.event_type == 'complete']
@@ -128,10 +133,12 @@ class LogReader(object):
                 columns={'timestamp': 'end_timestamp'})
             ordered_event_log = ordered_event_log.drop(columns='event_type')
             ordered_event_log = ordered_event_log.to_dict('records')
+            print("events : ", ordered_event_log[1])
         else:
             self.column_names['Start Timestamp'] = 'start_timestamp'
             self.column_names['Complete Timestamp'] = 'end_timestamp'
             cases = temp_data.caseid.unique()
+            #------------------------------------------------------------------------------------------------------------------------------------------------------#
             for case in cases:
                 start_ev = (temp_data[(temp_data.event_type == 'start') &
                                       (temp_data.caseid == case)]
@@ -141,12 +148,17 @@ class LogReader(object):
                                          (temp_data.caseid == case)]
                                .sort_values(by='timestamp', ascending=True)
                                .to_dict('records'))
+                print("start_ev :", start_ev, "length :", len(start_ev))
+                print("complete_ev :", complete_ev, "length :", len(complete_ev))
                 if len(start_ev) == len(complete_ev):
                     temp_trace = list()
                     for i, _ in enumerate(start_ev):
                         match = False
                         for j, _ in enumerate(complete_ev):
+                            print("---Matched Events---")
+                            print("Task Names : ", start_ev[i]['task'], complete_ev[j]['task'])
                             if start_ev[i]['task'] == complete_ev[j]['task']:
+                                print("---Task Matched---")
                                 temp_trace.append(
                                     {'caseid': case,
                                      'task': start_ev[i]['task'],
@@ -159,6 +171,26 @@ class LogReader(object):
                             del complete_ev[j]
                     if match:
                         ordered_event_log.extend(temp_trace)
+            #------------------------------------------------------------------------------------------------------------------------------------------------------#
+            # for case in cases:
+            #     start_ev = sorted(list(filter(lambda x: x['event_type'] == 'start' and x['caseid'] == case, events)), key=lambda x:x['start_timestamp'])
+            #     complete_ev = sorted(list(filter(lambda x: x['event_type'] == 'complete' and x['caseid'] == case, events)), key=lambda x:x['start_timestamp'])
+            #     print("Length of the values :", len(start_ev), len(complete_ev))
+            #     if len(start_ev) == len(complete_ev):
+            #         temp_trace = list()
+            #         for i, _ in enumerate(start_events):
+            #             match = False
+            #             for j, _ in enumerate(finish_events):
+            #                 if start_events[i]['task'] == finish_events[j]['task']:
+            #                     temp_trace.append(dict(caseid=case, task=start_events[i]['task'],
+            #                          user=start_events[i]['user'], start_timestamp=start_events[i]['start_timestamp'], end_timestamp=finish_events[j]['start_timestamp']))
+            #                     match = True
+            #                     break
+            #             if match:
+            #                 del finish_events[j]
+            #         if match:
+            #             ordered_event_log.extend(temp_trace)
+            #------------------------------------------------------------------------------------------------------------------------------------------------------#
         return ordered_event_log
 
     def append_xes_start_end(self, trace):

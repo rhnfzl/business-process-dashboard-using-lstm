@@ -21,9 +21,12 @@ import numpy as np
 
 class Evaluator():
 
-    def __init__(self, one_timestamp):
+    def __init__(self, one_timestamp, variant):
         """constructor"""
         self.one_timestamp = one_timestamp
+        self.variant = variant
+        print("onetimestamp :", self.one_timestamp)
+        print("Variant :", self.variant)
 
     def measure(self, metric, data, feature=None):
         evaluator = self._get_metric_evaluator(metric)
@@ -51,17 +54,28 @@ class Evaluator():
 
     def _accuracy_evaluation(self, data, feature):
         data = data.copy()
+        #print("Data Initially in Accuracy Meaurement :", data)
         data = data[[(feature + '_expect'), (feature + '_pred'),
                      'run_num', 'implementation']]
-        eval_acc = (lambda x:
-                    1 if x[feature + '_expect'] == x[feature + '_pred'] else 0)
+        #accuracy evaluation exp = pred then 1 else 0 in case of top3 it checks if the predicted value is in the list then it sets it to 1
+        if self.variant in ['top3']:
+            eval_acc = (lambda x:
+                         1 if x[feature + '_expect'] in x[feature + '_pred'] else 0)
+        else:
+            eval_acc = (lambda x:
+                        1 if x[feature + '_expect'] == x[feature + '_pred'] else 0)
+        #print("Data After Accuracy Measurement:", data)
         data[feature + '_acc'] = data.apply(eval_acc, axis=1)
+
         # agregate true positives
         data = (data.groupby(['implementation', 'run_num'])[feature + '_acc']
                 .agg(['sum', 'count'])
                 .reset_index())
+
         # calculate accuracy
         data['accuracy'] = np.divide(data['sum'], data['count'])
+
+        #print("data accuracy 5:", data)
         return data
 
     def _mae_next_evaluation(self, data, feature):

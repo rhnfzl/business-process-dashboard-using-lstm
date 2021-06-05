@@ -124,7 +124,7 @@ class NextEventSamplesCreator():
                 y_serie = y_serie[1:]
                 if x in list(equi.keys()):
                     examples['prefixes'][equi[x]] = (
-                        examples['prefixes'][equi[x]] + serie
+                        examples['prefixes'][equi[x]] + seriestart_timestamp
                         if i > 0 else serie)
                     examples['next_evt'][equi[x]] = (
                         examples['next_evt'][equi[x]] + y_serie

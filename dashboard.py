@@ -12,6 +12,7 @@ import configparser as cp
 
 from model_prediction import model_predictor as pr
 from model_training import model_trainer as tr
+from support_modules.readers import log_reader as lr
 
 #---Workaround for "tensorflow.python.framework.errors_impl.UnknownError: Fail to find the dnn implementation."
 from tensorflow.compat.v1 import ConfigProto
@@ -21,6 +22,8 @@ config.gpu_options.allow_growth = True # dynamically grow the memory used on the
 session = InteractiveSession(config=config)
 #-----
 
+
+st.set_page_config(layout="wide")
 def catch_parameter(opt):
     """Change the captured parameters names"""
     switch = {'-h': 'help', '-o': 'one_timestamp', '-a': 'activity',
@@ -57,12 +60,14 @@ def main(argv):
     # Parameters setting manual fixed or catched by console
 
     st.sidebar.subheader("Choose Activity")
+    mode_sel = st.sidebar.selectbox("Mode", ('batch', 'next'), )
     #dropdown list and the options are in the tuples of string
     classifier = st.sidebar.selectbox("Activity", ('predict_next','pred_log', 'pred_sfx'), )
 
     if not argv:
         # Type of LSTM task -> training, pred_log
         # pred_sfx, predict_next
+        parameters['mode'] = mode_sel
         parameters['activity'] = classifier  # Change Here
         # Event-log reading parameters
         parameters['read_options'] = {
@@ -73,7 +78,7 @@ def main(argv):
 
         # Folder picker button
         if parameters['activity'] in ['pred_log', 'pred_sfx', 'predict_next']:
-            variant_opt = st.sidebar.selectbox("Variant", ('random_choice', 'arg_max'), key='variant_opt')
+            variant_opt = st.sidebar.selectbox("Variant", ('random_choice', 'arg_max', 'top3'), key='variant_opt')
             parameters['variant'] = variant_opt  # random_choice, arg_max for variants and repetitions to be tested
 
             iskey = st.sidebar.radio("Single Exec", (True, False), key='iskey')
@@ -138,17 +143,35 @@ def main(argv):
         except getopt.GetoptError:
             print('Invalid option')
             sys.exit(2)
-#   Execution
+
+    #   Execution
+
     if parameters['activity'] in ['predict_next', 'pred_sfx', 'pred_log']:
-        if st.sidebar.button("Process"):
-            print(parameters)
-            print(parameters['folder'])
-            print(parameters['model_file'])
-            with st.spinner(text='In progress'):
-                predictor = pr.ModelPredictor(parameters)
-                st.sidebar.write("Prediction Accuracy : ", (predictor.acc *100), " %")
-                print(predictor.acc)
+        if parameters['mode'] in ['next']:
+            caseid_output_route = os.path.join('output_files', parameters['folder'], 'parameters', 'test_log.csv')
+            col_list = ["caseid"]
+            caseid_output = pd.read_csv(caseid_output_route, usecols=col_list)
+            caseid_next = st.selectbox("Select Case ID", caseid_output["caseid"].unique())
+            parameters['nextcaseid'] = caseid_next
+            if st.button("Process"):
+                print(parameters)
+                print(parameters['folder'])
+                print(parameters['model_file'])
+                with st.spinner(text='In progress'):
+                    predictor = pr.ModelPredictor(parameters)
+                    print("predictor : ", predictor.acc)
+                #st.sidebar.write("Prediction Accuracy : ", (predictor.acc *100), " %")
+                #print(predictor.acc)
                 st.success('Done')
+        elif parameters['mode'] in ['batch']:
+            if st.button("Process"):
+                print(parameters)
+                print(parameters['folder'])
+                print(parameters['model_file'])
+                with st.spinner(text='In progress'):
+                    predictor = pr.ModelPredictor(parameters)
+                st.success('Done')
+
 if __name__ == "__main__":
     main(sys.argv[1:])
 

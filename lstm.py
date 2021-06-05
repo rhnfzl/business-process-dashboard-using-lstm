@@ -14,7 +14,6 @@ import getopt
 from model_prediction import model_predictor as pr
 from model_training import model_trainer as tr
 
-
 #---Workaround for "tensorflow.python.framework.errors_impl.UnknownError: Fail to find the dnn implementation."
 from tensorflow.compat.v1 import ConfigProto
 from tensorflow.compat.v1 import InteractiveSession
@@ -44,12 +43,12 @@ def main(argv):
     parameters = dict()
     column_names = {'Case ID': 'caseid',
                     'Activity': 'task',
-                    'lifecycle:transition': 'event_type',
+                    'lifecycle:transition': 'event_type', #---#
                     'Resource': 'user'}
-    parameters['one_timestamp'] = True  # Only one timestamp in the log
+    parameters['one_timestamp'] = True # Only one timestamp for each activity i.e the start and end time will be same
     # Similarity btw the resources profile execution (Song e.t. all)
     parameters['rp_sim'] = 0.85
-    parameters['batch_size'] = 128 # Usually 16/32/64/128/256
+    parameters['batch_size'] = 64 # Usually 16/32/64/128/256
     parameters['epochs'] = 200 #v1 200, for embedded training it's 100.
     # Parameters setting manual fixed or catched by console
     '''
@@ -62,7 +61,7 @@ def main(argv):
     if not argv:
         # Type of LSTM task -> training, pred_log
         # pred_sfx, predict_next
-        parameters['activity'] = 'predict_next' #Change Here
+        parameters['activity'] = 'training' #Change Here
         # Event-log reading parameters
         parameters['read_options'] = {
             'timeformat': '%Y-%m-%dT%H:%M:%S.%f',
@@ -72,18 +71,18 @@ def main(argv):
         # General training parameters
         if parameters['activity'] in ['training']:
             # Event-log parameters
-            parameters['file_name'] = 'Helpdesk.xes' #Change Here
+            parameters['file_name'] = 'sepsis_cases_1.csv' #Change Here
             # Specific model training parameters
             if parameters['activity'] == 'training':
                 parameters['imp'] = 2  # keras lstm implementation 1 cpu,2 gpu
-                parameters['lstm_act'] = 'relu' # optimization function Keras, None in v1, 'relu' in v1.1
-                parameters['dense_act'] = 'linear'  # optimization function Keras, used at output layer
+                parameters['lstm_act'] = 'tanh' # optimization function Keras, None in v1, 'relu' in v1.1
+                parameters['dense_act'] = 'sigmoid'  # optimization function Keras, used at output layer for time opt: linear or sigmoid
                 parameters['optim'] = 'Nadam'  # optimization function Keras
-                parameters['norm_method'] = 'max'  # max, lognorm
+                parameters['norm_method'] = 'lognorm'  # max, lognorm
                 # Model types --> shared_cat, specialized, concatenated, 
                 #                 shared_cat_gru, specialized_gru, concatenated_gru
                 parameters['model_type'] = 'concatenated'
-                parameters['n_size'] = 5  # n-gram size
+                parameters['n_size'] = 10  # n-gram sizeA
                 parameters['l_size'] = 50  # LSTM layer sizes
                 # Generation parameters
         elif parameters['activity'] in ['pred_log', 'pred_sfx', 'predict_next']:
