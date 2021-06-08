@@ -83,6 +83,7 @@ def generate_batch(pairs, ac_index, rl_index, n_positive=50,
     """Generate batches of samples for training"""
     batch_size = n_positive * (1 + negative_ratio)
     batch = np.zeros((batch_size, 3))
+    print("Batch Size :", batch_size)
     pairs_set = set(pairs)
     activities = list(ac_index.keys())
     roles = list(rl_index.keys())

@@ -27,7 +27,7 @@ from model_training import embedding_training as em
 
 class ModelTrainer():
     """
-    This is the man class encharged of the model training
+    This is the main class encharged of the model training
     """
 
     def __init__(self, params):
@@ -112,6 +112,8 @@ class ModelTrainer():
     @staticmethod
     def load_log(params):
         params['read_options']['filter_d_attrib'] = False
+        print("Input File:", os.path.join('input_files', params['file_name']),
+                           params['read_options'])
         log = lr.LogReader(os.path.join('input_files', params['file_name']),
                            params['read_options'])
         log_df = pd.DataFrame(log.data)

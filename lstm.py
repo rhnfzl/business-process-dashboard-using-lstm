@@ -48,7 +48,7 @@ def main(argv):
     parameters['one_timestamp'] = True # Only one timestamp for each activity i.e the start and end time will be same
     # Similarity btw the resources profile execution (Song e.t. all)
     parameters['rp_sim'] = 0.85
-    parameters['batch_size'] = 64 # Usually 16/32/64/128/256
+    parameters['batch_size'] = 128 # Usually 16/32/64/128/256
     parameters['epochs'] = 200 #v1 200, for embedded training it's 100.
     # Parameters setting manual fixed or catched by console
     '''
@@ -65,6 +65,8 @@ def main(argv):
         # Event-log reading parameters
         parameters['read_options'] = {
             'timeformat': '%Y-%m-%dT%H:%M:%S.%f',
+            #'timeformat': '%d-%m-%Y %H:%M',
+            #'timeformat': '%H:%M.%S',
             'column_names': column_names,
             'one_timestamp': parameters['one_timestamp'],
             'ns_include': True}

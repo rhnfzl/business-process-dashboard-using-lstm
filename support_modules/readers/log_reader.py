@@ -125,7 +125,6 @@ class LogReader(object):
         print("Re-ordering xes log file")
         temp_data = pd.DataFrame(temp_data)
         ordered_event_log = list()
-        print("Status of One timestamp :", self.one_timestamp)
         if self.one_timestamp:
             self.column_names['Complete Timestamp'] = 'end_timestamp'
             temp_data = temp_data[temp_data.event_type == 'complete']
@@ -133,7 +132,7 @@ class LogReader(object):
                 columns={'timestamp': 'end_timestamp'})
             ordered_event_log = ordered_event_log.drop(columns='event_type')
             ordered_event_log = ordered_event_log.to_dict('records')
-            print("events : ", ordered_event_log[1])
+            #print("events : ", ordered_event_log[1])
         else:
             self.column_names['Start Timestamp'] = 'start_timestamp'
             self.column_names['Complete Timestamp'] = 'end_timestamp'
@@ -249,6 +248,7 @@ class LogReader(object):
                                                     format=self.timeformat)
             log['end_timestamp'] = pd.to_datetime(log['end_timestamp'],
                                                   format=self.timeformat)
+#        print("Users : ", log['user'])
         log['user'].fillna('SYS', inplace=True)
         self.data = log.to_dict('records')
         self.append_csv_start_end()

@@ -72,6 +72,9 @@ def main(argv):
         # Event-log reading parameters
         parameters['read_options'] = {
             'timeformat': '%Y-%m-%dT%H:%M:%S.%f',
+            #'timeformat': '%d-%m-%Y %H:%M',
+            #'2014-09-19 06:14:00'
+            #'timeformat': '%H:%M.%S',
             'column_names': column_names,
             'one_timestamp': parameters['one_timestamp'],
             'ns_include': True}
