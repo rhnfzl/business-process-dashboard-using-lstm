@@ -45,7 +45,7 @@ class ModelPredictor():
 
         self.model_def = dict()
         self.read_model_definition(self.parms['model_type'])
-        print(self.model_def)
+        #print("Model Type :", self.model_def)
         self.parms['additional_columns'] = self.model_def['additional_columns']
         self.acc = self.execute_predictive_task()
 
@@ -60,8 +60,35 @@ class ModelPredictor():
         self.parms['caseid'] = np.array(self.log.caseid) #adding caseid to the parms
         #self.parms['caseid'] = np.array(self.log.caseid.unique()) #adding caseid to the parms
         #print("parms :", self.parms)
-        # predict
+        #print("Samples : ", self.samples)
+        #print("Before attributes :",self.parms['nextcaseid_attr'], len(self.parms['nextcaseid_attr']))
+        #print(self.parms['index_ac'])
+        #print(self.parms['index_rl'])
 
+
+        # for _key, _value in self.parms['index_ac'].items():
+        #     if _value == self.parms['nextcaseid_attr']["filter_acitivity"]:
+        #         self.parms['nextcaseid_attr']["filter_acitivity"] = _key
+        #
+        # for _key, _value in self.parms['index_rl'].items():
+        #     if _value == self.parms['nextcaseid_attr']["filter_role"]:
+        #         self.parms['nextcaseid_attr']["filter_role"] = _key
+
+
+        # for key, value in self.parms['index_ac'].items():
+        #     if value in self.parms['nextcaseid_attr']:
+        #         index = self.parms['nextcaseid_attr'].index(value)
+        #         if index == 0:
+        #             self.parms['nextcaseid_attr'][index] = key
+        # for key, value in self.parms['index_rl'].items():
+        #     if value in self.parms['nextcaseid_attr']:
+        #         index = self.parms['nextcaseid_attr'].index(value)
+        #         if index == 1:
+        #             self.parms['nextcaseid_attr'][index] = key
+        #print("After attributes :", self.parms['nextcaseid_attr'], len(self.parms['nextcaseid_attr']))
+        #results_dash['ac_expect'] = results_dash.ac_expect.replace(parms['index_ac'])
+        #results_dash['rl_expect'] = results_dash.rl_expect.replace(parms['index_rl'])
+        # predict
         self.imp = self.parms['variant'] #passes value arg_max and random_choice
         self.run_num = 0
         for i in range(0, self.parms['rep']):
@@ -195,7 +222,7 @@ class ModelPredictor():
                                                                                    index=results_dash.index)
              results_dash.drop(['ac_pred', 'ac_prob', 'rl_pred', 'rl_prob'], axis=1, inplace=True)
              results_dash = results_dash[['caseid', 'ac_expect', 'ac_pred1', 'ac_prob1', 'ac_pred2', 'ac_prob2', 'ac_pred3', 'ac_prob3',
-                                          'rl_pred1', 'rl_prob1', 'rl_pred2', 'rl_prob2', 'rl_pred3', 'rl_prob3',
+                                          'rl_expect', 'rl_pred1', 'rl_prob1', 'rl_pred2', 'rl_prob2', 'rl_pred3', 'rl_prob3',
                                           "tm_expect", 'tm_pred']]
 
              #------------------------------------------------------------------------------------------------------------------------------------------------
@@ -319,7 +346,7 @@ class EvaluateTask():
         if parms['variant'] in ['top3']:
             data['ac_expect'] = data.ac_expect.replace(parms['index_ac'])
             data['rl_expect'] = data.rl_expect.replace(parms['index_rl'])
-        print("Evaluate Data:", data)
+        #print("Evaluate Data:", data)
         return sampler(data, parms)
 
     def _get_evaluator(self, activity):

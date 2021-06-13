@@ -29,6 +29,8 @@ class SamplesCreator:
 
 class PredictionTasksExecutioner:
     def predict(self, predictor, activity):
+        print("predictor : ", predictor)
+        print("activity :", activity)
         executioner = self._get_predictor(activity)
         predictor.predict(executioner)
 
