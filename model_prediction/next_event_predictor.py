@@ -21,15 +21,16 @@ class NextEventPredictor():
         self.imp = 'arg_max'
 
     def predict(self, params, model, spl, imp, vectorizer):
-        fltr_idx = params['nextcaseid_attr']["filter_index"]
         self.model = model
         self.spl = spl
-        spl_df_prefx = pd.DataFrame(self.spl['prefixes'])[fltr_idx:]
-        spl_df_next = pd.DataFrame(self.spl['next_evt'])[fltr_idx:]
+        self.imp = imp
+        if params['mode'] == 'next':
+            fltr_idx = params['nextcaseid_attr']["filter_index"]
+            spl_df_prefx = pd.DataFrame(self.spl['prefixes'])[fltr_idx:]
+            spl_df_next = pd.DataFrame(self.spl['next_evt'])[fltr_idx:]
         #st.table(spl_df_prefx)
         #st.table(spl_df_next)
         #print("spl :", spl_df)
-        self.imp = imp
         predictor = self._get_predictor(params['model_type'], params['mode'], params['next_mode'])
         sup.print_performed_task('Predicting next events')
 
@@ -75,10 +76,15 @@ class NextEventPredictor():
                     np.array(self.spl['prefixes']['activities'][:pred_fltr_idx][i]),
                     axis=0)[-parameters['dim']['time_dim']:]
                 .reshape((1, parameters['dim']['time_dim'])))
-            print("x_ac_ngram :", x_ac_ngram)
+            #print("x_ac_ngram :", x_ac_ngram)
             x_rl_ngram = (np.append(
                     np.zeros(parameters['dim']['time_dim']),
                     np.array(self.spl['prefixes']['roles'][:pred_fltr_idx][i]),
+                    axis=0)[-parameters['dim']['time_dim']:]
+                .reshape((1, parameters['dim']['time_dim'])))
+            x_label_ngram = (np.append(
+                    np.zeros(parameters['dim']['time_dim']),
+                    np.array(self.spl['prefixes']['label'][:pred_fltr_idx][i]),
                     axis=0)[-parameters['dim']['time_dim']:]
                 .reshape((1, parameters['dim']['time_dim'])))
             # times input shape(1,5,1)
@@ -88,11 +94,10 @@ class NextEventPredictor():
                     (parameters['dim']['time_dim'], times_attr_num)),
                     self.spl['prefixes']['times'][:pred_fltr_idx][i], axis=0)
                     [-parameters['dim']['time_dim']:]
-                    .reshape((parameters['dim']['time_dim'], times_attr_num))]
-                )
+                    .reshape((parameters['dim']['time_dim'], times_attr_num))])
             # add intercase features if necessary
             if vectorizer in ['basic']:
-                inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram]
+                inputs = [x_ac_ngram, x_rl_ngram, x_label_ngram, x_t_ngram]
 
             elif vectorizer in ['inter']:
                 # times input shape(1,5,1)
@@ -106,7 +111,7 @@ class NextEventPredictor():
                         .reshape(
                             (parameters['dim']['time_dim'], inter_attr_num))]
                     )
-                inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram, x_inter_ngram]
+                inputs = [x_ac_ngram, x_rl_ngram, x_label_ngram, x_t_ngram, x_inter_ngram]
             # predict
             preds = self.model.predict(inputs)
             if self.imp == 'random_choice':
@@ -117,6 +122,10 @@ class NextEventPredictor():
                 pos1 = np.random.choice(np.arange(0, len(preds[1][0])),
                                         p=preds[1][0])
                 pos1_prob = preds[1][0][pos1]
+                pos2 = np.random.choice(np.arange(0, len(preds[2][0])),
+                                        p=preds[2][0])
+                pos2_prob = preds[2][0][pos2]
+
 
             elif self.imp == 'arg_max':
                 # Use this to get the max prediction
@@ -126,6 +135,9 @@ class NextEventPredictor():
                 pos1 = np.argmax(preds[1][0])
                 pos1_prob = preds[1][0][pos1]
 
+                pos2 = np.argmax(preds[2][0])
+                pos2_prob = preds[2][0][pos2]
+
             elif self.imp == 'top3':
                 #change it to get the number of predictions
                 nx = 3
@@ -133,12 +145,15 @@ class NextEventPredictor():
                 #changing array to numpy
                 acx = np.array(preds[0][0])
                 rlx = np.array(preds[1][0])
+                lbx = np.array(preds[2][0])
 
                 pos = (-acx).argsort()[:nx].tolist()
                 pos1 = (-rlx).argsort()[:nx].tolist()
+                pos2 = (-lbx).argsort()[:nx].tolist()
 
                 pos_prob = []
                 pos1_prob = []
+                pos2_prob = []
 
                 for ix in range(len(pos)):
                     # probability of activity
@@ -146,6 +161,9 @@ class NextEventPredictor():
                 for jx in range(len(pos1)):
                     # probability of role
                     pos1_prob.append(rlx[pos1[jx]])
+                for kx in range(len(pos2)):
+                    # probability of label
+                    pos2_prob.append(lbx[pos2[kx]])
 
                 #print("activity = ", posac)
                 #print("activity probability = ", pos_probac)
@@ -154,28 +172,42 @@ class NextEventPredictor():
                 #print("role probability = ", pos1_probrl)
 
             # save results
-            predictions = [pos, pos1, preds[2][0][0], pos_prob, pos1_prob]
+            predictions = [pos, pos1, pos2, preds[3][0][0], pos_prob, pos1_prob, pos2_prob]
+            # print("Predictions 1 :", preds)
+            # print("Predictions 2 :", preds[3])
+            # print("Predictions 3 :", preds[3][0])
+            # print("Predictions 4 :", preds[3][0][0])
+
+            #print(pos, pos1, pos2, preds[3][0][0], pos_prob, pos1_prob, pos2_prob)
 
             if not parameters['one_timestamp']:
-                predictions.extend([preds[2][0][1]])
-            results.append(self.create_result_record_next(i, self.spl, predictions, parameters))
+                predictions.extend([preds[3][0][1]])
+            results.append(self._create_result_record_next(i, self.spl, predictions, parameters))
         sup.print_done_task()
         return results
 
-    def create_result_record_next(self, index, spl, preds, parms):
+    def _create_result_record_next(self, index, spl, preds, parms):
         _fltr_idx = parms['nextcaseid_attr']["filter_index"] + 1
         record = dict()
+        #print("Preds under result :", preds)
         #record['caseid'] = parms['caseid'][_fltr_idx][index]
         record['ac_prefix'] = spl['prefixes']['activities'][:_fltr_idx][index]
         record['ac_expect'] = spl['next_evt']['activities'][:_fltr_idx][index]
         record['ac_pred'] = preds[0]
-        record['ac_prob'] = preds[3]
+        record['ac_prob'] = preds[4]
         record['rl_prefix'] = spl['prefixes']['roles'][:_fltr_idx][index]
         record['rl_expect'] = spl['next_evt']['roles'][:_fltr_idx][index]
         record['rl_pred'] = preds[1]
-        record['rl_prob'] = preds[4]
+        record['rl_prob'] = preds[5]
+        record['label_prefix'] = spl['prefixes']['label'][:_fltr_idx][index]
+        record['label_expect'] = spl['next_evt']['label'][:_fltr_idx][index]
+        record['label_pred'] = preds[2]
+        record['label_prob'] = preds[6]
+
+
 
         if parms['one_timestamp']:
+            #print("Time Next Event :", spl['next_evt']['times'][:_fltr_idx])
             record['tm_prefix'] = [self.rescale(
                x, parms, parms['scale_args'])
                for x in spl['prefixes']['times'][:_fltr_idx][index]]
@@ -184,7 +216,7 @@ class NextEventPredictor():
                 parms, parms['scale_args'])
             #print("Predicted :", preds)
             record['tm_pred'] = self.rescale(
-                preds[2], parms, parms['scale_args'])
+                preds[3], parms, parms['scale_args'])
 
         else:
             # Duration
@@ -195,7 +227,7 @@ class NextEventPredictor():
                 spl['next_evt']['times'][:_fltr_idx][index][0], parms,
                 parms['scale_args']['dur'])
             record['dur_pred'] = self.rescale(
-                preds[2], parms, parms['scale_args']['dur'])
+                preds[3], parms, parms['scale_args']['dur'])
             # Waiting
             record['wait_prefix'] = [self.rescale(
                 x[1], parms, parms['scale_args']['wait'])
@@ -204,7 +236,7 @@ class NextEventPredictor():
                 spl['next_evt']['times'][_fltr_idx][index][1], parms,
                 parms['scale_args']['wait'])
             record['wait_pred'] = self.rescale(
-                preds[3], parms, parms['scale_args']['wait'])
+                preds[4], parms, parms['scale_args']['wait'])
         return record
 
     def _predict_next_event_shared_cat_batch(self, parameters, vectorizer):
@@ -231,6 +263,12 @@ class NextEventPredictor():
                     axis=0)[-parameters['dim']['time_dim']:]
                 .reshape((1, parameters['dim']['time_dim'])))
 
+            x_label_ngram = (np.append(
+                    np.zeros(parameters['dim']['time_dim']),
+                    np.array(self.spl['prefixes']['label'][i]),
+                    axis=0)[-parameters['dim']['time_dim']:]
+                .reshape((1, parameters['dim']['time_dim'])))
+
             # times input shape(1,5,1)
             times_attr_num = (self.spl['prefixes']['times'][i].shape[1])
             x_t_ngram = np.array(
@@ -243,7 +281,7 @@ class NextEventPredictor():
 
             # add intercase features if necessary
             if vectorizer in ['basic']:
-                inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram]
+                inputs = [x_ac_ngram, x_rl_ngram, x_label_ngram, x_t_ngram]
 
             elif vectorizer in ['inter']:
                 # times input shape(1,5,1)
@@ -257,7 +295,7 @@ class NextEventPredictor():
                         .reshape(
                             (parameters['dim']['time_dim'], inter_attr_num))]
                     )
-                inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram, x_inter_ngram]
+                inputs = [x_ac_ngram, x_rl_ngram, x_label_ngram, x_t_ngram, x_inter_ngram]
             #print("input_time : ", x_t_ngram)
             # predict
             preds = self.model.predict(inputs)
@@ -270,6 +308,9 @@ class NextEventPredictor():
                 pos1 = np.random.choice(np.arange(0, len(preds[1][0])),
                                         p=preds[1][0])
                 pos1_prob = preds[1][0][pos1]
+                pos2 = np.random.choice(np.arange(0, len(preds[2][0])),
+                                        p=preds[2][0])
+                pos2_prob = preds[2][0][pos2]
 
             elif self.imp == 'arg_max':
                 # Use this to get the max prediction
@@ -279,6 +320,10 @@ class NextEventPredictor():
                 pos1 = np.argmax(preds[1][0])
                 pos1_prob = preds[1][0][pos1]
 
+                pos2 = np.argmax(preds[2][0])
+                pos2_prob = preds[2][0][pos2]
+
+
             elif self.imp == 'top3':
                 #change it to get the number of predictions
                 nx = 3
@@ -286,12 +331,15 @@ class NextEventPredictor():
                 #changing array to numpy
                 acx = np.array(preds[0][0])
                 rlx = np.array(preds[1][0])
+                lbx = np.array(preds[2][0])
 
                 pos = (-acx).argsort()[:nx].tolist()
                 pos1 = (-rlx).argsort()[:nx].tolist()
+                pos2 = (-lbx).argsort()[:nx].tolist()
 
                 pos_prob = []
                 pos1_prob = []
+                pos2_prob = []
 
                 for ix in range(len(pos)):
                     # probability of activity
@@ -299,6 +347,9 @@ class NextEventPredictor():
                 for jx in range(len(pos1)):
                     # probability of role
                     pos1_prob.append(rlx[pos1[jx]])
+                for kx in range(len(pos2)):
+                    # probability of role
+                    pos2_prob.append(lbx[pos2[kx]])
 
                 #print("activity = ", posac)
                 #print("activity probability = ", pos_probac)
@@ -307,10 +358,10 @@ class NextEventPredictor():
                 #print("role probability = ", pos1_probrl)
 
             # save results
-            predictions = [pos, pos1, preds[2][0][0], pos_prob, pos1_prob]
+            predictions = [pos, pos1, pos2, preds[3][0][0], pos_prob, pos1_prob, pos2_prob]
 
             if not parameters['one_timestamp']:
-                predictions.extend([preds[2][0][1]])
+                predictions.extend([preds[3][0][1]])
             results.append(self.create_result_record_batch(i, self.spl, predictions, parameters))
         sup.print_done_task()
         return results
@@ -322,11 +373,15 @@ class NextEventPredictor():
         record['ac_prefix'] = spl['prefixes']['activities'][index]
         record['ac_expect'] = spl['next_evt']['activities'][index]
         record['ac_pred'] = preds[0]
-        record['ac_prob'] = preds[3]
+        record['ac_prob'] = preds[4]
         record['rl_prefix'] = spl['prefixes']['roles'][index]
         record['rl_expect'] = spl['next_evt']['roles'][index]
         record['rl_pred'] = preds[1]
-        record['rl_prob'] = preds[4]
+        record['rl_prob'] = preds[5]
+        record['label_prefix'] = spl['prefixes']['label'][index]
+        record['label_expect'] = spl['next_evt']['label'][index]
+        record['label_pred'] = preds[2]
+        record['label_prob'] = preds[6]
 
         # print("ac_pred : ", record['ac_pred'])
         # print('ac_prob : ', record['ac_prob'])
@@ -342,7 +397,7 @@ class NextEventPredictor():
                 parms, parms['scale_args'])
             #print("Predicted :", preds)
             record['tm_pred'] = self.rescale(
-                preds[2], parms, parms['scale_args'])
+                preds[3], parms, parms['scale_args'])
 
         else:
             # Duration
@@ -353,7 +408,7 @@ class NextEventPredictor():
                 spl['next_evt']['times'][index][0], parms,
                 parms['scale_args']['dur'])
             record['dur_pred'] = self.rescale(
-                preds[2], parms, parms['scale_args']['dur'])
+                preds[3], parms, parms['scale_args']['dur'])
             # Waiting
             record['wait_prefix'] = [self.rescale(
                 x[1], parms, parms['scale_args']['wait'])
@@ -362,7 +417,7 @@ class NextEventPredictor():
                 spl['next_evt']['times'][index][1], parms,
                 parms['scale_args']['wait'])
             record['wait_pred'] = self.rescale(
-                preds[3], parms, parms['scale_args']['wait'])
+                preds[4], parms, parms['scale_args']['wait'])
         return record
 
 
@@ -392,6 +447,11 @@ class NextEventPredictor():
                     np.array(self.spl['prefixes']['roles'][pred_fltr_idx:][i]),
                     axis=0)[-parameters['dim']['time_dim']:]
                 .reshape((1, parameters['dim']['time_dim'])))
+            x_label_ngram = (np.append(
+                    np.zeros(parameters['dim']['time_dim']),
+                    np.array(self.spl['prefixes']['label'][pred_fltr_idx:][i]),
+                    axis=0)[-parameters['dim']['time_dim']:]
+                .reshape((1, parameters['dim']['time_dim'])))
             # times input shape(1,5,1)
             times_attr_num = (self.spl['prefixes']['times'][pred_fltr_idx:][i].shape[1])
             x_t_ngram = np.array(
@@ -403,7 +463,7 @@ class NextEventPredictor():
                 )
             # add intercase features if necessary
             if vectorizer in ['basic']:
-                inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram]
+                inputs = [x_ac_ngram, x_rl_ngram, x_label_ngram, x_t_ngram]
 
             elif vectorizer in ['inter']:
                 # times input shape(1,5,1)
@@ -417,7 +477,7 @@ class NextEventPredictor():
                         .reshape(
                             (parameters['dim']['time_dim'], inter_attr_num))]
                     )
-                inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram, x_inter_ngram]
+                inputs = [x_ac_ngram, x_rl_ngram, x_label_ngram, x_t_ngram, x_inter_ngram]
             # predict
             preds = self.model.predict(inputs)
             if self.imp == 'random_choice':
@@ -428,6 +488,9 @@ class NextEventPredictor():
                 pos1 = np.random.choice(np.arange(0, len(preds[1][0])),
                                         p=preds[1][0])
                 pos1_prob = preds[1][0][pos1]
+                pos2 = np.random.choice(np.arange(0, len(preds[2][0])),
+                                        p=preds[2][0])
+                pos2_prob = preds[2][0][pos2]
 
             elif self.imp == 'arg_max':
                 # Use this to get the max prediction
@@ -437,6 +500,9 @@ class NextEventPredictor():
                 pos1 = np.argmax(preds[1][0])
                 pos1_prob = preds[1][0][pos1]
 
+                pos2 = np.argmax(preds[2][0])
+                pos2_prob = preds[2][0][pos2]
+
             elif self.imp == 'top3':
                 #change it to get the number of predictions
                 nx = 3
@@ -444,12 +510,15 @@ class NextEventPredictor():
                 #changing array to numpy
                 acx = np.array(preds[0][0])
                 rlx = np.array(preds[1][0])
+                lbx = np.array(preds[1][0])
 
                 pos = (-acx).argsort()[:nx].tolist()
                 pos1 = (-rlx).argsort()[:nx].tolist()
+                pos2 = (-lbx).argsort()[:nx].tolist()
 
                 pos_prob = []
                 pos1_prob = []
+                pos2_prob = []
 
                 for ix in range(len(pos)):
                     # probability of activity
@@ -457,6 +526,9 @@ class NextEventPredictor():
                 for jx in range(len(pos1)):
                     # probability of role
                     pos1_prob.append(rlx[pos1[jx]])
+                for kx in range(len(pos2)):
+                    # probability of role
+                    pos2_prob.append(rlx[pos2[kx]])
 
                 #print("activity = ", posac)
                 #print("activity probability = ", pos_probac)
@@ -465,26 +537,30 @@ class NextEventPredictor():
                 #print("role probability = ", pos1_probrl)
 
             # save results
-            predictions = [pos, pos1, preds[2][0][0], pos_prob, pos1_prob]
+            predictions = [pos, pos1, pos2, preds[3][0][0], pos_prob, pos1_prob, pos2_prob]
 
             if not parameters['one_timestamp']:
-                predictions.extend([preds[2][0][1]])
-            results.append(self._create_result_record_next(i, self.spl, predictions, parameters))
+                predictions.extend([preds[3][0][1]])
+            results.append(self.__create_result_record_next(i, self.spl, predictions, parameters))
         sup.print_done_task()
         return results
 
-    def _create_result_record_next(self, index, spl, preds, parms):
+    def __create_result_record_next(self, index, spl, preds, parms):
         _fltr_idx = parms['nextcaseid_attr']["filter_index"] + 1
         record = dict()
         #record['caseid'] = parms['caseid'][_fltr_idx:][index]
         record['ac_prefix'] = spl['prefixes']['activities'][_fltr_idx:][index]
         record['ac_expect'] = spl['next_evt']['activities'][_fltr_idx:][index]
         record['ac_pred'] = preds[0]
-        record['ac_prob'] = preds[3]
+        record['ac_prob'] = preds[4]
         record['rl_prefix'] = spl['prefixes']['roles'][_fltr_idx:][index]
         record['rl_expect'] = spl['next_evt']['roles'][_fltr_idx:][index]
         record['rl_pred'] = preds[1]
-        record['rl_prob'] = preds[4]
+        record['rl_prob'] = preds[5]
+        record['label_prefix'] = spl['prefixes']['label'][_fltr_idx:][index]
+        record['label_expect'] = spl['next_evt']['label'][_fltr_idx:][index]
+        record['label_pred'] = preds[2]
+        record['label_prob'] = preds[6]
 
         if parms['one_timestamp']:
             record['tm_prefix'] = [self.rescale(
@@ -495,7 +571,7 @@ class NextEventPredictor():
                 parms, parms['scale_args'])
             #print("Predicted :", preds)
             record['tm_pred'] = self.rescale(
-                preds[2], parms, parms['scale_args'])
+                preds[3], parms, parms['scale_args'])
 
         else:
             # Duration
@@ -506,7 +582,7 @@ class NextEventPredictor():
                 spl['next_evt']['times'][_fltr_idx:][index][0], parms,
                 parms['scale_args']['dur'])
             record['dur_pred'] = self.rescale(
-                preds[2], parms, parms['scale_args']['dur'])
+                preds[3], parms, parms['scale_args']['dur'])
             # Waiting
             record['wait_prefix'] = [self.rescale(
                 x[1], parms, parms['scale_args']['wait'])
@@ -515,7 +591,7 @@ class NextEventPredictor():
                 spl['next_evt']['times'][_fltr_idx:][index][1], parms,
                 parms['scale_args']['wait'])
             record['wait_pred'] = self.rescale(
-                preds[3], parms, parms['scale_args']['wait'])
+                preds[4], parms, parms['scale_args']['wait'])
         return record
 
 

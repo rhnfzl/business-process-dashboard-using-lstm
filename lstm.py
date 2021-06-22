@@ -77,7 +77,8 @@ def main(argv):
             # Specific model training parameters
             if parameters['activity'] == 'training':
                 parameters['imp'] = 2  # keras lstm implementation 1 cpu,2 gpu
-                parameters['lstm_act'] = 'tanh' # optimization function Keras, None in v1, 'relu' in v1.1
+                #Recurrent networks still commonly use Tanh or sigmoid activation functions, or even both. For example, the LSTM commonly uses the Sigmoid activation for recurrent connections and the Tanh activation for output.
+                parameters['lstm_act'] = 'tanh' # optimization function Keras
                 parameters['dense_act'] = 'sigmoid'  # optimization function Keras, used at output layer for time opt: linear or sigmoid
                 parameters['optim'] = 'Nadam'  # optimization function Keras
                 parameters['norm_method'] = 'lognorm'  # max, lognorm

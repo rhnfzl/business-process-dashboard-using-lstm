@@ -19,21 +19,23 @@ class NextEventSamplesCreator():
         self.log = pd.DataFrame
         self.ac_index = dict()
         self.rl_index = dict()
+        self.label_index = dict()
         self._samplers = dict()
         self._samp_dispatcher = {'basic': self._sample_next_event,
                                  'inter': self._sample_next_event_inter}
 
-    def create_samples(self, params, log, ac_index, rl_index, add_cols):
+    def create_samples(self, params, log, ac_index, rl_index, label_index, add_cols):
         self.log = log
         self.ac_index = ac_index
         self.rl_index = rl_index
+        self.label_index = label_index
         columns = self.define_columns(add_cols, params['one_timestamp'])
         sampler = self._get_model_specific_sampler(params['model_type'])
         return sampler(columns, params)
 
     @staticmethod
     def define_columns(add_cols, one_timestamp):
-        columns = ['ac_index', 'rl_index', 'dur_norm']
+        columns = ['ac_index', 'rl_index', 'label_index', 'dur_norm']
         add_cols = [x+'_norm' for x in add_cols]
         columns.extend(add_cols)
         if not one_timestamp:
@@ -59,12 +61,13 @@ class NextEventSamplesCreator():
             df_test (dataframe): testing dataframe in pandas format.
             ac_index (dict): index of activities.
             rl_index (dict): index of roles.
+            label_index (dict): index of label.
             pref_size (int): size of the prefixes to extract.
         Returns:
             list: list of prefixes and expected sufixes.
         """
         times = ['dur_norm'] if parms['one_timestamp'] else ['dur_norm', 'wait_norm']
-        equi = {'ac_index': 'activities', 'rl_index': 'roles'}
+        equi = {'ac_index': 'activities', 'rl_index': 'roles', 'label_index': 'label'}
         vec = {'prefixes': dict(),
                'next_evt': dict()}
         x_times_dict = dict()
@@ -113,6 +116,7 @@ class NextEventSamplesCreator():
         # n-gram definition
         equi = {'ac_index': 'activities',
                 'rl_index': 'roles',
+                'label_index': 'label',
                 'dur_norm': 'times'}
         x_inter_dict, y_inter_dict = dict(), dict()
         for i, _ in enumerate(self.log):
@@ -158,6 +162,7 @@ class NextEventSamplesCreator():
             log_df: dataframe.
             ac_index (dict): index of activities.
             rl_index (dict): index of roles.
+            label_index (dict): index of label.
         Returns:
             list: lists of activities, roles and relative times.
         """
@@ -170,15 +175,18 @@ class NextEventSamplesCreator():
             temp_dict = dict()
             for x in columns:
                 serie = [y[x] for y in trace]
-                if x == 'ac_index':
-                    serie.insert(0, self.ac_index[('start')])
-                    serie.append(self.ac_index[('end')])
-                elif x == 'rl_index':
-                    serie.insert(0, self.rl_index[('start')])
-                    serie.append(self.rl_index[('end')])
-                else:
-                    serie.insert(0, 0)
-                    serie.append(0)
+                # if x == 'ac_index':
+                #     serie.insert(0, self.ac_index[('start')])
+                #     serie.append(self.ac_index[('end')])
+                # elif x == 'rl_index':
+                #     serie.insert(0, self.rl_index[('start')])
+                #     serie.append(self.rl_index[('end')])
+                # elif x == 'label_index':
+                #     serie.insert(0, self.label_index[('start')])
+                #     serie.append(self.label_index[('end')])
+                # else:
+                #     serie.insert(0, 0)
+                #     serie.append(0)
                 temp_dict = {**{x: serie}, **temp_dict}
             temp_dict = {**{'caseid': key}, **temp_dict}
             temp_data.append(temp_dict)

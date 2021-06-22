@@ -26,10 +26,10 @@ class ModelLoader():
                                    'concatenated_gru': mcatg._training_model,
                                    'shared_cat_gru': mshcatg._training_model}
 
-    def train(self, model_type, examples, ac_weights, rl_weights, output_folder):
+    def train(self, model_type, examples, ac_weights, rl_weights, label_weights, output_folder):
         loader = self._get_trainer(model_type)
         tf.compat.v1.reset_default_graph()
-        loader(examples, ac_weights, rl_weights, output_folder, self.parms)
+        loader(examples, ac_weights, rl_weights, label_weights, output_folder, self.parms)
 
     def register_model(self, model_type, trainer):
         try:

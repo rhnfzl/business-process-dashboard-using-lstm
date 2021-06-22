@@ -14,12 +14,13 @@ import keras.utils as ku
 
 class SequencesCreator():
 
-    def __init__(self, log, one_timestamp, ac_index, rl_index):
+    def __init__(self, log, one_timestamp, ac_index, rl_index, label_index):
         """constructor"""
         self.log = log
         self.one_timestamp = one_timestamp
         self.ac_index = ac_index
         self.rl_index = rl_index
+        self.label_index = label_index
         self._vectorizers = dict()
         self._vec_dispatcher = {'basic': self._vectorize_seq,
                                 'inter': self._vectorize_seq_inter,
@@ -44,7 +45,7 @@ class SequencesCreator():
 
     @staticmethod
     def define_columns(add_cols, one_timestamp):
-        columns = ['ac_index', 'rl_index', 'dur_norm']
+        columns = ['ac_index', 'rl_index', 'dur_norm', 'label_index']
         add_cols = [x+'_norm' for x in add_cols]
         columns.extend(add_cols)
         if not one_timestamp:
@@ -64,7 +65,7 @@ class SequencesCreator():
         # con uno o dos features de tiempo, posiblemente la idea es
         # hacer equi como si fueran intercases.
         times = ['dur_norm'] if parms['one_timestamp'] else ['dur_norm', 'wait_norm']
-        equi = {'ac_index': 'activities', 'rl_index': 'roles'}
+        equi = {'ac_index': 'activities', 'rl_index': 'roles', 'label_index': 'label'}
         vec = {'prefixes': dict(),
                'next_evt': dict()}
         x_times_dict = dict()
@@ -93,11 +94,18 @@ class SequencesCreator():
         for value in equi.values():
             vec['prefixes'][value] = np.array(vec['prefixes'][value])
             vec['next_evt'][value] = np.array(vec['next_evt'][value])
+        # print("Vector Prefix : ", vec['prefixes'][value], "length :", len(vec['prefixes'][value]))
+        # print("Vector Next Event : ",  vec['next_evt'][value], "length :", len(vec['next_evt'][value]))
+        # print("Vector : ", vec['next_evt']['activities'], "length nxt:", len(vec['next_evt']['activities']),  "-- Label :", len(self.ac_index), "-- Self Lable Index : ",self.ac_index)
+        # print("Vector : ", vec['next_evt']['roles'], "length nxt:", len(vec['next_evt']['roles']),  "-- Label :", len(self.rl_index), "-- Self Lable Index : ",self.rl_index)
+        # print("Vector : ", vec['next_evt']['label'], "length nxt:", len(vec['next_evt']['label']),  "-- Label :", len(self.label_index), "-- Self Lable Index : ", self.label_index)
         # one-hot encode target values
         vec['next_evt']['activities'] = ku.to_categorical(
             vec['next_evt']['activities'], num_classes=len(self.ac_index))
         vec['next_evt']['roles'] = ku.to_categorical(
             vec['next_evt']['roles'], num_classes=len(self.rl_index))
+        vec['next_evt']['label'] = ku.to_categorical(
+            vec['next_evt']['label'], num_classes=len(self.label_index))
         # reshape times
         for key, value in x_times_dict.items():
             x_times_dict[key] = np.array(value)
@@ -159,6 +167,8 @@ class SequencesCreator():
             vec['next_evt']['activities'], num_classes=len(self.ac_index))
         vec['next_evt']['roles'] = ku.to_categorical(
             vec['next_evt']['roles'], num_classes=len(self.rl_index))
+        # vec['next_evt']['label'] = ku.to_categorical(
+        #     vec['next_evt']['label'], num_classes=len(self.label_index))
         # reshape times
         for key, value in x_times_dict.items():
             x_times_dict[key] = np.array(value)
@@ -234,7 +244,7 @@ class SequencesCreator():
         print(columns)
         vec = {'training':dict()}
         pairs = self.log.copy()
-        pairs = pairs[['ac_index', 'rl_index']]
+        pairs = pairs[['ac_index', 'rl_index', 'label_index']]
         pairs = pairs.to_records(index=False).tolist()
         # Vectorize discriminator training real inputs
         vec['training']['activities'] = [x[0] for x in pairs]
@@ -244,6 +254,11 @@ class SequencesCreator():
         vec['training']['roles'] = ku.to_categorical(
             vec['training']['roles'], num_classes=len(self.rl_index))
         vec['training']['class'] = np.zeros(len(pairs))
+
+        # vec['training']['label'] = [x[2] for x in pairs]
+        # vec['training']['label'] = ku.to_categorical(
+        #     vec['training']['label'], num_classes=len(self.label_index))
+        # vec['training']['class'] = np.zeros(len(pairs))
         
         # If the discriminator will be pretrained create pretraining examples
         if parms['gan_pretrain']:
@@ -256,6 +271,7 @@ class SequencesCreator():
             pairs_set = set(pairs)
             activities = list(self.ac_index.keys())
             roles = list(self.rl_index.keys())
+            #label = list(self.label_index.keys())
             # randomly choose positive examples
             idx = 0
             for idx, (activity, role) in enumerate(
@@ -304,16 +320,22 @@ class SequencesCreator():
             temp_dict = dict()
             for x in columns:
                 serie = [y[x] for y in trace]
-                if x == 'ac_index':
-                    serie.insert(0, self.ac_index[('start')])
-                    serie.append(self.ac_index[('end')])
-                elif x == 'rl_index':
-                    serie.insert(0, self.rl_index[('start')])
-                    serie.append(self.rl_index[('end')])
-                else:
-                    serie.insert(0, 0)
-                    serie.append(0)
+                #print(" serie :", serie)
+                # if x == 'ac_index':
+                #     serie.insert(0, self.ac_index[('start')])
+                #     serie.append(self.ac_index[('end')])
+                # elif x == 'rl_index':
+                #     serie.insert(0, self.rl_index[('start')])
+                #     serie.append(self.rl_index[('end')])
+                # elif x == 'label_index':
+                #     serie.insert(0, self.label_index[('start')])
+                #     serie.append(self.label_index[('end')])
+                # else:
+                #     serie.insert(0, 0)
+                #     serie.append(0)
+                # print("after serie :", serie)
                 temp_dict = {**{x: serie}, **temp_dict}
             temp_dict = {**{'caseid': key}, **temp_dict}
             temp_data.append(temp_dict)
+        print("Verify Temp Data :", temp_data[0])
         return temp_data

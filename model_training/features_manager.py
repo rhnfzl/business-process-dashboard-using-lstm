@@ -28,9 +28,10 @@ class FeaturesMannager():
                                  'inter': self._scale_inter}
 
     def calculate(self, log, add_cols):
+        print("Feature Space :", log.columns, "Additional Cols :", add_cols)
         log = self.add_resources(log)
         log = self.add_calculated_times(log)
-        log = self.filter_features(log, add_cols)
+        #log = self.filter_features(log, add_cols) #----Filters out the features, Preprocessing of the vlaues helps to select the required features beforehand
         return self.scale_features(log, add_cols)
 
     def add_resources(self, log):
@@ -49,7 +50,7 @@ class FeaturesMannager():
     def filter_features(self, log, add_cols):
         print(log.dtypes)
         # Add intercase features
-        columns = ['caseid', 'task', 'user', 'end_timestamp', 'role', 'dur']
+        columns = ['caseid', 'task', 'user', 'end_timestamp', 'role', 'dur', 'label'] #filtering features which will passed to train and test
         if not self.one_timestamp:
             columns.extend(['start_timestamp', 'wait'])
         columns.extend(add_cols)

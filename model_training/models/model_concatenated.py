@@ -16,7 +16,7 @@ from support_modules.callbacks import time_callback as tc
 from support_modules.callbacks import clean_models_callback as cm
 
 
-def _training_model(vec, ac_weights, rl_weights, output_folder, args):
+def _training_model(vec, ac_weights, rl_weights, label_weights, output_folder, args):
     """Example function with types documented in the docstring.
     Args:
         param1 (int): The first parameter.
@@ -30,12 +30,18 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
 # =============================================================================
 #     Input layer
 # =============================================================================
+    print("***ac_input Inputs vec*** :", vec['prefixes']['activities'].shape[1])
+    print("***rl_input Inputs vec*** :",vec['prefixes']['roles'].shape[1])
+    print("***label_input Inputs vec shape*** :", vec['prefixes']['label'].shape[1])
+
     ac_input = Input(shape=(vec['prefixes']['activities'].shape[1], ), name='ac_input')
     rl_input = Input(shape=(vec['prefixes']['roles'].shape[1], ), name='rl_input')
+    label_input = Input(shape=(vec['prefixes']['label'].shape[1], ), name='label_input')
     t_input = Input(shape=(vec['prefixes']['times'].shape[1],
                            vec['prefixes']['times'].shape[2]), name='t_input')
     print("***ac_input Inputs*** :", ac_input)
     print("***rl_input Inputs*** :", rl_input)
+    print("***label_input Inputs*** :", label_input)
     print("***t_input Inputs*** :", t_input)
 
 #=============================================================================
@@ -53,10 +59,17 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
                              input_length=vec['prefixes']['roles'].shape[1],
                              trainable=False, name='rl_embedding')(rl_input)
 
+
+    label_embedding = Embedding(label_weights.shape[0],
+                             label_weights.shape[1],
+                             weights=[label_weights],
+                             input_length=vec['prefixes']['label'].shape[1],
+                             trainable=False, name='label_embedding')(label_input)
+
 # =============================================================================
 #    Layer 1
 # =============================================================================
-    concatenate = Concatenate(name='concatenated', axis=2)([ac_embedding, rl_embedding, t_input])
+    concatenate = Concatenate(name='concatenated', axis=2)([ac_embedding, rl_embedding, label_embedding, t_input])
 
     if args['lstm_act'] is not None:
         l1_c1 = LSTM(args['l_size'],
@@ -93,13 +106,13 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
                  dropout=0.2,
                  implementation=args['imp'])(batch1)
 
-#   The layer specialized in role prediction
-#     l2_3 = LSTM(args['l_size'],
-#                 activation=args['lstm_act'],
-#                 kernel_initializer='glorot_uniform',
-#                 return_sequences=False,
-#                 dropout=0.2,
-#                 implementation=args['imp'])(batch1)
+#   The layer specialized in label prediction
+    l2_c3 = LSTM(args['l_size'],
+                kernel_initializer='glorot_uniform',
+                return_sequences=False,
+                dropout=0.2,
+                implementation=args['imp'])(batch1)
+
     if args['lstm_act'] is not None:
         l2_3 = LSTM(args['l_size'],
                     activation=args['lstm_act'],
@@ -127,6 +140,11 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
                         kernel_initializer='glorot_uniform',
                         name='role_output')(l2_c2)
 
+    label_output = Dense(label_weights.shape[0],
+                        activation='softmax',
+                        kernel_initializer='glorot_uniform',
+                        name='label_output')(l2_c3)
+
     if ('dense_act' in args) and (args['dense_act'] is not None):
         time_output = Dense(vec['next_evt']['times'].shape[1],
                             activation=args['dense_act'],
@@ -136,8 +154,8 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
         time_output = Dense(vec['next_evt']['times'].shape[1],
                             kernel_initializer='glorot_uniform',
                             name='time_output')(l2_3)
-    model = Model(inputs=[ac_input, rl_input, t_input],
-                  outputs=[act_output, role_output, time_output])
+    model = Model(inputs=[ac_input, rl_input, label_input, t_input],
+                  outputs=[act_output, role_output, label_output, time_output])
 
     if args['optim'] == 'Nadam':
         opt = Nadam(learning_rate=0.002, beta_1=0.9, beta_2=0.999)
@@ -150,6 +168,7 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
 
     model.compile(loss={'act_output': 'categorical_crossentropy',
                         'role_output': 'categorical_crossentropy',
+                        'label_output': 'categorical_crossentropy',
                         'time_output': 'mae'}, optimizer=opt)
 
     model.summary()
@@ -190,9 +209,11 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
     #print("Input Next Event Times :", vec['next_evt']['times'])
     model.fit({'ac_input': vec['prefixes']['activities'],
                'rl_input': vec['prefixes']['roles'],
+               'label_input': vec['prefixes']['label'],
                't_input': vec['prefixes']['times']},
               {'act_output': vec['next_evt']['activities'],
                'role_output': vec['next_evt']['roles'],
+               'label_output': vec['next_evt']['label'],
                'time_output': vec['next_evt']['times']},
               validation_split=0.2,
               verbose=2,
