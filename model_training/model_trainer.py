@@ -53,7 +53,8 @@ class ModelTrainer():
         # Embedded dimensions
         self.ac_weights = list()
         self.rl_weights = list()
-        self.label_weights = list()
+        #self.label_weights = list()
+        self.label_weights = np.array([[-1.], [1.]]) #-1: 'deviant', 1: 'regular'
         # Model definition
         self.model_def = dict()
         self.read_model_definition(params['model_type'])
@@ -63,6 +64,9 @@ class ModelTrainer():
         # Train model
         m_loader = mload.ModelLoader(params)
         #print(self.examples)
+        print("Activity Weight :", self.ac_weights)
+        print("Role Weight : ", self.rl_weights)
+        print("Label Weight : ", self.label_weights)
         m_loader.register_model(params['model_type'],
                                 self.model_def['trainer'])
         m_loader.train(params['model_type'],
@@ -128,16 +132,20 @@ class ModelTrainer():
                                        ac_emb_name)):
             self.ac_weights = self.load_embedded(self.index_ac, ac_emb_name)
             self.rl_weights = self.load_embedded(self.index_rl, rl_emb_name)
-            self.label_weights = self.load_embedded(self.index_label, label_emb_name)
+            #self.label_weights = np.fromiter(self.index_label.keys(), dtype=float)
+            #self.label_weights = np.array(list(self.label_index.items()))
+            #self.label_weights = self.load_embedded(self.index_label, label_emb_name)
         else:
             em.training_model(params,
                               self.log,
                               self.ac_index, self.index_ac,
-                              self.rl_index, self.index_rl,
-                              self.label_index, self.index_label)
+                              self.rl_index, self.index_rl)
+                              #self.label_index, self.index_label)
             self.ac_weights = self.load_embedded(self.index_ac, ac_emb_name)
             self.rl_weights = self.load_embedded(self.index_rl, rl_emb_name)
-            self.label_weights = self.load_embedded(self.index_label, label_emb_name)
+            #self.label_weights = np.fromiter(self.index_label.keys(), dtype=float)
+            #self.label_weights = np.array(list(self.label_index.items()))
+            #self.label_weights = self.load_embedded(self.index_label, label_emb_name)
         # Export parameters
         self.export_parms(params)
 
@@ -158,13 +166,13 @@ class ModelTrainer():
     def indexing(self):
         # Activities index creation
         self.ac_index = self.create_index(self.log, 'task')
-        #self.ac_index['start'] = 0
-        #self.ac_index['end'] = len(self.ac_index)
+        self.ac_index['start'] = 0
+        self.ac_index['end'] = len(self.ac_index)
         self.index_ac = {v: k for k, v in self.ac_index.items()}
         # Roles index creation
         self.rl_index = self.create_index(self.log, 'role')
-        #self.rl_index['start'] = 0
-        #self.rl_index['end'] = len(self.rl_index)
+        self.rl_index['start'] = 0
+        self.rl_index['end'] = len(self.rl_index)
         self.index_rl = {v: k for k, v in self.rl_index.items()}
         # Label index creation
         self.label_index = self.create_index(self.log, 'label')
@@ -193,8 +201,10 @@ class ModelTrainer():
         subsec_set = sorted(list(subsec_set))
         alias = dict()
         for i, _ in enumerate(subsec_set):
-            #alias[subsec_set[i]] = i + 1 #In the case of Start and End to be included
-            alias[subsec_set[i]] = i #In case of start and end to be removed from training
+            if column == 'label':
+                alias[subsec_set[i]] = i #In case of start and end to be removed from training
+            else:
+                alias[subsec_set[i]] = i + 1 #In the case of Start and End to be included
         return alias
 
     #This function is not used anywhere

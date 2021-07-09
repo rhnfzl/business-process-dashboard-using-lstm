@@ -11,6 +11,7 @@ from tensorflow.keras.layers import Input, Embedding, Concatenate
 from tensorflow.keras.layers import Dense, LSTM, BatchNormalization
 from tensorflow.keras.optimizers import Nadam, Adam, SGD, Adagrad
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+from tensorflow.python.keras.layers import Reshape
 
 from support_modules.callbacks import time_callback as tc
 from support_modules.callbacks import clean_models_callback as cm
@@ -30,9 +31,9 @@ def _training_model(vec, ac_weights, rl_weights, label_weights, output_folder, a
 # =============================================================================
 #     Input layer
 # =============================================================================
-    print("***ac_input Inputs vec*** :", vec['prefixes']['activities'].shape[1])
-    print("***rl_input Inputs vec*** :",vec['prefixes']['roles'].shape[1])
-    print("***label_input Inputs vec shape*** :", vec['prefixes']['label'].shape[1])
+    print("***ac_input Inputs vec*** :", vec['prefixes']['activities'])
+    print("***rl_input Inputs vec*** :",vec['prefixes']['roles'])
+    print("***label_input Inputs vec*** :", vec['prefixes']['label'])
 
     ac_input = Input(shape=(vec['prefixes']['activities'].shape[1], ), name='ac_input')
     rl_input = Input(shape=(vec['prefixes']['roles'].shape[1], ), name='rl_input')
@@ -47,6 +48,17 @@ def _training_model(vec, ac_weights, rl_weights, label_weights, output_folder, a
 #=============================================================================
 #    Embedding layer for categorical attributes
 # =============================================================================
+    print("AC Weight Value", ac_weights)
+    print("AC Weight", ac_weights.shape[0],"&", ac_weights.shape[1])
+    print("RL Weight Value", rl_weights)
+    print("RL Weight", rl_weights.shape[0],"&", rl_weights.shape[1])
+    print("LB Weight Value", label_weights)
+    print("LB Weight", label_weights.shape[0],"&", label_weights.shape[1])
+    print("LB INPUT Length :", vec['prefixes']['label'].shape[1])
+    print("LB INPUT Length Values :", vec['prefixes']['label'])
+    print("LB Input :", label_input)
+    print("LB OUT Length Values :", vec['next_evt']['label'], type(vec['next_evt']['label']))
+    print("LB OUT Length sShape :", vec['next_evt']['label'].shape[1])
     ac_embedding = Embedding(ac_weights.shape[0],
                              ac_weights.shape[1],
                              weights=[ac_weights],
@@ -64,7 +76,11 @@ def _training_model(vec, ac_weights, rl_weights, label_weights, output_folder, a
                              label_weights.shape[1],
                              weights=[label_weights],
                              input_length=vec['prefixes']['label'].shape[1],
-                             trainable=False, name='label_embedding')(label_input)
+                             trainable=True, name='label_embedding')(label_input)
+
+    # label_embedding = Embedding(name='label_embedding',
+    #                            input_dim=len(label_index),
+    #                            output_dim=embedding_size)(label)
 
 # =============================================================================
 #    Layer 1
@@ -203,6 +219,7 @@ def _training_model(vec, ac_weights, rl_weights, label_weights, output_folder, a
     else:
         batch_size = args['batch_size']
     print("Batch Size : ", batch_size)
+    #label_o = Reshape(target_shape=[2])(vec['next_evt']['label'])
     #print("Input Activities :", vec['prefixes']['activities'])
     #print("Input Roles :", vec['prefixes']['roles'])
     #print("Input Prefixes Times :", vec['prefixes']['times'])

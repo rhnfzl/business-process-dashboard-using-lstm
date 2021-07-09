@@ -57,8 +57,8 @@ class Evaluator():
         #print("Data Initially in Accuracy Meaurement :", data)
         data = data[[(feature + '_expect'), (feature + '_pred'),
                      'run_num', 'implementation']]
-        #accuracy evaluation exp = pred then 1 else 0 in case of top3 it checks if the predicted value is in the list then it sets it to 1
-        if self.variant in ['top3']:
+        #accuracy evaluation exp = pred then 1 else 0 in case of multi_pred it checks if the predicted value is in the list then it sets it to 1
+        if self.variant in ['multi_pred']:
             eval_acc = (lambda x:
                          1 if x[feature + '_expect'] in x[feature + '_pred'] else 0)
         else:

@@ -19,6 +19,7 @@ class NextEventPredictor():
         self.model = None
         self.spl = dict()
         self.imp = 'arg_max'
+        self.nx = 3
 
     def predict(self, params, model, spl, imp, vectorizer):
         self.model = model
@@ -129,6 +130,11 @@ class NextEventPredictor():
 
             elif self.imp == 'arg_max':
                 # Use this to get the max prediction
+
+                print("Activity :", np.array(preds[0][0]))
+                print("Role :", np.array(preds[1][0]))
+                print("Label :", np.array(preds[2][0]))
+
                 pos = np.argmax(preds[0][0])
                 pos_prob = preds[0][0][pos]
 
@@ -138,18 +144,18 @@ class NextEventPredictor():
                 pos2 = np.argmax(preds[2][0])
                 pos2_prob = preds[2][0][pos2]
 
-            elif self.imp == 'top3':
+            elif self.imp == 'multi_pred':
                 #change it to get the number of predictions
-                nx = 3
+                #nx = 2
 
                 #changing array to numpy
                 acx = np.array(preds[0][0])
                 rlx = np.array(preds[1][0])
                 lbx = np.array(preds[2][0])
 
-                pos = (-acx).argsort()[:nx].tolist()
-                pos1 = (-rlx).argsort()[:nx].tolist()
-                pos2 = (-lbx).argsort()[:nx].tolist()
+                pos = (-acx).argsort()[:self.nx].tolist()
+                pos1 = (-rlx).argsort()[:self.nx].tolist()
+                pos2 = (-lbx).argsort()[:self.nx].tolist()
 
                 pos_prob = []
                 pos1_prob = []
@@ -324,18 +330,18 @@ class NextEventPredictor():
                 pos2_prob = preds[2][0][pos2]
 
 
-            elif self.imp == 'top3':
+            elif self.imp == 'multi_pred':
                 #change it to get the number of predictions
-                nx = 3
+                #nx = 2
 
                 #changing array to numpy
                 acx = np.array(preds[0][0])
                 rlx = np.array(preds[1][0])
                 lbx = np.array(preds[2][0])
 
-                pos = (-acx).argsort()[:nx].tolist()
-                pos1 = (-rlx).argsort()[:nx].tolist()
-                pos2 = (-lbx).argsort()[:nx].tolist()
+                pos = (-acx).argsort()[:self.nx].tolist()
+                pos1 = (-rlx).argsort()[:self.nx].tolist()
+                pos2 = (-lbx).argsort()[:self.nx].tolist()
 
                 pos_prob = []
                 pos1_prob = []
@@ -494,6 +500,7 @@ class NextEventPredictor():
 
             elif self.imp == 'arg_max':
                 # Use this to get the max prediction
+
                 pos = np.argmax(preds[0][0])
                 pos_prob = preds[0][0][pos]
 
@@ -503,18 +510,18 @@ class NextEventPredictor():
                 pos2 = np.argmax(preds[2][0])
                 pos2_prob = preds[2][0][pos2]
 
-            elif self.imp == 'top3':
+            elif self.imp == 'multi_pred':
                 #change it to get the number of predictions
-                nx = 3
+                #nx = 2
 
                 #changing array to numpy
                 acx = np.array(preds[0][0])
                 rlx = np.array(preds[1][0])
-                lbx = np.array(preds[1][0])
+                lbx = np.array(preds[2][0])
 
-                pos = (-acx).argsort()[:nx].tolist()
-                pos1 = (-rlx).argsort()[:nx].tolist()
-                pos2 = (-lbx).argsort()[:nx].tolist()
+                pos = (-acx).argsort()[:self.nx].tolist()
+                pos1 = (-rlx).argsort()[:self.nx].tolist()
+                pos2 = (-lbx).argsort()[:self.nx].tolist()
 
                 pos_prob = []
                 pos1_prob = []

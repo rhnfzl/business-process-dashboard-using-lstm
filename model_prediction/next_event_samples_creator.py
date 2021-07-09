@@ -175,18 +175,18 @@ class NextEventSamplesCreator():
             temp_dict = dict()
             for x in columns:
                 serie = [y[x] for y in trace]
-                # if x == 'ac_index':
-                #     serie.insert(0, self.ac_index[('start')])
-                #     serie.append(self.ac_index[('end')])
-                # elif x == 'rl_index':
-                #     serie.insert(0, self.rl_index[('start')])
-                #     serie.append(self.rl_index[('end')])
+                if x == 'ac_index':
+                    serie.insert(0, self.ac_index[('start')])
+                    serie.append(self.ac_index[('end')])
+                elif x == 'rl_index':
+                    serie.insert(0, self.rl_index[('start')])
+                    serie.append(self.rl_index[('end')])
                 # elif x == 'label_index':
                 #     serie.insert(0, self.label_index[('start')])
                 #     serie.append(self.label_index[('end')])
-                # else:
-                #     serie.insert(0, 0)
-                #     serie.append(0)
+                else:
+                    serie.insert(0, 0)
+                    serie.append(0)
                 temp_dict = {**{x: serie}, **temp_dict}
             temp_dict = {**{'caseid': key}, **temp_dict}
             temp_data.append(temp_dict)

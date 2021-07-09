@@ -178,126 +178,6 @@ class ModelPredictor():
             self.predictions = self.predictions.append(results,
                                                        ignore_index=True)
 
-    @staticmethod
-    def dashboard_prediction(pred_results_df, parms):
-        # Removing 'ac_prefix', 'rl_prefix', 'tm_prefix'
-        results_dash = pred_results_df[
-            ['ac_prefix', 'rl_prefix', 'label_prefix', 'tm_prefix', 'run_num', 'implementation']].copy()
-        results_dash = pred_results_df.drop(
-            ['ac_prefix', 'rl_prefix', 'label_prefix', 'tm_prefix', 'run_num', 'implementation'], axis=1)
-
-        # Replacing from Dictionary Values to it's original name
-        results_dash['ac_expect'] = results_dash.ac_expect.replace(parms['index_ac'])
-        results_dash['rl_expect'] = results_dash.rl_expect.replace(parms['index_rl'])
-        results_dash['label_expect'] = results_dash.label_expect.replace(parms['index_label'])
-
-        if parms['variant'] in ['top3']:
-            # --------------------results_dash['ac_pred'] = results_dash.ac_pred.replace(parms['index_ac'])
-            for ix in range(len(results_dash['ac_pred'])):
-                for jx in range(len(results_dash['ac_pred'][ix])):
-                    # replacing the value from the parms dictionary
-                    results_dash['ac_pred'][ix].append(parms['index_ac'][results_dash.ac_pred[ix][jx]])
-                    # Converting probability into percentage
-                    results_dash['ac_prob'][ix][jx] = (results_dash['ac_prob'][ix][jx] * 100)
-                # ppping out the values from the list
-                ln = int(len(results_dash['ac_pred'][ix]) / 2)
-                del results_dash['ac_pred'][ix][:ln]
-                results_dash[['ac_pred1', 'ac_pred2', 'ac_pred3']] = pd.DataFrame(results_dash.ac_pred.tolist(),
-                                                                                  index=results_dash.index)
-                results_dash[['ac_prob1', 'ac_prob2', 'ac_prob3']] = pd.DataFrame(results_dash.ac_prob.tolist(),
-                                                                                  index=results_dash.index)
-
-            # --------------------results_dash['rl_pred'] = results_dash.rl_pred.replace(parms['index_rl'])
-            for ix in range(len(results_dash['rl_pred'])):
-                for jx in range(len(results_dash['rl_pred'][ix])):
-                    # replacing the value from the parms dictionary
-                    results_dash['rl_pred'][ix].append(parms['index_rl'][results_dash.rl_pred[ix][jx]])
-                    # Converting probability into percentage
-                    results_dash['rl_prob'][ix][jx] = (results_dash['rl_prob'][ix][jx] * 100)
-                # popping out the values from the list
-                ln = int(len(results_dash['rl_pred'][ix]) / 2)
-                del results_dash['rl_pred'][ix][:ln]
-                results_dash[['rl_pred1', 'rl_pred2', 'rl_pred3']] = pd.DataFrame(results_dash.rl_pred.tolist(),
-                                                                                  index=results_dash.index)
-                results_dash[['rl_prob1', 'rl_prob2', 'rl_prob3']] = pd.DataFrame(results_dash.rl_prob.tolist(),
-                                                                                  index=results_dash.index)
-
-            # --------------------results_dash['label_pred'] = results_dash.label_pred.replace(parms['index_label'])
-            for ix in range(len(results_dash['label_pred'])):
-                for jx in range(len(results_dash['label_pred'][ix])):
-                    # replacing the value from the parms dictionary
-                    results_dash['label_pred'][ix].append(parms['index_label'][results_dash.label_pred[ix][jx]])
-                    # Converting probability into percentage
-                    results_dash['label_prob'][ix][jx] = (results_dash['label_prob'][ix][jx] * 100)
-                # popping out the values from the list
-                ln = int(len(results_dash['label_pred'][ix]) / 2)
-                del results_dash['label_pred'][ix][:ln]
-                results_dash[['label_pred1', 'label_pred2', 'label_pred3']] = pd.DataFrame(
-                    results_dash.label_pred.tolist(),
-                    index=results_dash.index)
-                results_dash[['label_prob1', 'label_prob2', 'label_prob3']] = pd.DataFrame(
-                    results_dash.label_prob.tolist(),
-                    index=results_dash.index)
-
-            results_dash.drop(['ac_pred', 'ac_prob', 'rl_pred', 'rl_prob', 'label_pred', 'label_prob'], axis=1,
-                              inplace=True)
-            if parms['mode'] in ['next']:
-                results_dash = results_dash[
-                    ['ac_expect', 'ac_pred1', 'ac_prob1', 'ac_pred2', 'ac_prob2', 'ac_pred3', 'ac_prob3',
-                    'rl_expect', 'rl_pred1', 'rl_prob1', 'rl_pred2', 'rl_prob2', 'rl_pred3', 'rl_prob3',
-                    'label_expect', 'label_pred1', 'label_prob1', 'label_pred2', 'label_prob2', 'label_pred3', 'label_prob3',
-                    "tm_expect", 'tm_pred']]
-            elif parms['mode'] in ['batch']:
-                results_dash = results_dash[
-                    ['caseid', 'ac_expect', 'ac_pred1', 'ac_prob1', 'ac_pred2', 'ac_prob2', 'ac_pred3', 'ac_prob3',
-                    'rl_expect', 'rl_pred1', 'rl_prob1', 'rl_pred2', 'rl_prob2', 'rl_pred3', 'rl_prob3',
-                    'label_expect', 'label_pred1', 'label_prob1', 'label_pred2', 'label_prob2', 'label_pred3', 'label_prob3',
-                    "tm_expect", 'tm_pred']]
-
-            # ------------------------------------------------------------------------------------------------------------------------------------------------
-            # results_dash.rename(
-            #     columns={'caseid': 'Case_ID', 'ac_expect': 'Expected', 'ac_pred1': 'Prediction_1', 'ac_prob1': 'Confidence_1',
-            #              'ac_pred2': 'Prediction_2', 'ac_prob2': 'Confidence_2', 'ac_pred3': 'Prediction_3', 'ac_prob3': 'Confidence_3',
-            #              'rl_expect': 'Expected', 'rl_pred1': 'Predicted_1', 'rl_prob1': 'Confidence_1',
-            #              'rl_pred2': 'Predicted_2', 'rl_prob2': 'Confidence_2', 'rl_pred3': 'Predicted_3', 'rl_prob3': 'Confidence_3',
-            #              "tm_expect": 'Expected', 'tm_pred': 'Predicted'}, inplace=True)
-            # results_dash.columns = pd.MultiIndex.from_tuples(
-            #     zip(['', 'Activity', '', '', '', '', '', '', 'Role', '', '', '', '', '', '', 'Time', ''],
-            #         results_dash.columns))
-            # ------------------------------------------------------------------------------------------------------------------------------------------------
-        else:
-            results_dash['ac_pred'] = results_dash.ac_pred.replace(parms['index_ac'])
-            results_dash['rl_pred'] = results_dash.rl_pred.replace(parms['index_rl'])
-            results_dash['label_pred'] = results_dash.label_pred.replace(parms['index_label'])
-            results_dash['ac_prob'] = (results_dash['ac_prob'] * 100)
-            results_dash['rl_prob'] = (results_dash['rl_prob'] * 100)
-            results_dash['label_prob'] = (results_dash['label_prob'] * 100)
-            results_dash.rename(
-                columns={'caseid': 'Case_ID', 'ac_expect': 'Expected', 'ac_pred': 'Predicted', 'ac_prob': 'Confidence',
-                         'rl_expect': 'Expected', 'rl_pred': 'Predicted', 'rl_prob': 'Confidence',
-                         'label_expect': 'Expected', 'label_pred': 'Predicted', 'label_prob': 'Confidence',
-                         "tm_expect": 'Expected', 'tm_pred': 'Predicted'}, inplace=True)
-
-            results_dash.columns = pd.MultiIndex.from_tuples(
-                zip(['', 'Activity', '', '', 'Role', '', '', 'Label', '', '', 'Time', ''],
-                    results_dash.columns))
-
-        st.table(results_dash)
-        # columns_results_dash = [('Case_ID', ''), ('Activity', 'Expected'), ('Activity', 'Predicted'), ('Activity', 'Confidence'),
-        #           ('Role', 'Expected'), ('Role', 'Predicted'), ('Role', 'Confidence'),
-        #           ('Time', 'Expected'), ('Time', 'Predicted')]
-        # results_dash.columns = pd.MultiIndex.from_tuples(columns_results_dash)
-        # results_dash.set_index('Case_ID', inplace=True)
-        # results_dash.assign(idx='').set_index('idx')
-        # results_dash.set_index('', inplace=True)
-        #if parms['mode'] in ['next']:
-        # Temporary Solution for multi column
-        # if parms['mode'] in ['next']:
-        #     st.table(results_dash)
-        #     #st.dataframe(results_dash)
-        # elif parms['mode'] in ['batch']:
-        #     st.table(results_dash)
-
     def export_predictions(self):
         output_folder = os.path.join(self.output_route, 'results')
         if not os.path.exists(output_folder):
@@ -371,12 +251,265 @@ class ModelPredictor():
             Config.get(model_type, 'additional_columns'), dtype='str')
         self.model_def['vectorizer'] = Config.get(model_type, 'vectorizer')
 
+    @staticmethod
+    def dashboard_prediction(pred_results_df, parms):
+        # Removing 'ac_prefix', 'rl_prefix', 'tm_prefix', 'run_num', 'implementation' from the result
+        results_dash = pred_results_df[
+            ['ac_prefix', 'rl_prefix', 'label_prefix', 'tm_prefix', 'run_num', 'implementation']].copy()
+        results_dash = pred_results_df.drop(
+            ['ac_prefix', 'rl_prefix', 'label_prefix', 'tm_prefix', 'run_num', 'implementation'], axis=1)
+
+        # Replacing from Dictionary Values to it's original name
+        results_dash['ac_expect'] = results_dash.ac_expect.replace(parms['index_ac'])
+        results_dash['rl_expect'] = results_dash.rl_expect.replace(parms['index_rl'])
+        results_dash['label_expect'] = results_dash.label_expect.replace(parms['index_label'])
+
+        if parms['mode'] in ['batch']:
+            #as the static function is calling static function class has to be mentioned
+            ModelPredictor.dashboard_prediction_batch(results_dash, parms)
+        elif parms['mode'] in ['next']:
+            st.write(results_dash)
+
+
+
+
+    #
+    # if parms['variant'] in ['multi_pred']:
+    #     # --------------------results_dash['ac_pred'] = results_dash.ac_pred.replace(parms['index_ac'])
+    #     for ix in range(len(results_dash['ac_pred'])):
+    #         for jx in range(len(results_dash['ac_pred'][ix])):
+    #             # replacing the value from the parms dictionary
+    #             results_dash['ac_pred'][ix].append(parms['index_ac'][results_dash.ac_pred[ix][jx]])
+    #             # Converting probability into percentage
+    #             results_dash['ac_prob'][ix][jx] = (results_dash['ac_prob'][ix][jx] * 100)
+    #         # ppping out the values from the list
+    #         ln = int(len(results_dash['ac_pred'][ix]) / 2)
+    #         del results_dash['ac_pred'][ix][:ln]
+    #         results_dash[['ac_pred1', 'ac_pred2', 'ac_pred3']] = pd.DataFrame(results_dash.ac_pred.tolist(),
+    #                                                                           index=results_dash.index)
+    #         results_dash[['ac_prob1', 'ac_prob2', 'ac_prob3'] = pd.DataFrame(results_dash.ac_prob.tolist(),
+    #                                                                           index=results_dash.index)
+    #
+    #     # --------------------results_dash['rl_pred'] = results_dash.rl_pred.replace(parms['index_rl'])
+    #     for ix in range(len(results_dash['rl_pred'])):
+    #         for jx in range(len(results_dash['rl_pred'][ix])):
+    #             # replacing the value from the parms dictionary
+    #             results_dash['rl_pred'][ix].append(parms['index_rl'][results_dash.rl_pred[ix][jx]])
+    #             # Converting probability into percentage
+    #             results_dash['rl_prob'][ix][jx] = (results_dash['rl_prob'][ix][jx] * 100)
+    #         # popping out the values from the list
+    #         ln = int(len(results_dash['rl_pred'][ix]) / 2)
+    #         del results_dash['rl_pred'][ix][:ln]
+    #         results_dash[['rl_pred1', 'rl_pred2', 'rl_pred3']] = pd.DataFrame(results_dash.rl_pred.tolist(),
+    #                                                                           index=results_dash.index)
+    #         results_dash[['rl_prob1', 'rl_prob2', 'rl_prob3']] = pd.DataFrame(results_dash.rl_prob.tolist(),
+    #                                                                           index=results_dash.index)
+    #
+    #     # --------------------results_dash['label_pred'] = results_dash.label_pred.replace(parms['index_label'])
+    #     for ix in range(len(results_dash['label_pred'])):
+    #         for jx in range(len(results_dash['label_pred'][ix])):
+    #             # replacing the value from the parms dictionary
+    #             results_dash['label_pred'][ix].append(parms['index_label'][results_dash.label_pred[ix][jx]])
+    #             # Converting probability into percentage
+    #             results_dash['label_prob'][ix][jx] = (results_dash['label_prob'][ix][jx] * 100)
+    #         # popping out the values from the list
+    #         ln = int(len(results_dash['label_pred'][ix]) / 2)
+    #         del results_dash['label_pred'][ix][:ln]
+    #         # results_dash[['label_pred1', 'label_pred2', 'label_pred3']] = pd.DataFrame(
+    #         results_dash[['label_pred1', 'label_pred2']] = pd.DataFrame(
+    #             results_dash.label_pred.tolist(),
+    #             index=results_dash.index)
+    #         # results_dash[['label_prob1', 'label_prob2', 'label_prob3']] = pd.DataFrame(
+    #         results_dash[['label_prob1', 'label_prob2']] = pd.DataFrame(
+    #             results_dash.label_prob.tolist(),
+    #             index=results_dash.index)
+    #
+    #     results_dash.drop(['ac_pred', 'ac_prob', 'rl_pred', 'rl_prob', 'label_pred', 'label_prob'], axis=1,
+    #                       inplace=True)
+    #     if parms['mode'] in ['next']:
+    #         results_dash = results_dash[
+    #             ['ac_expect', 'ac_pred1', 'ac_prob1', 'ac_pred2', 'ac_prob2',
+    #             'rl_expect', 'rl_pred1', 'rl_prob1', 'rl_pred2', 'rl_prob2',
+    #              'label_expect', 'label_pred1', 'label_prob1', 'label_pred2', 'label_prob2',
+    #             "tm_expect", 'tm_pred']]
+    #     elif parms['mode'] in ['batch']:
+    #         results_dash = results_dash[
+    #             ['caseid', 'ac_expect', 'ac_pred1', 'ac_prob1', 'ac_pred2', 'ac_prob2',
+    #             'rl_expect', 'rl_pred1', 'rl_prob1', 'rl_pred2', 'rl_prob2',
+    #             'label_expect', 'label_pred1', 'label_prob1', 'label_pred2', 'label_prob2',
+    #             "tm_expect", 'tm_pred']]
+
+        # ------------------------------------------------------------------------------------------------------------------------------------------------
+        # results_dash.rename(
+        #     columns={'caseid': 'Case_ID', 'ac_expect': 'Expected', 'ac_pred1': 'Prediction_1', 'ac_prob1': 'Confidence_1',
+        #              'ac_pred2': 'Prediction_2', 'ac_prob2': 'Confidence_2', 'ac_pred3': 'Prediction_3', 'ac_prob3': 'Confidence_3',
+        #              'rl_expect': 'Expected', 'rl_pred1': 'Predicted_1', 'rl_prob1': 'Confidence_1',
+        #              'rl_pred2': 'Predicted_2', 'rl_prob2': 'Confidence_2', 'rl_pred3': 'Predicted_3', 'rl_prob3': 'Confidence_3',
+        #              "tm_expect": 'Expected', 'tm_pred': 'Predicted'}, inplace=True)
+        # results_dash.columns = pd.MultiIndex.from_tuples(
+        #     zip(['', 'Activity', '', '', '', '', '', '', 'Role', '', '', '', '', '', '', 'Time', ''],
+        #         results_dash.columns))
+        # ------------------------------------------------------------------------------------------------------------------------------------------------
+    # else:
+    #     results_dash['ac_pred'] = results_dash.ac_pred.replace(parms['index_ac'])
+    #     results_dash['rl_pred'] = results_dash.rl_pred.replace(parms['index_rl'])
+    #     results_dash['label_pred'] = results_dash.label_pred.replace(parms['index_label'])
+    #     results_dash['ac_prob'] = (results_dash['ac_prob'] * 100)
+    #     results_dash['rl_prob'] = (results_dash['rl_prob'] * 100)
+    #     results_dash['label_prob'] = (results_dash['label_prob'] * 100)
+    #     results_dash.rename(
+    #         columns={'caseid': 'Case_ID', 'ac_expect': 'Expected', 'ac_pred': 'Predicted', 'ac_prob': 'Confidence',
+    #                  'rl_expect': 'Expected', 'rl_pred': 'Predicted', 'rl_prob': 'Confidence',
+    #                  'label_expect': 'Expected', 'label_pred': 'Predicted', 'label_prob': 'Confidence',
+    #                  "tm_expect": 'Expected', 'tm_pred': 'Predicted'}, inplace=True)
+    #
+    #     results_dash.columns = pd.MultiIndex.from_tuples(
+    #         zip(['', 'Activity', '', '', 'Role', '', '', 'Label', '', '', 'Time', ''],
+    #             results_dash.columns))
+    #
+    # st.table(results_dash)
+
+    # expected = st.empty()
+    #
+    # prediction = st.empty()
+    #
+    # expected.write("This is a sample text")
+    #
+    # prediction.table(results_dash)
+    #
+    # prediction1, prediction2 = st.beta_columns(2)
+    #
+    # prediction1.subheader(" First Prediction")
+    #
+    # prediction1.subheader(" Second Prediction")
+    #
+    # st.title("Let's create a table!")
+    # for i in range(1, 10)::
+    #     cols = st.beta_columns(4)
+    #     cols[0].write(f'{i}')
+    #     cols[1].write(f'{i * i}')
+    #     cols[2].write(f'{i * i * i}')
+    #     cols[3].write('x' * i)
+
+    # columns_results_dash = [('Case_ID', ''), ('Activity', 'Expected'), ('Activity', 'Predicted'), ('Activity', 'Confidence'),
+    #           ('Role', 'Expected'), ('Role', 'Predicted'), ('Role', 'Confidence'),
+    #           ('Time', 'Expected'), ('Time', 'Predicted')]
+    # results_dash.columns = pd.MultiIndex.from_tuples(columns_results_dash)
+    # results_dash.set_index('Case_ID', inplace=True)
+    # results_dash.assign(idx='').set_index('idx')
+    # results_dash.set_index('', inplace=True)
+    #if parms['mode'] in ['next']:
+    # Temporary Solution for multi column
+    # if parms['mode'] in ['next']:
+    #     st.table(results_dash)
+    #     #st.dataframe(results_dash)
+    # elif parms['mode'] in ['batch']:
+    #     st.table(results_dash)
+
+
+    @staticmethod
+    def dashboard_prediction_batch(results_dash, parms):
+
+        if parms['variant'] in ['multi_pred']:
+            #converting the values to it's actual name from parms
+            #--For Activity and Role
+            ModelPredictor.dashboard_prediction_acrl(results_dash, parms)
+            #--For Label
+            ModelPredictor.dashboard_prediction_label(results_dash, parms)
+
+        #     # --------------------results_dash['label_pred'] = results_dash.label_pred.replace(parms['index_label'])
+
+            results_dash.drop(['ac_pred', 'ac_prob', 'rl_pred', 'rl_prob', 'label_pred', 'label_prob'], axis=1, inplace=True)
+
+            if parms['mode'] in ['next']:
+                results_dash = results_dash[
+                    ['ac_expect', 'ac_pred1', 'ac_prob1', 'ac_pred2', 'ac_prob2',
+                    'rl_expect', 'rl_pred1', 'rl_prob1', 'rl_pred2', 'rl_prob2',
+                     'label_expect', 'label_pred1', 'label_prob1', 'label_pred2', 'label_prob2',
+                    "tm_expect", 'tm_pred']]
+            elif parms['mode'] in ['batch']:
+                results_dash = results_dash[
+                    ['caseid', 'ac_expect', 'ac_pred1', 'ac_prob1', 'ac_pred2', 'ac_prob2',
+                    'rl_expect', 'rl_pred1', 'rl_prob1', 'rl_pred2', 'rl_prob2',
+                    'label_expect', 'label_pred1', 'label_prob1', 'label_pred2', 'label_prob2',
+                    "tm_expect", 'tm_pred']]
+
+        else:
+            results_dash['ac_pred'] = results_dash.ac_pred.replace(parms['index_ac'])
+            results_dash['rl_pred'] = results_dash.rl_pred.replace(parms['index_rl'])
+            results_dash['label_pred'] = results_dash.label_pred.replace(parms['index_label'])
+            results_dash['ac_prob'] = (results_dash['ac_prob'] * 100)
+            results_dash['rl_prob'] = (results_dash['rl_prob'] * 100)
+            results_dash['label_prob'] = (results_dash['label_prob'] * 100)
+            results_dash.rename(
+                columns={'caseid': 'Case_ID', 'ac_expect': 'Expected', 'ac_pred': 'Predicted', 'ac_prob': 'Confidence',
+                         'rl_expect': 'Expected', 'rl_pred': 'Predicted', 'rl_prob': 'Confidence',
+                         'label_expect': 'Expected', 'label_pred': 'Predicted', 'label_prob': 'Confidence',
+                         "tm_expect": 'Expected', 'tm_pred': 'Predicted'}, inplace=True)
+
+            results_dash.columns = pd.MultiIndex.from_tuples(
+                zip(['', 'Activity', '', '', 'Role', '', '', 'Label', '', '', 'Time', ''],
+                    results_dash.columns))
+
+        st.table(results_dash)
+
+    @staticmethod
+    def dashboard_prediction_acrl(results_dash, parms):
+        # --------------------results_dash['ac_pred'] = results_dash.ac_pred.replace(parms['index_ac'])
+        for ix in range(len(results_dash['ac_pred'])):
+            for jx in range(len(results_dash['ac_pred'][ix])):
+                # replacing the value from the parms dictionary
+                results_dash['ac_pred'][ix].append(parms['index_ac'][results_dash.ac_pred[ix][jx]])
+                # Converting probability into percentage
+                results_dash['ac_prob'][ix][jx] = (results_dash['ac_prob'][ix][jx] * 100)
+            # poping out the values from the list
+            ln = int(len(results_dash['ac_pred'][ix]) / 2)
+            del results_dash['ac_pred'][ix][:ln]
+            results_dash[['ac_pred1', 'ac_pred2']] = pd.DataFrame(results_dash.ac_pred.tolist(),
+                                                                  index=results_dash.index)
+            results_dash[['ac_prob1', 'ac_prob2']] = pd.DataFrame(results_dash.ac_prob.tolist(),
+                                                                  index=results_dash.index)
+
+        # --------------------results_dash['rl_pred'] = results_dash.rl_pred.replace(parms['index_rl'])
+        for ix in range(len(results_dash['rl_pred'])):
+            for jx in range(len(results_dash['rl_pred'][ix])):
+                # replacing the value from the parms dictionary
+                results_dash['rl_pred'][ix].append(parms['index_rl'][results_dash.rl_pred[ix][jx]])
+                # Converting probability into percentage
+                results_dash['rl_prob'][ix][jx] = (results_dash['rl_prob'][ix][jx] * 100)
+            # popping out the values from the list
+            ln = int(len(results_dash['rl_pred'][ix]) / 2)
+            del results_dash['rl_pred'][ix][:ln]
+            results_dash[['rl_pred1', 'rl_pred2']] = pd.DataFrame(results_dash.rl_pred.tolist(),
+                                                                  index=results_dash.index)
+            results_dash[['rl_prob1', 'rl_prob2']] = pd.DataFrame(results_dash.rl_prob.tolist(),
+                                                                  index=results_dash.index)
+
+        return results_dash
+
+    @staticmethod
+    def dashboard_prediction_label(results_dash, parms):
+        for ix in range(len(results_dash['label_pred'])):
+            for jx in range(len(results_dash['label_pred'][ix])):
+                # replacing the value from the parms dictionary
+                results_dash['label_pred'][ix].append(parms['index_label'][results_dash.label_pred[ix][jx]])
+                # Converting probability into percentage
+                results_dash['label_prob'][ix][jx] = (results_dash['label_prob'][ix][jx] * 100)
+            # popping out the values from the list
+            ln = int(len(results_dash['label_pred'][ix]) / 2)
+            del results_dash['label_pred'][ix][:ln]
+            results_dash[['label_pred1', 'label_pred2']] = pd.DataFrame(results_dash.label_pred.tolist(),
+                                                                        index=results_dash.index)
+            results_dash[['label_prob1', 'label_prob2']] = pd.DataFrame(results_dash.label_prob.tolist(),
+                                                                        index=results_dash.index)
+        return results_dash
+
 
 class EvaluateTask():
 
     def evaluate(self, parms, data):
         sampler = self._get_evaluator(parms['activity'])
-        if parms['variant'] in ['top3']:
+        if parms['variant'] in ['multi_pred']:
             data['ac_expect'] = data.ac_expect.replace(parms['index_ac'])
             data['rl_expect'] = data.rl_expect.replace(parms['index_rl'])
             data['label_expect'] = data.label_expect.replace(parms['index_label'])
