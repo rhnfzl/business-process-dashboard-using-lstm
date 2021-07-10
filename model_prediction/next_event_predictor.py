@@ -19,7 +19,7 @@ class NextEventPredictor():
         self.model = None
         self.spl = dict()
         self.imp = 'arg_max'
-        self.nx = 3
+        #self.nx = 2
 
     def predict(self, params, model, spl, imp, vectorizer):
         self.model = model
@@ -32,6 +32,7 @@ class NextEventPredictor():
         #st.table(spl_df_prefx)
         #st.table(spl_df_next)
         #print("spl :", spl_df)
+        self.nx = params['multiprednum']
         predictor = self._get_predictor(params['model_type'], params['mode'], params['next_mode'])
         sup.print_performed_task('Predicting next events')
 

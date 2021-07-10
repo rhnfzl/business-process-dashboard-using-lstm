@@ -268,8 +268,7 @@ class ModelPredictor():
             #as the static function is calling static function class has to be mentioned
             ModelPredictor.dashboard_prediction_batch(results_dash, parms)
         elif parms['mode'] in ['next']:
-            st.write(results_dash)
-
+            ModelPredictor.dashboard_prediction_next(results_dash, parms)
 
 
 
@@ -406,41 +405,67 @@ class ModelPredictor():
     # elif parms['mode'] in ['batch']:
     #     st.table(results_dash)
 
-
     @staticmethod
-    def dashboard_prediction_batch(results_dash, parms):
+    def dashboard_prediction_next(results_dash, parms):
 
         if parms['variant'] in ['multi_pred']:
             #converting the values to it's actual name from parms
             #--For Activity and Role
-            ModelPredictor.dashboard_prediction_acrl(results_dash, parms)
+            ModelPredictor.dashboard_multiprediction_acrl(results_dash, parms)
             #--For Label
-            ModelPredictor.dashboard_prediction_label(results_dash, parms)
-
-        #     # --------------------results_dash['label_pred'] = results_dash.label_pred.replace(parms['index_label'])
+            ModelPredictor.dashboard_multiprediction_label(results_dash, parms)
 
             results_dash.drop(['ac_pred', 'ac_prob', 'rl_pred', 'rl_prob', 'label_pred', 'label_prob'], axis=1, inplace=True)
 
-            if parms['mode'] in ['next']:
-                results_dash = results_dash[
-                    ['ac_expect', 'ac_pred1', 'ac_prob1', 'ac_pred2', 'ac_prob2',
-                    'rl_expect', 'rl_pred1', 'rl_prob1', 'rl_pred2', 'rl_prob2',
-                     'label_expect', 'label_pred1', 'label_prob1', 'label_pred2', 'label_prob2',
-                    "tm_expect", 'tm_pred']]
-            elif parms['mode'] in ['batch']:
-                results_dash = results_dash[
-                    ['caseid', 'ac_expect', 'ac_pred1', 'ac_prob1', 'ac_pred2', 'ac_prob2',
-                    'rl_expect', 'rl_pred1', 'rl_prob1', 'rl_pred2', 'rl_prob2',
-                    'label_expect', 'label_pred1', 'label_prob1', 'label_pred2', 'label_prob2',
-                    "tm_expect", 'tm_pred']]
+            multipreddict = ModelPredictor.dashboard_multiprediction_columns(parms)
+
+            _lst = [['caseid', 'ac_expect'] + multipreddict["ac_pred"] + multipreddict["ac_prob"] +
+                    ['rl_expect'] + multipreddict["rl_pred"] + multipreddict["rl_prob"] +
+                    ['label_expect', 'label_pred1', 'label_pred2', 'label_prob1', 'label_prob2', 'tm_expect', 'tm_pred']]
+
+            results_dash = results_dash[_lst[0][1:]]
 
         else:
-            results_dash['ac_pred'] = results_dash.ac_pred.replace(parms['index_ac'])
-            results_dash['rl_pred'] = results_dash.rl_pred.replace(parms['index_rl'])
-            results_dash['label_pred'] = results_dash.label_pred.replace(parms['index_label'])
-            results_dash['ac_prob'] = (results_dash['ac_prob'] * 100)
-            results_dash['rl_prob'] = (results_dash['rl_prob'] * 100)
-            results_dash['label_prob'] = (results_dash['label_prob'] * 100)
+            #converting the values to it's actual name from parms
+            #--For Activity, Role and Label
+            ModelPredictor.dashboard_maxprediction(results_dash, parms)
+            # results_dash.rename(
+            #     columns={'caseid': 'Case_ID', 'ac_expect': 'Expected', 'ac_pred': 'Predicted', 'ac_prob': 'Confidence',
+            #              'rl_expect': 'Expected', 'rl_pred': 'Predicted', 'rl_prob': 'Confidence',
+            #              'label_expect': 'Expected', 'label_pred': 'Predicted', 'label_prob': 'Confidence',
+            #              "tm_expect": 'Expected', 'tm_pred': 'Predicted'}, inplace=True)
+            #
+            # results_dash.columns = pd.MultiIndex.from_tuples(
+            #     zip(['', 'Activity', '', '', 'Role', '', '', 'Label', '', '', 'Time', ''],
+            #         results_dash.columns))
+
+        ModelPredictor.dashboard_nextprediction_write(results_dash, parms)
+
+
+    @staticmethod
+    def dashboard_prediction_batch(results_dash, parms):
+        #All the results has to be displayed in Tabular form i.e DataFrame
+        if parms['variant'] in ['multi_pred']:
+            #converting the values to it's actual name from parms
+            #--For Activity and Role
+            ModelPredictor.dashboard_multiprediction_acrl(results_dash, parms)
+            #--For Label
+            ModelPredictor.dashboard_multiprediction_label(results_dash, parms)
+
+            results_dash.drop(['ac_pred', 'ac_prob', 'rl_pred', 'rl_prob', 'label_pred', 'label_prob'], axis=1, inplace=True)
+
+            multipreddict = ModelPredictor.dashboard_multiprediction_columns(parms)
+
+            _lst = [['caseid', 'ac_expect'] + multipreddict["ac_pred"] + multipreddict["ac_prob"] +
+                    ['rl_expect'] + multipreddict["rl_pred"] + multipreddict["rl_prob"] +
+                    ['label_expect', 'label_pred1', 'label_pred2', 'label_prob1', 'label_prob2', 'tm_expect', 'tm_pred']]
+
+            results_dash = results_dash[_lst[0]]
+
+        else:
+            #converting the values to it's actual name from parms
+            #--For Activity, Role and Label
+            ModelPredictor.dashboard_maxprediction(results_dash, parms)
             results_dash.rename(
                 columns={'caseid': 'Case_ID', 'ac_expect': 'Expected', 'ac_pred': 'Predicted', 'ac_prob': 'Confidence',
                          'rl_expect': 'Expected', 'rl_pred': 'Predicted', 'rl_prob': 'Confidence',
@@ -454,7 +479,10 @@ class ModelPredictor():
         st.table(results_dash)
 
     @staticmethod
-    def dashboard_prediction_acrl(results_dash, parms):
+    def dashboard_multiprediction_acrl(results_dash, parms):
+
+        multipreddict = ModelPredictor.dashboard_multiprediction_columns(parms)
+
         # --------------------results_dash['ac_pred'] = results_dash.ac_pred.replace(parms['index_ac'])
         for ix in range(len(results_dash['ac_pred'])):
             for jx in range(len(results_dash['ac_pred'][ix])):
@@ -465,9 +493,9 @@ class ModelPredictor():
             # poping out the values from the list
             ln = int(len(results_dash['ac_pred'][ix]) / 2)
             del results_dash['ac_pred'][ix][:ln]
-            results_dash[['ac_pred1', 'ac_pred2']] = pd.DataFrame(results_dash.ac_pred.tolist(),
+            results_dash[multipreddict["ac_pred"]] = pd.DataFrame(results_dash.ac_pred.tolist(),
                                                                   index=results_dash.index)
-            results_dash[['ac_prob1', 'ac_prob2']] = pd.DataFrame(results_dash.ac_prob.tolist(),
+            results_dash[multipreddict["ac_prob"]] = pd.DataFrame(results_dash.ac_prob.tolist(),
                                                                   index=results_dash.index)
 
         # --------------------results_dash['rl_pred'] = results_dash.rl_pred.replace(parms['index_rl'])
@@ -480,15 +508,15 @@ class ModelPredictor():
             # popping out the values from the list
             ln = int(len(results_dash['rl_pred'][ix]) / 2)
             del results_dash['rl_pred'][ix][:ln]
-            results_dash[['rl_pred1', 'rl_pred2']] = pd.DataFrame(results_dash.rl_pred.tolist(),
+            results_dash[multipreddict["rl_pred"]] = pd.DataFrame(results_dash.rl_pred.tolist(),
                                                                   index=results_dash.index)
-            results_dash[['rl_prob1', 'rl_prob2']] = pd.DataFrame(results_dash.rl_prob.tolist(),
+            results_dash[multipreddict["rl_prob"]] = pd.DataFrame(results_dash.rl_prob.tolist(),
                                                                   index=results_dash.index)
 
         return results_dash
 
     @staticmethod
-    def dashboard_prediction_label(results_dash, parms):
+    def dashboard_multiprediction_label(results_dash, parms):
         for ix in range(len(results_dash['label_pred'])):
             for jx in range(len(results_dash['label_pred'][ix])):
                 # replacing the value from the parms dictionary
@@ -504,6 +532,88 @@ class ModelPredictor():
                                                                         index=results_dash.index)
         return results_dash
 
+    @staticmethod
+    def dashboard_maxprediction(results_dash, parms):
+        results_dash['ac_pred'] = results_dash.ac_pred.replace(parms['index_ac'])
+        results_dash['rl_pred'] = results_dash.rl_pred.replace(parms['index_rl'])
+        results_dash['label_pred'] = results_dash.label_pred.replace(parms['index_label'])
+        results_dash['ac_prob'] = (results_dash['ac_prob'] * 100)
+        results_dash['rl_prob'] = (results_dash['rl_prob'] * 100)
+        results_dash['label_prob'] = (results_dash['label_prob'] * 100)
+
+    @staticmethod
+    @st.cache(persist=True)
+    def dashboard_multiprediction_columns(parms):
+        # Initialize list for multi pred
+        ac_pred_lst = []
+        ac_prob_lst = []
+        rl_pred_lst = []
+        rl_prob_lst = []
+        multipreddict = {}
+        for zx in range(parms['multiprednum']):
+            zx += 1
+            ac_pred_lst.append("ac_pred" + str(zx))
+            ac_prob_lst.append("ac_prob" + str(zx))
+            rl_pred_lst.append("rl_pred" + str(zx))
+            rl_prob_lst.append("rl_prob" + str(zx))
+        multipreddict["ac_pred"] = ac_pred_lst
+        multipreddict["ac_prob"] = ac_prob_lst
+        multipreddict["rl_pred"] = rl_pred_lst
+        multipreddict["rl_prob"] = rl_prob_lst
+        return multipreddict
+
+
+    @staticmethod
+    #@st.cache(persist=True, suppress_st_warning=True)
+    def dashboard_nextprediction_write(results_dash, parms):
+        st.text('Expected Behaviour')
+        results_dash_expected = results_dash[['ac_expect', 'rl_expect', 'label_expect', "tm_expect"]]
+        results_dash_expected.rename(
+            columns={'ac_expect': 'Activity', 'rl_expect': 'Role', 'label_expect': 'Label', "tm_expect": 'Time'}, inplace=True)
+        st.table(results_dash_expected)
+        cols = st.beta_columns(parms['multiprednum'])
+        #st.table(results_dash)
+        if parms['variant'] in ['multi_pred']:
+            multipreddict = ModelPredictor.dashboard_multiprediction_columns(parms)
+            for kz in range(parms['multiprednum']):
+                #container = st.beta_container()
+                    with cols[kz]:
+                        ModelPredictor.dashboard_nextprediction_write_acrl(results_dash, multipreddict, kz)
+        else:
+            st.header("Max Probability Prediction")
+            st.subheader('Activity')
+            # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
+            st.write(results_dash[["ac_pred", "ac_prob"]].rename(columns={"ac_pred": 'Predicted', "ac_prob": 'Confidence'}, inplace=False))
+            st.subheader('Role')
+            # writes Role and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
+            st.write(results_dash[["rl_pred", "rl_prob"]].rename(columns={"rl_pred": 'Predicted', "rl_prob": 'Confidence'}, inplace=False))
+            st.subheader('Time')
+            st.write(results_dash[["tm_pred"]].rename(columns={"tm_pred": 'Predicted'}, inplace=False))
+            st.subheader('Label')
+            st.write(results_dash[["label_pred", "label_prob"]].rename(columns={"label_pred": 'Predicted', "label_prob": 'Confidence'}, inplace=False))
+
+    @staticmethod
+    def dashboard_nextprediction_write_acrl(results_dash, multipreddict, kz):
+        st.header("Prediction " + str(kz + 1))
+        st.subheader('Activity')
+        # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
+        st.write(results_dash[[multipreddict["ac_pred"][kz]] + [multipreddict["ac_prob"][kz]]].rename(
+            columns={multipreddict["ac_pred"][kz]: 'Predicted', multipreddict["ac_prob"][kz]: 'Confidence'},
+            inplace=False))
+        st.subheader('Role')
+        # writes Role and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
+        st.write(results_dash[[multipreddict["rl_pred"][kz]] + [multipreddict["rl_prob"][kz]]].rename(
+            columns={multipreddict["rl_pred"][kz]: 'Predicted', multipreddict["rl_prob"][kz]: 'Confidence'},
+            inplace=False))
+        st.subheader('Time')
+        st.write(results_dash[["tm_pred"]].rename(columns={"tm_pred": 'Predicted'}, inplace=False))
+        st.subheader('Label')
+        if kz <= 1:
+            st.write(results_dash[["label_pred" + str(kz + 1)] + ["label_prob" + str(kz + 1)]].rename(
+                columns={"label_pred" + str(kz + 1): 'Predicted', "label_prob" + str(kz + 1): 'Confidence'},
+                inplace=False))
+        elif kz > 1:
+            st.write("None")
 
 class EvaluateTask():
 
