@@ -145,7 +145,7 @@ class FeaturesMannager():
         return log, scale_args
 
     # =========================================================================
-    # Scale features
+    # Scale features to create dur_norm
     # =========================================================================
     @staticmethod
     def scale_feature(log, feature, method, replace=False):

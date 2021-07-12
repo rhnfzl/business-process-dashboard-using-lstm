@@ -25,8 +25,36 @@ config.intra_op_parallelism_threads = 4
 session = InteractiveSession(config=config)
 #-----
 
+st.set_page_config(layout="wide", initial_sidebar_state="auto", page_title='NxEventPred', page_icon="🎯")
 
-st.set_page_config(layout="wide")
+#Page Customization
+max_width_str = f"max-width: 1500px;"
+st.markdown(
+	f"""
+		<style>
+			.reportview-container .main .block-container {{{max_width_str}}}
+		</style>    
+	""",
+	unsafe_allow_html=True
+)
+
+#Condense the layout
+padding = 1
+st.markdown(f""" <style>
+    .reportview-container .main .block-container{{
+        padding-top: {padding}rem;
+        padding-right: {padding}rem;
+        padding-left: {padding}rem;
+        padding-bottom: {padding}rem;
+    }} </style> """, unsafe_allow_html=True)
+
+# #Hide the menu button
+# st.markdown(""" <style>
+# #MainMenu {visibility: hidden;}
+# footer {visibility: hidden;}
+# </style> """, unsafe_allow_html=True)
+
+
 def catch_parameter(opt):
     """Change the captured parameters names"""
     switch = {'-h': 'help', '-o': 'one_timestamp', '-a': 'activity',
@@ -45,8 +73,8 @@ def catch_parameter(opt):
 def main(argv, filter_parms=None, filter_parameter=None):
 
     #Dashboard Title
-    st.title("Next Event Activity Prediction Dashboard") #Adding title bar
-    st.sidebar.title("App Control Menu")  #Adding the header to the sidebar as well as the sidebar
+    st.title("⏭️Next Event Activity Prediction Dashboard") #Adding title bar
+    st.sidebar.title("🎛️ App Control Menu")  #Adding the header to the sidebar as well as the sidebar
     st.markdown("This dashboard is used to *predict* and *recommend* next event for the provided eventlog")
 
     parameters = dict()
@@ -163,7 +191,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
 
     def next_columns(filter_log, display_columns):
         # Dashboard selection of Case ID
-        filter_caseid = st.selectbox("Select Case ID", filter_log["caseid"].unique())
+        filter_caseid = st.selectbox("🆔 Select Case ID", filter_log["caseid"].unique())
         filter_caseid_attr_df = filter_log.loc[filter_log["caseid"].isin([filter_caseid])]
         filter_attr_display = filter_caseid_attr_df[display_columns]
         return filter_attr_display, filter_caseid, filter_caseid_attr_df
@@ -200,7 +228,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
                     nxt_button_idx = int(saved_result)
                     # st.write("Here is your result", saved_result)
                 else:
-                    st.write("No result to display, compute a value first.")
+                    #st.write("No result to display, compute a value first.")
                     nxt_button_idx = 0
 
                 next_option = st.sidebar.selectbox("Type of Single Event Processing", ('Prediction of Next Event', 'Prediction of rest over Events'), key='next_dropdown_opt')
@@ -218,7 +246,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
                 parameters['nextcaseid'] = filter_caseid
 
                 print("Display Attributes :", filter_attr_display.iloc[[2]])
-                st.text('State of the Process')
+                st.subheader('🔦 State of the Process')
                 display_slot1 = st.empty()
 
                 parameters['multiprednum'] = num_predictions(filter_caseid_attr_df)
@@ -319,6 +347,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
                     print(parameters['folder'])
                     print(parameters['model_file'])
                     start = time.time()
+
                     with st.spinner(text='In progress'):
                         predictor = pr.ModelPredictor(parameters)
                     end = time.time()

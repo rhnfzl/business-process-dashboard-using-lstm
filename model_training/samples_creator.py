@@ -22,6 +22,7 @@ class SequencesCreator():
         self.rl_index = rl_index
         self.label_index = label_index
         self._vectorizers = dict()
+        #defined in model_spec.ini
         self._vec_dispatcher = {'basic': self._vectorize_seq,
                                 'inter': self._vectorize_seq_inter,
                                 'gan': self.gan_simple}
@@ -337,5 +338,5 @@ class SequencesCreator():
                 temp_dict = {**{x: serie}, **temp_dict}
             temp_dict = {**{'caseid': key}, **temp_dict}
             temp_data.append(temp_dict)
-        print("Verify Temp Data :", temp_data[0])
+        #print("Verify Temp Data :", temp_data[0])
         return temp_data

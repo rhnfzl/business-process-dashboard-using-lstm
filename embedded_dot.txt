@@ -122,6 +122,8 @@ def generate_batch(pairs, ac_index, rl_index, label_index, n_positive=50,
 
 
             # Check to make sure this is not a positive example
+            #print("Random set:", random_ac, random_rl, random_label)
+            #print("Pair set:", pairs_set)
             if (random_ac, random_rl, random_label) not in pairs_set:
 
                 # Add to batch and increment index,  0 due classification task
@@ -164,6 +166,22 @@ def ac_rl_embedding_model(ac_index, rl_index, label_index, embedding_size):
           "Embedding Shape :", role_embedding.shape)
     print("Label Index : ", len(label_index), "& : ", label_index, "Input :", label, "Embedding :", label_embedding,
           "Embedding Shape :", label_embedding.shape)
+    # Merge the layers with a dot product
+    # along the second axis (shape will be (None, 1, 1))
+    # axes : Integer or list of integers, axis or axes along which to take the dot product.
+
+    #activity_embedding_merged = Multiply(name='mul_product_ac_label')([activity_embedding, label_embedding])
+    #activity_embedding_cat = Concatenate(name='mul_product_ac_label')([activity_embedding, label_embedding])
+
+    # print("Merge 1 Embedding :", activity_embedding_cat,
+    #       "Embedding Shape :", activity_embedding_cat.shape)
+
+    #role_embedding_merged = Multiply(name='mul_product_rl_label')([role_embedding, label_embedding])
+    #role_embedding_cat = Concatenate(name='mul_product_rl_label')([role_embedding, label_embedding])
+
+    # print("Merge 1 Embedding :", role_embedding_cat,
+    #       "Embedding Shape :", role_embedding_cat.shape)
+
 
     merged = Dot(name='dot_product',
                  normalize=True, axes=2)([activity_embedding, role_embedding])
@@ -172,6 +190,17 @@ def ac_rl_embedding_model(ac_index, rl_index, label_index, embedding_size):
     #the dot product of two vectors, a and b represents the projection of a to b and the resulting scalar is the length of that projection
     merged = Dot(name='dot_product_label',
                  normalize=True, axes=1)([merged, label_embedding])
+
+    # merged = Multiply(name='dot_product_label')([merged, label_embedding])
+
+    print("Merge 3 Embedding :", merged,
+          "Embedding Shape :", merged.shape)
+
+    # merged = Concatenate(name='dot_concatenate_label',
+    #                         axis=1)([merged, label_embedding])
+
+    # Reshape to be a single number (shape will be (None, 1))
+    #merged = Reshape(target_shape=[1])(merged)
 
     # Loss function is mean squared error
     model = Model(inputs=[activity, role, label], outputs=merged)

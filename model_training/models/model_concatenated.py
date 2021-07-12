@@ -34,6 +34,7 @@ def _training_model(vec, ac_weights, rl_weights, label_weights, output_folder, a
     print("***ac_input Inputs vec*** :", vec['prefixes']['activities'])
     print("***rl_input Inputs vec*** :",vec['prefixes']['roles'])
     print("***label_input Inputs vec*** :", vec['prefixes']['label'])
+    print("***time_input Inputs vec*** :", vec['prefixes']['times'], "&", vec['prefixes']['times'].shape[1], "&", vec['prefixes']['times'].shape[2])
 
     ac_input = Input(shape=(vec['prefixes']['activities'].shape[1], ), name='ac_input')
     rl_input = Input(shape=(vec['prefixes']['roles'].shape[1], ), name='rl_input')
@@ -76,7 +77,7 @@ def _training_model(vec, ac_weights, rl_weights, label_weights, output_folder, a
                              label_weights.shape[1],
                              weights=[label_weights],
                              input_length=vec['prefixes']['label'].shape[1],
-                             trainable=True, name='label_embedding')(label_input)
+                             trainable=False, name='label_embedding')(label_input)
 
     # label_embedding = Embedding(name='label_embedding',
     #                            input_dim=len(label_index),

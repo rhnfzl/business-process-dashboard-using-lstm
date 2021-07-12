@@ -81,7 +81,7 @@ def main(argv):
                 parameters['lstm_act'] = 'tanh' # optimization function Keras
                 parameters['dense_act'] = 'sigmoid'  # optimization function Keras, used at output layer for time opt: linear or sigmoid
                 parameters['optim'] = 'Nadam'  # optimization function Keras
-                parameters['norm_method'] = 'lognorm'  # max, lognorm
+                parameters['norm_method'] = 'lognorm' # max, lognorm
                 # Model types --> shared_cat, specialized, concatenated, 
                 #                 shared_cat_gru, specialized_gru, concatenated_gru
                 parameters['model_type'] = 'concatenated'

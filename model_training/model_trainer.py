@@ -33,7 +33,6 @@ class ModelTrainer():
     def __init__(self, params):
         """constructor"""
         self.log = self.load_log(params)
-        print("Columns of log_df :", self.log.columns)
         self.output = sup.folder_id()
         self.output_folder = os.path.join('output_files', self.output)
         # Split validation partitions
@@ -53,8 +52,8 @@ class ModelTrainer():
         # Embedded dimensions
         self.ac_weights = list()
         self.rl_weights = list()
-        #self.label_weights = list()
-        self.label_weights = np.array([[-1.], [1.]]) #-1: 'deviant', 1: 'regular'
+        self.label_weights = list() #--Change for label code change
+        #self.label_weights = np.array([[-1.], [1.]]) #-1: 'deviant', 1: 'regular' #--Change for label code change
         # Model definition
         self.model_def = dict()
         self.read_model_definition(params['model_type'])
@@ -64,9 +63,10 @@ class ModelTrainer():
         # Train model
         m_loader = mload.ModelLoader(params)
         #print(self.examples)
-        print("Activity Weight :", self.ac_weights)
-        print("Role Weight : ", self.rl_weights)
-        print("Label Weight : ", self.label_weights)
+        # print("Activity Weight :", self.ac_weights)
+        # print("Role Weight : ", self.rl_weights)
+        # print("Label Weight : ", self.label_weights)
+
         m_loader.register_model(params['model_type'],
                                 self.model_def['trainer'])
         m_loader.train(params['model_type'],
@@ -75,6 +75,7 @@ class ModelTrainer():
                         self.rl_weights,
                         self.label_weights,
                         self.output_folder)
+
         list_of_files = glob.glob(os.path.join(self.output_folder, '*.h5'))
         latest_file = max(list_of_files, key=os.path.getctime)
         self.model = os.path.basename(latest_file)
@@ -82,29 +83,21 @@ class ModelTrainer():
 
     def preprocess(self, params):
         # Features treatement
-        print("Log Columns : ", self.log.columns)
+        # Selects the features from the log, filters ou the required features
+        # Also calculates the addditional columns like dur, acc_cycle, daytime, dur_norm
         inp = feat.FeaturesMannager(params)
         # Register scaler
         inp.register_scaler(params['model_type'], self.model_def['scaler'])
-        #print("self.log_train columns :", self.log_train.columns)
-        #print("self.model_def['additional_columns'] :", self.model_def)
         # Scale features
-        #print("self.log columns BEFORE :", self.log.columns)
-        #print("self.log  BEFORE :", self.log)
         self.log, params['scale_args'] = inp.calculate(
             self.log, self.model_def['additional_columns'])
-        #print("Log Columns After: ", self.log.columns)
-        #print("self.log columns AFTER :", self.log.columns)
-        #print("self.log AFTER :", self.log)
-        # indexes creation
+        # indexes creation for catagorical attributes
         self.indexing()
-        #print("activity, roles, label :", self.ac_index, self.rl_index, self.label_index)
-        # split validation
 
         self.split_timeline(0.3, params['one_timestamp'])
 
-        # print("Columns of log_train :", self.log_train.columns)
-        # print("Columns of log_test :", self.log_test.columns)
+        # Creates a sequence in the form of dictionary where the structure looks like
+        # dict{'prefixes' : {'activities': [[]], 'roles' : [[]], 'label' : [[]], 'times' : [[]]}, 'next_evt' : {'activities' : [], 'roles' : [], 'label' : [], 'times' : []}
         # create examples
         seq_creator = exc.SequencesCreator(self.log_train,
                                            params['one_timestamp'],
@@ -116,11 +109,11 @@ class ModelTrainer():
                                         self.model_def['vectorizer'])
         self.examples = seq_creator.vectorize(
             params['model_type'], params, self.model_def['additional_columns'])
-        print(pd.DataFrame.from_dict(self.examples))
+
         # Load embedded matrix
         ac_emb_name = 'ac_' + params['file_name'].split('.')[0]+'.emb'
         rl_emb_name = 'rl_' + params['file_name'].split('.')[0]+'.emb'
-        label_emb_name = 'label_' + params['file_name'].split('.')[0]+'.emb'
+        label_emb_name = 'label_' + params['file_name'].split('.')[0]+'.emb' #--Change for label code change
         print("Parmas : ", params)
         print("Log :", self.log)
         print("Activity : ", self.ac_index, "&", self.index_ac)
@@ -134,18 +127,18 @@ class ModelTrainer():
             self.rl_weights = self.load_embedded(self.index_rl, rl_emb_name)
             #self.label_weights = np.fromiter(self.index_label.keys(), dtype=float)
             #self.label_weights = np.array(list(self.label_index.items()))
-            #self.label_weights = self.load_embedded(self.index_label, label_emb_name)
+            self.label_weights = self.load_embedded(self.index_label, label_emb_name) #--Change for label code change
         else:
             em.training_model(params,
                               self.log,
                               self.ac_index, self.index_ac,
-                              self.rl_index, self.index_rl)
-                              #self.label_index, self.index_label)
+                              self.rl_index, self.index_rl,
+                              self.label_index, self.index_label) #--Change for label code change
             self.ac_weights = self.load_embedded(self.index_ac, ac_emb_name)
             self.rl_weights = self.load_embedded(self.index_rl, rl_emb_name)
             #self.label_weights = np.fromiter(self.index_label.keys(), dtype=float)
             #self.label_weights = np.array(list(self.label_index.items()))
-            #self.label_weights = self.load_embedded(self.index_label, label_emb_name)
+            self.label_weights = self.load_embedded(self.index_label, label_emb_name) #--Change for label code change
         # Export parameters
         self.export_parms(params)
 
@@ -176,7 +169,7 @@ class ModelTrainer():
         self.index_rl = {v: k for k, v in self.rl_index.items()}
         # Label index creation
         self.label_index = self.create_index(self.log, 'label')
-        #self.label_index['start'] = 0
+        #self.label_index['start'] = 0 /-- Removed because the start and end was being predicted in multi predict
         #self.label_index['end'] = len(self.label_index)
         self.index_label = {v: k for k, v in self.label_index.items()}
         # Add index to the event log
@@ -206,30 +199,6 @@ class ModelTrainer():
             else:
                 alias[subsec_set[i]] = i + 1 #In the case of Start and End to be included
         return alias
-
-    #This function is not used anywhere
-    def split_train_test(self, percentage: float, one_timestamp: bool) -> None:
-        """
-        Split an event log dataframe to peform split-validation
-
-        Parameters
-        ----------
-        percentage : float, validation percentage.
-        one_timestamp : bool, Support only one timestamp.
-        """
-        cases = self.log.caseid.unique()
-        num_test_cases = int(np.round(len(cases)*percentage))
-        test_cases = cases[:num_test_cases]
-        train_cases = cases[num_test_cases:]
-        df_test = self.log[self.log.caseid.isin(test_cases)]
-        df_train = self.log[self.log.caseid.isin(train_cases)]
-        key = 'end_timestamp' if one_timestamp else 'start_timestamp'
-        self.log_test = (df_test
-                         .sort_values(key, ascending=True)
-                         .reset_index(drop=True))
-        self.log_train = (df_train
-                          .sort_values(key, ascending=True)
-                          .reset_index(drop=True))
 
     def split_timeline(self, percentage: float, one_timestamp: bool) -> None:
         """
