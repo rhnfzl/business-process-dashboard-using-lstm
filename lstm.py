@@ -10,6 +10,7 @@ os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices'
 
 import sys
 import getopt
+import time
 
 from model_prediction import model_predictor as pr
 from model_training import model_trainer as tr
@@ -48,7 +49,7 @@ def main(argv):
     parameters['one_timestamp'] = True # Only one timestamp for each activity i.e the start and end time will be same
     # Similarity btw the resources profile execution (Song e.t. all)
     parameters['rp_sim'] = 0.85
-    parameters['batch_size'] = 128 # Usually 16/32/64/128/256
+    parameters['batch_size'] = 64 # Usually 16/32/64/128/256, 0 for Automatic
     parameters['epochs'] = 200 #v1 200, for embedded training it's 100.
     # Parameters setting manual fixed or catched by console
     '''
@@ -137,7 +138,10 @@ def main(argv):
         print(parameters)
         print(parameters['folder'])
         print(parameters['model_file'])
+        start = time.time()
         predictor = pr.ModelPredictor(parameters)
+        end = time.time()
+        print("Elapsed Time : ", end - start)
         print(predictor.acc)
 if __name__ == "__main__":
     main(sys.argv[1:])

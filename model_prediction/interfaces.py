@@ -8,9 +8,12 @@ from model_prediction import next_event_samples_creator as nesc
 from model_prediction import suffix_samples_creator as ssc
 
 
-from model_prediction import next_event_predictor as nep
+from model_prediction import next_event_predictor_batch_mode as nep
 from model_prediction import suffix_predictor as sp
 from model_prediction import event_log_predictor as elp
+from model_prediction import next_event_predictor_single_mode_evaluation as nepsmeva #Evalaution
+from model_prediction import next_event_predictor_single_mode_execution as nepsmexe #Executuon
+from model_prediction import next_event_predictor_single_mode_whatif as nepsmwi #What-if
 
 
 class SamplesCreator:
@@ -28,15 +31,21 @@ class SamplesCreator:
 
 
 class PredictionTasksExecutioner:
-    def predict(self, predictor, activity):
-        print("predictor : ", predictor)
-        print("activity :", activity)
-        executioner = self._get_predictor(activity)
-        predictor.predict(executioner)
+    def predict(self, predictor, activity, mode, next_mode):
+        executioner = self._get_predictor(activity, mode, next_mode)
+        predictor.predict(executioner, mode)
 
-    def _get_predictor(self, activity):
+    def _get_predictor(self, activity, mode, next_mode):
         if activity == 'predict_next':
-            return nep.NextEventPredictor()
+            if mode == 'next':
+                if next_mode == 'history_with_next':
+                    return nepsmexe.NextEventPredictor()
+                elif next_mode == 'next_action':
+                    return nepsmeva.NextEventPredictor()
+                elif next_mode == 'what_if':
+                    return nepsmwi.NextEventPredictor()
+            elif mode == 'batch':
+                return nep.NextEventPredictor()
         elif activity == 'pred_sfx':
             return sp.SuffixPredictor()
         elif activity == 'pred_log':

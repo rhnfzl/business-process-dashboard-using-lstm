@@ -5,9 +5,11 @@ Created on Thu Feb 28 10:15:12 2019
 @author: Manuel Camargo
 """
 import os
+import pandas as pd
+import numpy as np
 
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, Embedding, Concatenate
+from keras.layers import Input, Embedding, Dot, Reshape, Multiply, Concatenate
 from tensorflow.keras.layers import Dense, LSTM, BatchNormalization
 from tensorflow.keras.optimizers import Nadam, Adam, SGD, Adagrad
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
@@ -15,7 +17,6 @@ from tensorflow.python.keras.layers import Reshape
 
 from support_modules.callbacks import time_callback as tc
 from support_modules.callbacks import clean_models_callback as cm
-
 
 def _training_model(vec, ac_weights, rl_weights, label_weights, output_folder, args):
     """Example function with types documented in the docstring.
@@ -26,40 +27,50 @@ def _training_model(vec, ac_weights, rl_weights, label_weights, output_folder, a
         bool: The return value. True for success, False otherwise.
     """
 
-    print('Build model - concatenated')
-    print(args)
+    # print('Build model - concatenated')
+    # print("args in Concat :", args)
+    # print("Vec in Concat :", vec)
 # =============================================================================
 #     Input layer
 # =============================================================================
-    print("***ac_input Inputs vec*** :", vec['prefixes']['activities'])
-    print("***rl_input Inputs vec*** :",vec['prefixes']['roles'])
-    print("***label_input Inputs vec*** :", vec['prefixes']['label'])
-    print("***time_input Inputs vec*** :", vec['prefixes']['times'], "&", vec['prefixes']['times'].shape[1], "&", vec['prefixes']['times'].shape[2])
+#     print("***ac_input Inputs vec*** :", vec['prefixes']['activities'])
+#     print("***rl_input Inputs vec*** :",vec['prefixes']['roles'])
+#     print("***label_input Inputs vec*** :", vec['prefixes']['label'])
+#     print("***time_input Inputs vec*** :", vec['prefixes']['times'], "&", vec['prefixes']['times'].shape[1], "&", vec['prefixes']['times'].shape[2])
+
+    # print("---", "prefixes", "---")
+    # print(pd.DataFrame.from_dict(vec['prefixes']).head(5))
+    # print("---", "next_evt", "---")
+    # print(pd.DataFrame.from_dict(vec['next_evt']).head(5))
 
     ac_input = Input(shape=(vec['prefixes']['activities'].shape[1], ), name='ac_input')
     rl_input = Input(shape=(vec['prefixes']['roles'].shape[1], ), name='rl_input')
     label_input = Input(shape=(vec['prefixes']['label'].shape[1], ), name='label_input')
     t_input = Input(shape=(vec['prefixes']['times'].shape[1],
                            vec['prefixes']['times'].shape[2]), name='t_input')
-    print("***ac_input Inputs*** :", ac_input)
-    print("***rl_input Inputs*** :", rl_input)
-    print("***label_input Inputs*** :", label_input)
-    print("***t_input Inputs*** :", t_input)
+    inter_input = Input(shape=(vec['prefixes']['inter_attr'].shape[1],
+                            vec['prefixes']['inter_attr'].shape[2]), name='inter_input')
+
+    # print("***ac_input Inputs*** :", ac_input)
+    # print("***rl_input Inputs*** :", rl_input)
+    # print("***label_input Inputs*** :", label_input)
+    # print("***t_input Inputs*** :", t_input)
 
 #=============================================================================
 #    Embedding layer for categorical attributes
 # =============================================================================
-    print("AC Weight Value", ac_weights)
-    print("AC Weight", ac_weights.shape[0],"&", ac_weights.shape[1])
-    print("RL Weight Value", rl_weights)
-    print("RL Weight", rl_weights.shape[0],"&", rl_weights.shape[1])
-    print("LB Weight Value", label_weights)
-    print("LB Weight", label_weights.shape[0],"&", label_weights.shape[1])
-    print("LB INPUT Length :", vec['prefixes']['label'].shape[1])
-    print("LB INPUT Length Values :", vec['prefixes']['label'])
-    print("LB Input :", label_input)
-    print("LB OUT Length Values :", vec['next_evt']['label'], type(vec['next_evt']['label']))
-    print("LB OUT Length sShape :", vec['next_evt']['label'].shape[1])
+#     print("AC Weight Value", ac_weights)
+#     print("AC Weight", ac_weights.shape[0],"&", ac_weights.shape[1])
+#     print("RL Weight Value", rl_weights)
+#     print("RL Weight", rl_weights.shape[0],"&", rl_weights.shape[1])
+#     print("LB Weight Value", label_weights)
+#     print("LB Weight", label_weights.shape[0],"&", label_weights.shape[1])
+#     print("LB INPUT Length :", vec['prefixes']['label'].shape[1])
+#     print("LB INPUT Length Values :", vec['prefixes']['label'])
+#     print("LB Input :", label_input)
+#     print("LB OUT Length Values :", vec['next_evt']['label'], type(vec['next_evt']['label']))
+#     print("LB OUT Length sShape :", vec['next_evt']['label'].shape[1])
+
     ac_embedding = Embedding(ac_weights.shape[0],
                              ac_weights.shape[1],
                              weights=[ac_weights],
@@ -71,7 +82,6 @@ def _training_model(vec, ac_weights, rl_weights, label_weights, output_folder, a
                              weights=[rl_weights],
                              input_length=vec['prefixes']['roles'].shape[1],
                              trainable=False, name='rl_embedding')(rl_input)
-
 
     label_embedding = Embedding(label_weights.shape[0],
                              label_weights.shape[1],
@@ -86,7 +96,12 @@ def _training_model(vec, ac_weights, rl_weights, label_weights, output_folder, a
 # =============================================================================
 #    Layer 1
 # =============================================================================
-    concatenate = Concatenate(name='concatenated', axis=2)([ac_embedding, rl_embedding, label_embedding, t_input])
+    concatenate = Concatenate(name='concatenated', axis=2)([ac_embedding, rl_embedding, label_embedding, t_input, inter_input])
+
+    # merged = Dot(name = 'dot_ac_rl', normalize = True, axes = 2)([ac_embedding, rl_embedding])
+    #
+    # concatenate = Concatenate(name = 'concatenated', axis = 2)([merged, label_embedding, t_input, inter_input])
+
 
     if args['lstm_act'] is not None:
         l1_c1 = LSTM(args['l_size'],
@@ -171,7 +186,7 @@ def _training_model(vec, ac_weights, rl_weights, label_weights, output_folder, a
         time_output = Dense(vec['next_evt']['times'].shape[1],
                             kernel_initializer='glorot_uniform',
                             name='time_output')(l2_3)
-    model = Model(inputs=[ac_input, rl_input, label_input, t_input],
+    model = Model(inputs=[ac_input, rl_input, label_input, t_input, inter_input],
                   outputs=[act_output, role_output, label_output, time_output])
 
     if args['optim'] == 'Nadam':
@@ -226,16 +241,17 @@ def _training_model(vec, ac_weights, rl_weights, label_weights, output_folder, a
     #print("Input Prefixes Times :", vec['prefixes']['times'])
     #print("Input Next Event Times :", vec['next_evt']['times'])
     model.fit({'ac_input': vec['prefixes']['activities'],
-               'rl_input': vec['prefixes']['roles'],
-               'label_input': vec['prefixes']['label'],
-               't_input': vec['prefixes']['times']},
-              {'act_output': vec['next_evt']['activities'],
-               'role_output': vec['next_evt']['roles'],
-               'label_output': vec['next_evt']['label'],
-               'time_output': vec['next_evt']['times']},
-              validation_split=0.2,
-              verbose=2,
-              callbacks=[early_stopping, model_checkpoint,
-                         lr_reducer, cb, clean_models],
-              batch_size=batch_size,
-              epochs=args['epochs'])
+                        'rl_input': vec['prefixes']['roles'],
+                       'label_input': vec['prefixes']['label'],
+                       't_input': vec['prefixes']['times'],
+                       'inter_input': vec['prefixes']['inter_attr']},
+                      {'act_output': vec['next_evt']['activities'],
+                       'role_output': vec['next_evt']['roles'],
+                       'label_output': vec['next_evt']['label'],
+                       'time_output': vec['next_evt']['times']},
+                      validation_split=0.2,
+                      verbose=2,
+                      callbacks=[early_stopping, model_checkpoint,
+                                 lr_reducer, cb, clean_models],
+                      batch_size=batch_size,
+                      epochs=args['epochs'])

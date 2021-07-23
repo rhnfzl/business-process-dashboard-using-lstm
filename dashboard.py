@@ -1,7 +1,6 @@
 import os
 os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices'
 import sys
-# import json
 import getopt
 import streamlit as st
 #import SessionState
@@ -10,8 +9,6 @@ import streamlit as st
 import time
 
 import pandas as pd
-import numpy as np
-# import configparser as cp
 
 from model_prediction import model_predictor as pr
 
@@ -73,9 +70,10 @@ def catch_parameter(opt):
 def main(argv, filter_parms=None, filter_parameter=None):
 
     #Dashboard Title
-    st.title("⏭️Next Event Activity Prediction Dashboard") #Adding title bar
+    st.title("⏭️Next Event Prediction Dashboard") #Adding title bar
     st.sidebar.title("🎛️ App Control Menu")  #Adding the header to the sidebar as well as the sidebar
-    st.markdown("This dashboard is used to *predict* and *recommend* next event for the provided eventlog")
+    #st.sidebar.markdown("""---""")
+    #st.markdown("This dashboard is used to *predict* and *recommend* next event for the provided eventlog")
 
     parameters = dict()
     column_names = {'Case ID': 'caseid',
@@ -102,8 +100,10 @@ def main(argv, filter_parms=None, filter_parameter=None):
             #--Hard Coded Value
             parameters['is_single_exec'] = True  # single or batch execution
             parameters['rep'] = 1
-
-            _folder_name  = st.sidebar.text_input('Folder Name')
+            with st.sidebar.beta_expander('Folder Name'):
+                st.info("Provide the folder for which the prediction has to be simulated")
+                _folder_name  = st.text_input('')
+            #st.sidebar.markdown("""---""")
             parameters['folder'] = _folder_name
 
             if parameters['folder'] != "":
@@ -117,8 +117,13 @@ def main(argv, filter_parms=None, filter_parameter=None):
                 parameters['model_file'] = _model_name[-1]
 
                 #--Selecting Mode
-                st.sidebar.subheader("Choose Mode of Prediction")
-                _mode_sel = st.sidebar.radio('Mode', ['Batch Processing', 'Single Event Processing'])
+                with st.sidebar.beta_expander('Type of Prediction Processing Mode'):
+                    st.info("Select **Batch Processing** for the prediction of eintire log file,"
+                            " **Single Processing** to simulate the prediction for each Case Id individually")
+                    #next_option = st.sidebar.radio('', ['Execution Mode', 'Evaluation Mode'])
+                    #st.sidebar.subheader("Choose Mode of Prediction")
+                    _mode_sel = st.radio('Processing', ['Batch Processing', 'Single Event Processing'])
+                #st.sidebar.markdown("""---""")
 
                 if _mode_sel == 'Batch Processing':
                     _mode_sel = 'batch'
@@ -197,6 +202,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
         return filter_attr_display, filter_caseid, filter_caseid_attr_df
 
     def num_predictions(_df):
+
         if _df['task'].nunique() > _df['role'].nunique():
             _dfmax = _df['role'].nunique()
         elif _df['role'].nunique() > _df['task'].nunique():
@@ -204,19 +210,21 @@ def main(argv, filter_parms=None, filter_parameter=None):
         else:
             _dfmax = _df['task'].nunique()
 
-        slider = st.sidebar.slider(
-            label='Variant : Max Probability = 1 ; Multiple Prediction > 1 ', min_value=1,
-            max_value=_dfmax, key='my_number_prediction_slider')
+        with st.sidebar.beta_expander('Variant'):
+            st.info("Select the slider value **equal to 1** for **Max Probability** "
+                    "otherwise choose the number **greater than 1** for "
+                    "**Multiple Predictions** sorted in decreasing order based on probability of it's ocurrance")
+
+            # if 'my_number_prediction_slider' not in st.session_state:
+            #     st.session_state['my_number_prediction_slider'] = 0
+            #
+            # print("What is Happening :", st.session_state['my_number_prediction_slider'])
+
+            slider = st.slider(
+                label='', min_value=1,
+                max_value=_dfmax, key='my_number_prediction_slider')
+
         return slider
-
-    # st.title("Let's create a table!")
-    # for i in range(1, 10):
-    #     cols = st.beta_columns(4)
-    #     cols[0].write(f'{i}')
-    #     cols[1].write(f'{i * i}')
-    #     cols[2].write(f'{i * i * i}')
-    #     cols[3].write('x' * i)
-
 
     if parameters['folder']  != "":
         if parameters['activity'] in ['predict_next', 'pred_sfx', 'pred_log']:
@@ -231,23 +239,32 @@ def main(argv, filter_parms=None, filter_parameter=None):
                     #st.write("No result to display, compute a value first.")
                     nxt_button_idx = 0
 
-                next_option = st.sidebar.selectbox("Type of Single Event Processing", ('Prediction of Next Event', 'Prediction of rest over Events'), key='next_dropdown_opt')
+                #next_option = st.sidebar.selectbox("Type of Single Event Processing", ('Prediction of Next Event', 'Prediction of Next Events with Suffix'), key='next_dropdown_opt')
+                with st.sidebar.beta_expander('Type of Single Event Processing'):
+                    st.info("Select **Execution Mode** for simulating the dashboard for the Users, **Evaluation Mode** to judge the trustworthiness of the ML model prediction")
+                    next_option = st.radio('', ['Execution Mode', 'What-If Mode', 'Evaluation Mode'])
+                #st.sidebar.markdown("""---""")
 
-                if next_option == 'Prediction of Next Event':
+                if next_option == 'Execution Mode':
                     next_option = 'history_with_next'
-                elif next_option == 'Prediction of rest over Events':
+                elif next_option == 'What-If Mode':
+                    next_option = 'what_if'
+                elif next_option == 'Evaluation Mode':
                     next_option = 'next_action'
                 # Read the Test Log
                 filter_log, filter_log_columns = read_next_testlog()
                 essential_columns = ['task', 'role', 'end_timestamp']
-                extra_columns = ['caseid', 'label', 'dur', 'acc_cycle', 'daytime', 'dur_norm', 'ac_index', 'rl_index', 'label_index', 'wait_norm'] #Add the Columns here which you don't want to display
+                extra_columns = ['caseid', 'label', 'dur', 'acc_cycle', 'daytime',
+                                 'dur_norm', 'ac_index', 'rl_index', 'label_index',
+                                 'wait_norm', 'user', 'open_cases_norm', 'daytime_norm',
+                                 'acc_cycle'] #Add the Columns here which you don't want to display
                 display_columns = list(set(filter_log_columns) - set(essential_columns+extra_columns ))
                 filter_attr_display, filter_caseid, filter_caseid_attr_df = next_columns(filter_log, display_columns)
                 parameters['nextcaseid'] = filter_caseid
 
                 print("Display Attributes :", filter_attr_display.iloc[[2]])
                 st.subheader('🔦 State of the Process')
-                display_slot1 = st.empty()
+                state_of_theprocess = st.empty()
 
                 parameters['multiprednum'] = num_predictions(filter_caseid_attr_df)
 
@@ -260,7 +277,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
                 parameters['next_mode'] = next_option
 
                 filter_caseid_attr_df = filter_caseid_attr_df[essential_columns].values.tolist()
-
+                # --- Evaluation Mode
                 if next_option == 'next_action':
                     filter_caseid_attr_list = st.select_slider("Choose [Activity, User, Time]", options=filter_caseid_attr_df, key="caseid_attr_slider")
 
@@ -276,14 +293,15 @@ def main(argv, filter_parms=None, filter_parameter=None):
                         filter_caseid_attr_list.insert(filter_key_pos[i] + _acc_val, filter_key_attr[i])
                         _acc_val += 1
                     filter_caseid_attr_dict = _list2dictConvert(filter_caseid_attr_list)
-                    print("Value of Slider :", filter_caseid_attr_dict)
+                    #print("Value of Slider :", filter_caseid_attr_dict)
 
                     #Passing the respective paramter to Parameters
                     parameters['nextcaseid_attr'] = filter_caseid_attr_dict
                     if (_idx+1) < len(filter_caseid_attr_df): #Index starts from 0 so added 1 to equate with length value
                         _filterdf = filter_attr_display.iloc[[_idx]]
                         _filterdf.index = [""] * len(_filterdf)
-                        display_slot1.dataframe(_filterdf)
+                        state_of_theprocess.dataframe(_filterdf)
+                        st.sidebar.markdown("""---""")
                         if st.sidebar.button("Process", key='next_process'):
                             with st.spinner(text='In progress'):
                                 predictor = pr.ModelPredictor(parameters)
@@ -291,14 +309,16 @@ def main(argv, filter_parms=None, filter_parameter=None):
                             st.success('Done')
                     else:
                         st.error('Reselect the Suffix to a lower Value')
+                #--- Execution Mode
                 elif next_option == 'history_with_next':
                     st.experimental_set_query_params(my_saved_caseid=filter_caseid)
 
-                    next_button = st.sidebar.button("Next Action", key='next_process_action')
+                    st.sidebar.markdown("""---""")
+                    next_button = st.sidebar.button("Process", key='next_process_action')
 
                     _filterdf = filter_attr_display.iloc[[nxt_button_idx]]
                     _filterdf.index = [""] * len(_filterdf)
-                    display_slot1.dataframe(_filterdf)
+                    state_of_theprocess.dataframe(_filterdf)
                     if (next_button) and ((nxt_button_idx) < len(filter_caseid_attr_df)):
 
                         nxt_button_idx += 1
@@ -328,12 +348,75 @@ def main(argv, filter_parms=None, filter_parameter=None):
                     elif ((nxt_button_idx) >= len(filter_caseid_attr_df)):
                         st.experimental_set_query_params(my_saved_result=0)  # reset value
                         st.error('End of Current Case Id, Select the Next Case ID')
+                #--- What-If Mode
+                elif next_option == 'what_if':
+                    form = st.form("my_whatif_form")
+                    form.subheader("What-IF Prediction Choose Box")
+                    # # --------------------------------------------------------------------------
+                    # Creating prediction selection radio button
+                    choose_pred_lst = ['SME']
+                    for _dx in range(parameters['multiprednum']):
+                        _dx += 1
+                        choose_pred_lst.append("Prediction " + str(_dx))
+                    st.write('<style>div.row-widget.stRadio > div{flex-direction:row;}</style>', unsafe_allow_html=True)
+                    # # --------------------------------------------------------------------------
+                    # with st.beta_expander('Choice of Prediction'):
+                    form.info("Choose the Prediction according to which System generates the next prediction, "
+                            "**SME** (Subject Matter Expert): decision solely based on users instinct and knowledge of business process about the process, "
+                            "**Prediction n** : decision solely based on the respective ranked confidence of the process")
+                    parameters['predchoice'] = form.radio('', choose_pred_lst, key="radio_select_whatif")
+                    # # --------------------------------------------------------------------------
+                    st.experimental_set_query_params(my_saved_caseid=filter_caseid)
+                    st.sidebar.markdown("""---""")
+                    next_button = form.form_submit_button("Process")
+
+                    _filterdf = filter_attr_display.iloc[[nxt_button_idx]]
+                    _filterdf.index = [""] * len(_filterdf)
+                    state_of_theprocess.dataframe(_filterdf)
+                    print("st.sessionstate in dashboard :", st.session_state)
+                    print("Prediction Choice : ", parameters['predchoice'])
+                    if (next_button) and ((nxt_button_idx) < len(filter_caseid_attr_df)):
+
+                        nxt_button_idx += 1
+
+                        st.experimental_set_query_params(my_saved_result=nxt_button_idx,
+                                                         my_saved_caseid=filter_caseid)  # Save value
+
+                        filter_caseid_attr_list = [nxt_button_idx - 1]
+
+                        filter_key_attr = ["filter_index"]
+                        filter_key_pos = [0]
+                        assert (len(filter_key_attr) == len(filter_key_pos))
+                        _acc_val = 0
+                        for i in range(len(filter_key_attr)):
+                            filter_caseid_attr_list.insert(filter_key_pos[i] + _acc_val, filter_key_attr[i])
+                            _acc_val += 1
+                        filter_caseid_attr_dict = _list2dictConvert(filter_caseid_attr_list)
+
+                        parameters['nextcaseid_attr'] = filter_caseid_attr_dict
+                        with st.spinner(text='In progress'):
+                            predictor = pr.ModelPredictor(parameters)
+                            print("predictor : ", predictor.acc)
+                        st.success('Done')
+                        if (nxt_button_idx) >= len(filter_caseid_attr_df):
+                            # next_button.enabled = False
+                            st.experimental_set_query_params(my_saved_result=0)
+                            st.error('End of Current Case Id, Select the Next Case ID')
+                    elif ((nxt_button_idx) >= len(filter_caseid_attr_df)):
+                        st.experimental_set_query_params(my_saved_result=0)  # reset value
+                        st.error('End of Current Case Id, Select the Next Case ID')
 
             elif parameters['mode'] in ['batch']:
                 parameters['multiprednum'] = 3  # Change here for batch mode Prediction
-                variant_opt = st.sidebar.selectbox("Variant", (
-                'Max Probability', 'Multiple Prediction', 'Random Prediction'),
-                                                   key='variant_opt')
+                with st.sidebar.beta_expander('Variant'):
+                    st.info("Select **Max Probability** for the most probable events,"
+                            " **Multiple Prediction** for the prediction of the multiple events, "
+                            "and **Random Prediction** for prediction of random recommendation of events")
+                    variant_opt = st.sidebar.selectbox("", (
+                    'Max Probability', 'Multiple Prediction', 'Random Prediction'),
+                                                       key='variant_opt')
+                #st.sidebar.markdown("""---""")
+
                 if variant_opt == 'Max Probability':
                     variant_opt = 'arg_max'
                 elif variant_opt == 'Multiple Prediction':
@@ -342,6 +425,8 @@ def main(argv, filter_parms=None, filter_parameter=None):
                     variant_opt = 'random_choice'
                 parameters['variant'] = variant_opt  # random_choice, arg_max for variants and repetitions to be tested
                 parameters['next_mode'] = ''
+                parameters['predchoice'] = ''
+                st.sidebar.markdown("""---""")
                 if st.sidebar.button("Process", key='batch_process'):
                     print(parameters)
                     print(parameters['folder'])

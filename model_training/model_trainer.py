@@ -105,6 +105,7 @@ class ModelTrainer():
                                            self.rl_index,
                                            self.label_index)
 
+        #model type : Contenate, Shared, Basic | Vectorizer : Basic Inter
         seq_creator.register_vectorizer(params['model_type'],
                                         self.model_def['vectorizer'])
         self.examples = seq_creator.vectorize(
@@ -114,11 +115,11 @@ class ModelTrainer():
         ac_emb_name = 'ac_' + params['file_name'].split('.')[0]+'.emb'
         rl_emb_name = 'rl_' + params['file_name'].split('.')[0]+'.emb'
         label_emb_name = 'label_' + params['file_name'].split('.')[0]+'.emb' #--Change for label code change
-        print("Parmas : ", params)
-        print("Log :", self.log)
-        print("Activity : ", self.ac_index, "&", self.index_ac)
-        print("Roles : ", self.rl_index,  "&", self.index_rl)
-        print("Label: ", self.label_index, "&",self.index_label)
+
+        print("Parmameter Values : ", params)
+        print("Activity Indexed : ", self.ac_index)
+        print("Roles Indexed : ", self.rl_index)
+        print("Label Indexed : ", self.label_index)
 
         if os.path.exists(os.path.join('input_files',
                                        'embedded_matix',
@@ -210,7 +211,7 @@ class ModelTrainer():
         one_timestamp : bool, Support only one timestamp.
         """
         log = self.log.to_dict('records')
-        print("Log : ", type(log))
+        #print("Log : ", type(log))
         log = sorted(log, key=lambda x: x['caseid'])
         for key, group in itertools.groupby(log, key=lambda x: x['caseid']):
             events = list(group)
@@ -270,7 +271,7 @@ class ModelTrainer():
                 cat_ix = int(row[0])
                 #if index[cat_ix] not in exclude_list: #Added to exclude start and end going for training
                 if index[cat_ix] == row[1].strip():
-                    print("Load Embedded :", cat_ix, "---Index of Load Embedded : ", index[cat_ix],"---Row in Strip : ", row[1].strip(), "Weight : ", [float(x) for x in row[2:]])
+                    #print("Load Embedded :", cat_ix, "---Index of Load Embedded : ", index[cat_ix],"---Row in Strip : ", row[1].strip(), "Weight : ", [float(x) for x in row[2:]])
                     weights.append([float(x) for x in row[2:]])
             csvfile.close()
         return np.array(weights)

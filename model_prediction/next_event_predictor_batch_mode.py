@@ -23,15 +23,19 @@ class NextEventPredictor():
 
     def predict(self, params, model, spl, imp, vectorizer):
         self.model = model
+        #print("spl :", spl)
         self.spl = spl
+        print("What is Imp :", imp)
         self.imp = imp
-        if params['mode'] == 'next':
-            fltr_idx = params['nextcaseid_attr']["filter_index"]
-            spl_df_prefx = pd.DataFrame(self.spl['prefixes'])[fltr_idx:]
-            spl_df_next = pd.DataFrame(self.spl['next_evt'])[fltr_idx:]
-        #st.table(spl_df_prefx)
-        #st.table(spl_df_next)
-        #print("spl :", spl_df)
+        # if params['mode'] == 'next':
+        #     fltr_idx = params['nextcaseid_attr']["filter_index"]
+        #     spl_df_prefx = pd.DataFrame(self.spl['prefixes'])[fltr_idx:]
+        #     spl_df_next = pd.DataFrame(self.spl['next_evt'])[fltr_idx:]
+        #     st.subheader("Prefixes")
+        #     st.table(spl_df_prefx)
+        #     st.subheader("Next Event")
+        #     st.table(spl_df_next)
+            #print("spl :", spl_df)
         self.nx = params['multiprednum']
         predictor = self._get_predictor(params['model_type'], params['mode'], params['next_mode'])
         sup.print_performed_task('Predicting next events')
@@ -43,7 +47,7 @@ class NextEventPredictor():
         # a different predictor being neccesary
         if mode == 'next':
             if next_mode == 'next_action':
-                return self.__predict_next_event_shared_cat_next #Predicts what would be the prediction of the current case and what system has shown in the past
+                return self._predict_next_event_suffix_cat_next #Predicts what would be the prediction of the current case and what system has shown in the past
             elif next_mode == 'history_with_next':
                 return self._predict_next_event_shared_cat_next  # Predicts what would come next and after
         elif mode == 'batch':
@@ -60,10 +64,14 @@ class NextEventPredictor():
         """
         # Generation of predictions
         pred_fltr_idx = parameters['nextcaseid_attr']["filter_index"] + 1
-        #print("Index :", pred_fltr_idx)
+
+        print("Activity Suffix :", self.spl['next_evt']['activities'])
+
         #print("Prediction Activity :", self.spl['prefixes']['activities'][pred_fltr_idx], type(self.spl['prefixes']['activities']))
         results = list()
         for i, _ in enumerate(self.spl['prefixes']['activities'][:pred_fltr_idx]):
+            print("Activity Prefixes :", self.spl['prefixes']['activities'][:pred_fltr_idx][i])
+
             # Activities and roles input shape(1,5)
             # print("i :", i)
             # print("parameters['dim'] :", parameters['dim'])
@@ -98,24 +106,27 @@ class NextEventPredictor():
                     [-parameters['dim']['time_dim']:]
                     .reshape((parameters['dim']['time_dim'], times_attr_num))])
             # add intercase features if necessary
-            if vectorizer in ['basic']:
-                inputs = [x_ac_ngram, x_rl_ngram, x_label_ngram, x_t_ngram]
-
-            elif vectorizer in ['inter']:
+            # if vectorizer in ['basic']:
+            #     inputs = [x_ac_ngram, x_rl_ngram, x_label_ngram, x_t_ngram]
+            #
+            # elif vectorizer in ['inter']:
                 # times input shape(1,5,1)
-                inter_attr_num = (self.spl['prefixes']['inter_attr'][pred_fltr_idx][i]
-                                  .shape[1])
-                x_inter_ngram = np.array(
-                    [np.append(np.zeros((
-                        parameters['dim']['time_dim'], inter_attr_num)),
-                        self.spl['prefixes']['inter_attr'][pred_fltr_idx][i], axis=0)
-                        [-parameters['dim']['time_dim']:]
-                        .reshape(
-                            (parameters['dim']['time_dim'], inter_attr_num))]
-                    )
-                inputs = [x_ac_ngram, x_rl_ngram, x_label_ngram, x_t_ngram, x_inter_ngram]
+            inter_attr_num = (self.spl['prefixes']['inter_attr'][:pred_fltr_idx][i].shape[1])
+            x_inter_ngram = np.array(
+                [np.append(np.zeros((
+                    parameters['dim']['time_dim'], inter_attr_num)),
+                    self.spl['prefixes']['inter_attr'][:pred_fltr_idx][i], axis=0)
+                    [-parameters['dim']['time_dim']:]
+                    .reshape((parameters['dim']['time_dim'], inter_attr_num))])
+            inputs = [x_ac_ngram, x_rl_ngram, x_label_ngram, x_t_ngram, x_inter_ngram]
             # predict
             preds = self.model.predict(inputs)
+
+            # print("Model Prediction  :", preds)
+            # print("Activity :", np.array(preds[0][0]))
+            # print("Role :", np.array(preds[1][0]))
+            # print("Label :", np.array(preds[2][0]))
+
             if self.imp == 'random_choice':
                 # Use this to get a random choice following as PDF
                 pos = np.random.choice(np.arange(0, len(preds[0][0])),
@@ -132,9 +143,9 @@ class NextEventPredictor():
             elif self.imp == 'arg_max':
                 # Use this to get the max prediction
 
-                print("Activity :", np.array(preds[0][0]))
-                print("Role :", np.array(preds[1][0]))
-                print("Label :", np.array(preds[2][0]))
+                # print("Activity :", np.array(preds[0][0]))
+                # print("Role :", np.array(preds[1][0]))
+                # print("Label :", np.array(preds[2][0]))
 
                 pos = np.argmax(preds[0][0])
                 pos_prob = preds[0][0][pos]
@@ -148,6 +159,7 @@ class NextEventPredictor():
             elif self.imp == 'multi_pred':
                 #change it to get the number of predictions
                 #nx = 2
+
 
                 #changing array to numpy
                 acx = np.array(preds[0][0])
@@ -184,7 +196,7 @@ class NextEventPredictor():
             # print("Predictions 2 :", preds[3])
             # print("Predictions 3 :", preds[3][0])
             # print("Predictions 4 :", preds[3][0][0])
-
+            print("Predict Next Activity :", pos)
             #print(pos, pos1, pos2, preds[3][0][0], pos_prob, pos1_prob, pos2_prob)
 
             if not parameters['one_timestamp']:
@@ -287,22 +299,20 @@ class NextEventPredictor():
                 )
 
             # add intercase features if necessary
-            if vectorizer in ['basic']:
-                inputs = [x_ac_ngram, x_rl_ngram, x_label_ngram, x_t_ngram]
-
-            elif vectorizer in ['inter']:
+            # if vectorizer in ['basic']:
+            #     inputs = [x_ac_ngram, x_rl_ngram, x_label_ngram, x_t_ngram]
+            #
+            # elif vectorizer in ['inter']:
                 # times input shape(1,5,1)
-                inter_attr_num = (self.spl['prefixes']['inter_attr'][i]
-                                  .shape[1])
-                x_inter_ngram = np.array(
-                    [np.append(np.zeros((
-                        parameters['dim']['time_dim'], inter_attr_num)),
-                        self.spl['prefixes']['inter_attr'][i], axis=0)
-                        [-parameters['dim']['time_dim']:]
-                        .reshape(
-                            (parameters['dim']['time_dim'], inter_attr_num))]
-                    )
-                inputs = [x_ac_ngram, x_rl_ngram, x_label_ngram, x_t_ngram, x_inter_ngram]
+            inter_attr_num = (self.spl['prefixes']['inter_attr'][i].shape[1])
+            x_inter_ngram = np.array(
+                [np.append(np.zeros((
+                    parameters['dim']['time_dim'], inter_attr_num)),
+                    self.spl['prefixes']['inter_attr'][i], axis=0)
+                    [-parameters['dim']['time_dim']:]
+                    .reshape((parameters['dim']['time_dim'], inter_attr_num))]
+                )
+            inputs = [x_ac_ngram, x_rl_ngram, x_label_ngram, x_t_ngram, x_inter_ngram]
             #print("input_time : ", x_t_ngram)
             # predict
             preds = self.model.predict(inputs)
@@ -427,8 +437,7 @@ class NextEventPredictor():
                 preds[4], parms, parms['scale_args']['wait'])
         return record
 
-
-    def __predict_next_event_shared_cat_next(self, parameters, vectorizer):
+    def _predict_next_event_suffix_cat_next(self, parameters, vectorizer):
         """Generate business process suffixes using a keras trained model.
         Args:
             model (keras model): keras trained model.
@@ -438,11 +447,19 @@ class NextEventPredictor():
             imp (str): method of next event selection.
         """
         # Generation of predictions
-        pred_fltr_idx = parameters['nextcaseid_attr']["filter_index"]+1
+        print("Filtered Index : ", parameters['nextcaseid_attr']["filter_index"])
+        pred_fltr_idx = parameters['nextcaseid_attr']["filter_index"]
+
+        print("pred_fltr_idx :", pred_fltr_idx, parameters['nextcaseid_attr']["filter_index"])
+
         #print("Index :", pred_fltr_idx)
-        #print("Prediction Activity :", self.spl['prefixes']['activities'][pred_fltr_idx:], type(self.spl['prefixes']['activities']))
+        #print("Prediction Activity prefixes :", self.spl['prefixes']['activities'][pred_fltr_idx:], type(self.spl['prefixes']['activities']))
+        print("Activity next_evt :", self.spl['next_evt']['activities'])
+
         results = list()
-        for i, _ in enumerate(self.spl['prefixes']['activities'][pred_fltr_idx:]):
+        # for i, _ in enumerate(self.spl['prefixes']['activities'][pred_fltr_idx:]):
+        for i, _ in enumerate(self.spl['prefixes']['activities'][pred_fltr_idx:pred_fltr_idx+1]):
+            print("Activity prefixes :", self.spl['prefixes']['activities'][pred_fltr_idx-1:pred_fltr_idx])
             # Activities and roles input shape(1,5)
             x_ac_ngram = (np.append(
                     np.zeros(parameters['dim']['time_dim']),
@@ -469,24 +486,28 @@ class NextEventPredictor():
                     .reshape((parameters['dim']['time_dim'], times_attr_num))]
                 )
             # add intercase features if necessary
-            if vectorizer in ['basic']:
-                inputs = [x_ac_ngram, x_rl_ngram, x_label_ngram, x_t_ngram]
-
-            elif vectorizer in ['inter']:
+            # if vectorizer in ['basic']:
+            #     inputs = [x_ac_ngram, x_rl_ngram, x_label_ngram, x_t_ngram]
+            #
+            # elif vectorizer in ['inter']:
                 # times input shape(1,5,1)
-                inter_attr_num = (self.spl['prefixes']['inter_attr'][pred_fltr_idx:][i]
-                                  .shape[1])
-                x_inter_ngram = np.array(
-                    [np.append(np.zeros((
-                        parameters['dim']['time_dim'], inter_attr_num)),
-                        self.spl['prefixes']['inter_attr'][pred_fltr_idx:][i], axis=0)
-                        [-parameters['dim']['time_dim']:]
-                        .reshape(
-                            (parameters['dim']['time_dim'], inter_attr_num))]
-                    )
-                inputs = [x_ac_ngram, x_rl_ngram, x_label_ngram, x_t_ngram, x_inter_ngram]
+            inter_attr_num = (self.spl['prefixes']['inter_attr'][pred_fltr_idx:][i].shape[1])
+            x_inter_ngram = np.array(
+                [np.append(np.zeros((
+                    parameters['dim']['time_dim'], inter_attr_num)),
+                    self.spl['prefixes']['inter_attr'][pred_fltr_idx:][i], axis=0)
+                    [-parameters['dim']['time_dim']:]
+                    .reshape((parameters['dim']['time_dim'], inter_attr_num))]
+                )
+            inputs = [x_ac_ngram, x_rl_ngram, x_label_ngram, x_t_ngram, x_inter_ngram]
             # predict
             preds = self.model.predict(inputs)
+
+            # print("Model Prediction  :", preds)
+            # print("Activity :", np.array(preds[0][0]))
+            # print("Role :", np.array(preds[1][0]))
+            # print("Label :", np.array(preds[2][0]))
+
             if self.imp == 'random_choice':
                 # Use this to get a random choice following as PDF
                 pos = np.random.choice(np.arange(0, len(preds[0][0])),
@@ -515,6 +536,7 @@ class NextEventPredictor():
                 #change it to get the number of predictions
                 #nx = 2
 
+
                 #changing array to numpy
                 acx = np.array(preds[0][0])
                 rlx = np.array(preds[1][0])
@@ -523,6 +545,9 @@ class NextEventPredictor():
                 pos = (-acx).argsort()[:self.nx].tolist()
                 pos1 = (-rlx).argsort()[:self.nx].tolist()
                 pos2 = (-lbx).argsort()[:self.nx].tolist()
+
+                # print("Label after changing :", pos2, "---", lbx,  "---", -lbx,  "---",  (-lbx).argsort()[:self.nx],
+                #       "---", (-lbx).argsort())
 
                 pos_prob = []
                 pos1_prob = []
@@ -535,14 +560,15 @@ class NextEventPredictor():
                     # probability of role
                     pos1_prob.append(rlx[pos1[jx]])
                 for kx in range(len(pos2)):
-                    # probability of role
-                    pos2_prob.append(rlx[pos2[kx]])
+                    # probability of label
+                    pos2_prob.append(lbx[pos2[kx]])
 
                 #print("activity = ", posac)
                 #print("activity probability = ", pos_probac)
 
-                #print("role = ", pos1rl)
-                #print("role probability = ", pos1_probrl)
+                # print("Label = ", pos2)
+                # print("Label probability = ", pos2_prob)
+                print("Activity Predicted :", pos, (-acx).argsort()[:self.nx])
 
             # save results
             predictions = [pos, pos1, pos2, preds[3][0][0], pos_prob, pos1_prob, pos2_prob]

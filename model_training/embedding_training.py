@@ -158,12 +158,12 @@ def ac_rl_embedding_model(ac_index, rl_index, label_index, embedding_size):
                                input_dim=len(label_index),
                                output_dim=embedding_size)(label)
 
-    print("Activity Index : ", len(ac_index), "& : ", ac_index, "Input :", activity, "Embedding :", activity_embedding,
-          "Embedding Shape :", activity_embedding.shape)
-    print("Role Index : ", len(rl_index), "& : ", rl_index, "Input :", role, "Embedding :", role_embedding,
-          "Embedding Shape :", role_embedding.shape)
-    print("Label Index : ", len(label_index), "& : ", label_index, "Input :", label, "Embedding :", label_embedding,
-          "Embedding Shape :", label_embedding.shape)
+    # print("Activity Index : ", len(ac_index), "& : ", ac_index, "Input :", activity, "Embedding :", activity_embedding,
+    #       "Embedding Shape :", activity_embedding.shape)
+    # print("Role Index : ", len(rl_index), "& : ", rl_index, "Input :", role, "Embedding :", role_embedding,
+    #       "Embedding Shape :", role_embedding.shape)
+    # print("Label Index : ", len(label_index), "& : ", label_index, "Input :", label, "Embedding :", label_embedding,
+    #       "Embedding Shape :", label_embedding.shape)
 
     merged = Dot(name='dot_product',
                  normalize=True, axes=2)([activity_embedding, role_embedding])

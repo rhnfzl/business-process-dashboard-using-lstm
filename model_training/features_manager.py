@@ -12,7 +12,6 @@ from operator import itemgetter
 
 from support_modules import role_discovery as rl
 
-
 class FeaturesMannager():
 
 
@@ -24,13 +23,14 @@ class FeaturesMannager():
         self.resources = pd.DataFrame
         self.norm_method = params['norm_method']
         self._scalers = dict()
-        self.scale_dispatcher = {'basic': self._scale_base,
-                                 'inter': self._scale_inter}
+        # self.scale_dispatcher = {'basic': self._scale_base,
+        #                          'inter': self._scale_inter}
+        self.scale_dispatcher = {'basic': self._scale_base}
 
     def calculate(self, log, add_cols):
-        print("Feature Space :", log.columns, "Additional Cols :", add_cols)
         log = self.add_resources(log)
         log = self.add_calculated_times(log)
+        print("Log Properties : ", log.dtypes, "Additional Cols :", add_cols)
         #log = self.filter_features(log, add_cols) #----Filters out the features, Preprocessing of the vlaues helps to select the required features beforehand
         return self.scale_features(log, add_cols)
 
@@ -48,7 +48,7 @@ class FeaturesMannager():
         return log
 
     def filter_features(self, log, add_cols):
-        print(log.dtypes)
+        print("Log Properties : ", log.dtypes, log.columns)
         # Add intercase features
         columns = ['caseid', 'task', 'user', 'end_timestamp', 'role', 'dur', 'label'] #filtering features which will passed to train and test
         if not self.one_timestamp:
@@ -127,22 +127,30 @@ class FeaturesMannager():
             log, dur_scale = self.scale_feature(log, 'dur', self.norm_method)
             log, wait_scale = self.scale_feature(log, 'wait', self.norm_method)
             scale_args = {'dur': dur_scale, 'wait': wait_scale}
-        return log, scale_args
-
-    def _scale_inter(self, log, add_cols):
-        # log, scale_args = self.scale_feature(log, 'dur', self.norm_method)
-        if self.one_timestamp:
-            log, scale_args = self.scale_feature(log, 'dur', self.norm_method)
-        else:
-            log, dur_scale = self.scale_feature(log, 'dur', self.norm_method)
-            log, wait_scale = self.scale_feature(log, 'wait', self.norm_method)
-            scale_args = {'dur': dur_scale, 'wait': wait_scale}
         for col in add_cols:
             if col == 'daytime':
                 log, _ = self.scale_feature(log, 'daytime', 'day_secs', True)
+            elif col == 'open_cases':
+                log, _ = self.scale_feature(log, 'open_cases', 'max')
             else:
                 log, _ = self.scale_feature(log, col, self.norm_method, True)
+        print("Log :", log.columns, log.head(5))
         return log, scale_args
+
+    # def _scale_inter(self, log, add_cols):
+    #     # log, scale_args = self.scale_feature(log, 'dur', self.norm_method)
+    #     if self.one_timestamp:
+    #         log, scale_args = self.scale_feature(log, 'dur', self.norm_method)
+    #     else:
+    #         log, dur_scale = self.scale_feature(log, 'dur', self.norm_method)
+    #         log, wait_scale = self.scale_feature(log, 'wait', self.norm_method)
+    #         scale_args = {'dur': dur_scale, 'wait': wait_scale}
+    #     for col in add_cols:
+    #         if col == 'daytime':
+    #             log, _ = self.scale_feature(log, 'daytime', 'day_secs', True)
+    #         else:
+    #             log, _ = self.scale_feature(log, col, self.norm_method, True)
+    #     return log, scale_args
 
     # =========================================================================
     # Scale features to create dur_norm
@@ -159,6 +167,7 @@ class FeaturesMannager():
             Scaleded value between 0 and 1.
         """
         scale_args = dict()
+        _temp_scale_args = dict()
         if method == 'lognorm':
             log[feature + '_log'] = np.log1p(log[feature])
             max_value = np.max(log[feature+'_log'])
@@ -195,4 +204,7 @@ class FeaturesMannager():
             raise ValueError(method)
         if replace:
             log = log.drop(feature, axis=1)
+
+        print("--", feature, "---")
+        print("Scaled Args Value : ", scale_args)
         return log, scale_args

@@ -21,8 +21,9 @@ class NextEventSamplesCreator():
         self.rl_index = dict()
         self.label_index = dict()
         self._samplers = dict()
-        self._samp_dispatcher = {'basic': self._sample_next_event,
-                                 'inter': self._sample_next_event_inter}
+        # self._samp_dispatcher = {'basic': self._sample_next_event,
+        #                          'inter': self._sample_next_event_inter}
+        self._samp_dispatcher = {'basic': self._sample_next_event}
 
     def create_samples(self, params, log, ac_index, rl_index, label_index, add_cols):
         self.log = log
@@ -66,22 +67,34 @@ class NextEventSamplesCreator():
         Returns:
             list: list of prefixes and expected sufixes.
         """
+        #print("----------------sample_next_event-----------------")
+        self.log = self.reformat_events(columns, parms['one_timestamp'])
+        #print("Log :", self.log)
         times = ['dur_norm'] if parms['one_timestamp'] else ['dur_norm', 'wait_norm']
         equi = {'ac_index': 'activities', 'rl_index': 'roles', 'label_index': 'label'}
         vec = {'prefixes': dict(),
                'next_evt': dict()}
         x_times_dict = dict()
         y_times_dict = dict()
-        self.log = self.reformat_events(columns, parms['one_timestamp'])
+        # intercases
+        x_inter_dict, y_inter_dict = dict(), dict()
         # n-gram definition
         for i, _ in enumerate(self.log):
+            #print("Enumerate Log (i) :", i)
             for x in columns:
+                #print("Columns (x) :", x)
                 serie = [self.log[i][x][:idx]
-                         for idx in range(1, len(self.log[i][x]))]
-                y_serie = [x[-1] for x in serie]
-                serie = serie[:-1]
-                y_serie = y_serie[1:]
-                if x in list(equi.keys()):
+                         for idx in range(1, len(self.log[i][x]))] #range starts with 1 to avoid blank state
+                y_serie = [x[-1] for x in serie] #selecting the last value from each list of list
+                # if x == 'ac_index':
+                #     print("log[i][x] :", self.log[i][x])
+                #     print("Length of log[i][x] :", len(self.log[i][x]))
+                #     print("Serie : ", serie)
+                #     print("y_serie : ", y_serie)
+                serie = serie[:-1] #to avoid end value that is max value
+                y_serie = y_serie[1:] #to avoid start value i.e 0
+
+                if x in list(equi.keys()): #lists out ['ac_index', 'rl_index', 'label_index']
                     vec['prefixes'][equi[x]] = (
                         vec['prefixes'][equi[x]] + serie
                         if i > 0 else serie)
@@ -89,17 +102,36 @@ class NextEventSamplesCreator():
                         vec['next_evt'][equi[x]] + y_serie
                         if i > 0 else y_serie)
                 elif x in times:
+                    # print("Times (x) : ", x)
                     x_times_dict[x] = (
                         x_times_dict[x] + serie if i > 0 else serie)
                     y_times_dict[x] = (
                         y_times_dict[x] + y_serie if i > 0 else y_serie)
+                    # print("x_times_dict[x] : ", x_times_dict[x])
+                    # print("y_times_dict[x] : ", y_times_dict[x])
+                #Intercase Features
+                else:
+                    x_inter_dict[x] = (x_inter_dict[x] + serie
+                                        if i > 0 else serie)
+                    y_inter_dict[x] = (y_inter_dict[x] + y_serie
+                                        if i > 0 else y_serie)
         vec['prefixes']['times'] = list()
+        # print("----------Time Debug-----------")
+        # print("Time Before :", x_times_dict)
         x_times_dict = pd.DataFrame(x_times_dict)
+        # print("Time After PD :", x_times_dict)
+        # print("Time Dictionary Values:", x_times_dict.values)
         for row in x_times_dict.values:
+            # print("Row :", row, type(row))
             new_row = [np.array(x) for x in row]
+            # print("new_row 1:", new_row, type(new_row))
             new_row = np.dstack(new_row)
+            # print("new_row 2:", new_row, type(new_row))
             new_row = new_row.reshape((new_row.shape[1], new_row.shape[2]))
+            # print("new_row 3:", new_row, type(new_row))
             vec['prefixes']['times'].append(new_row)
+            # print("Times Prefix : ", vec['prefixes']['times'], type(vec['prefixes']['times']))
+            # print("----------End of ", len(row), " Debug-----------")
         # Reshape intercase expected attributes (prefixes, # attributes)
         vec['next_evt']['times'] = list()
         y_times_dict = pd.DataFrame(y_times_dict)
@@ -108,53 +140,71 @@ class NextEventSamplesCreator():
             new_row = np.dstack(new_row)
             new_row = new_row.reshape((new_row.shape[2]))
             vec['next_evt']['times'].append(new_row)
-        return vec
 
-    def _sample_next_event_inter(self, columns, parms):
-        self.log = self.reformat_events(columns, parms['one_timestamp'])
-        examples = {'prefixes': dict(), 'next_evt': dict()}
-        # n-gram definition
-        equi = {'ac_index': 'activities',
-                'rl_index': 'roles',
-                'label_index': 'label',
-                'dur_norm': 'times'}
-        x_inter_dict, y_inter_dict = dict(), dict()
-        for i, _ in enumerate(self.log):
-            for x in columns:
-                serie = [self.log[i][x][:idx]
-                          for idx in range(1, len(self.log[i][x]))]
-                y_serie = [x[-1] for x in serie]
-                serie = serie[:-1]
-                y_serie = y_serie[1:]
-                if x in list(equi.keys()):
-                    examples['prefixes'][equi[x]] = (
-                        examples['prefixes'][equi[x]] + seriestart_timestamp
-                        if i > 0 else serie)
-                    examples['next_evt'][equi[x]] = (
-                        examples['next_evt'][equi[x]] + y_serie
-                        if i > 0 else y_serie)
-                else:
-                    x_inter_dict[x] = (x_inter_dict[x] + serie
-                                        if i > 0 else serie)
-                    y_inter_dict[x] = (y_inter_dict[x] + y_serie
-                                        if i > 0 else y_serie)
-        # Reshape intercase attributes (prefixes, n-gram size, # attributes)
-        examples['prefixes']['inter_attr'] = list()
+        vec['prefixes']['inter_attr'] = list()
         x_inter_dict = pd.DataFrame(x_inter_dict)
         for row in x_inter_dict.values:
             new_row = [np.array(x) for x in row]
             new_row = np.dstack(new_row)
             new_row = new_row.reshape((new_row.shape[1], new_row.shape[2]))
-            examples['prefixes']['inter_attr'].append(new_row)
+            vec['prefixes']['inter_attr'].append(new_row)
         # Reshape intercase expected attributes (prefixes, # attributes)
-        examples['next_evt']['inter_attr'] = list()
+        vec['next_evt']['inter_attr'] = list()
         y_inter_dict = pd.DataFrame(y_inter_dict)
         for row in y_inter_dict.values:
             new_row = [np.array(x) for x in row]
             new_row = np.dstack(new_row)
             new_row = new_row.reshape((new_row.shape[2]))
-            examples['next_evt']['inter_attr'].append(new_row)
-        return examples
+            vec['next_evt']['inter_attr'].append(new_row)
+        # print("----------------End-----------------")
+        return vec
+
+    # def _sample_next_event_inter(self, columns, parms):
+    #     self.log = self.reformat_events(columns, parms['one_timestamp'])
+    #     examples = {'prefixes': dict(), 'next_evt': dict()}
+    #     # n-gram definition
+    #     equi = {'ac_index': 'activities',
+    #             'rl_index': 'roles',
+    #             'label_index': 'label',
+    #             'dur_norm': 'times'}
+    #     x_inter_dict, y_inter_dict = dict(), dict()
+    #     for i, _ in enumerate(self.log):
+    #         for x in columns:
+    #             serie = [self.log[i][x][:idx]
+    #                       for idx in range(1, len(self.log[i][x]))]
+    #             y_serie = [x[-1] for x in serie]
+    #             serie = serie[:-1]
+    #             y_serie = y_serie[1:]
+    #             if x in list(equi.keys()):
+    #                 examples['prefixes'][equi[x]] = (
+    #                     examples['prefixes'][equi[x]] + seriestart_timestamp
+    #                     if i > 0 else serie)
+    #                 examples['next_evt'][equi[x]] = (
+    #                     examples['next_evt'][equi[x]] + y_serie
+    #                     if i > 0 else y_serie)
+    #             else:
+    #                 x_inter_dict[x] = (x_inter_dict[x] + serie
+    #                                     if i > 0 else serie)
+    #                 y_inter_dict[x] = (y_inter_dict[x] + y_serie
+    #                                     if i > 0 else y_serie)
+    #     # Reshape intercase attributes (prefixes, n-gram size, # attributes)
+    #     examples['prefixes']['inter_attr'] = list()
+    #     x_inter_dict = pd.DataFrame(x_inter_dict)
+    #     for row in x_inter_dict.values:
+    #         new_row = [np.array(x) for x in row]
+    #         new_row = np.dstack(new_row)
+    #         new_row = new_row.reshape((new_row.shape[1], new_row.shape[2]))
+    #         examples['prefixes']['inter_attr'].append(new_row)
+    #     # Reshape intercase expected attributes (prefixes, # attributes)
+    #     examples['next_evt']['inter_attr'] = list()
+    #     y_inter_dict = pd.DataFrame(y_inter_dict)
+    #     for row in y_inter_dict.values:
+    #         new_row = [np.array(x) for x in row]
+    #         new_row = np.dstack(new_row)
+    #         new_row = new_row.reshape((new_row.shape[2]))
+    #         examples['next_evt']['inter_attr'].append(new_row)
+    #     print("Vector :", examples)
+    #     return examples
 
     def reformat_events(self, columns, one_timestamp):
         """Creates series of activities, roles and relative times per trace.
