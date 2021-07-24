@@ -102,7 +102,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
             parameters['rep'] = 1
             with st.sidebar.beta_expander('Folder Name'):
                 st.info("Provide the folder for which the prediction has to be simulated")
-                _folder_name  = st.text_input('')
+                _folder_name  = st.text_input('', key="folder_name")
             #st.sidebar.markdown("""---""")
             parameters['folder'] = _folder_name
 
@@ -122,7 +122,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
                             " **Single Processing** to simulate the prediction for each Case Id individually")
                     #next_option = st.sidebar.radio('', ['Execution Mode', 'Evaluation Mode'])
                     #st.sidebar.subheader("Choose Mode of Prediction")
-                    _mode_sel = st.radio('Processing', ['Batch Processing', 'Single Event Processing'])
+                    _mode_sel = st.radio('Processing', ['Batch Processing', 'Single Event Processing'], key="processing_type")
                 #st.sidebar.markdown("""---""")
 
                 if _mode_sel == 'Batch Processing':
@@ -183,6 +183,9 @@ def main(argv, filter_parms=None, filter_parameter=None):
     #         st.write("No result to display, compute a value first.")
     #         nxt_button_idx = 0
 
+
+
+
     @st.cache(persist=True)
     def read_next_testlog():
         input_file = os.path.join('output_files', parameters['folder'], 'parameters', 'test_log.csv')
@@ -196,7 +199,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
 
     def next_columns(filter_log, display_columns):
         # Dashboard selection of Case ID
-        filter_caseid = st.selectbox("🆔 Select Case ID", filter_log["caseid"].unique())
+        filter_caseid = st.selectbox("🆔 Select Case ID", filter_log["caseid"].unique(), key="caseid_select")
         filter_caseid_attr_df = filter_log.loc[filter_log["caseid"].isin([filter_caseid])]
         filter_attr_display = filter_caseid_attr_df[display_columns]
         return filter_attr_display, filter_caseid, filter_caseid_attr_df
@@ -242,7 +245,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
                 #next_option = st.sidebar.selectbox("Type of Single Event Processing", ('Prediction of Next Event', 'Prediction of Next Events with Suffix'), key='next_dropdown_opt')
                 with st.sidebar.beta_expander('Type of Single Event Processing'):
                     st.info("Select **Execution Mode** for simulating the dashboard for the Users, **Evaluation Mode** to judge the trustworthiness of the ML model prediction")
-                    next_option = st.radio('', ['Execution Mode', 'What-If Mode', 'Evaluation Mode'])
+                    next_option = st.radio('', ['Execution Mode', 'What-If Mode', 'Evaluation Mode'], key="single_event_processing")
                 #st.sidebar.markdown("""---""")
 
                 if next_option == 'Execution Mode':
@@ -350,7 +353,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
                         st.error('End of Current Case Id, Select the Next Case ID')
                 #--- What-If Mode
                 elif next_option == 'what_if':
-                    form = st.form("my_whatif_form")
+                    form = st.form(key="my_whatif_form")
                     form.subheader("What-IF Prediction Choose Box")
                     # # --------------------------------------------------------------------------
                     # Creating prediction selection radio button
@@ -373,7 +376,6 @@ def main(argv, filter_parms=None, filter_parameter=None):
                     _filterdf = filter_attr_display.iloc[[nxt_button_idx]]
                     _filterdf.index = [""] * len(_filterdf)
                     state_of_theprocess.dataframe(_filterdf)
-                    print("st.sessionstate in dashboard :", st.session_state)
                     print("Prediction Choice : ", parameters['predchoice'])
                     if (next_button) and ((nxt_button_idx) < len(filter_caseid_attr_df)):
 
