@@ -14,7 +14,8 @@ import time
 import streamlit as st
 
 from model_prediction import model_predictor as pr
-from model_training import model_trainer as tr
+# from model_training import model_trainer as tr
+from model_training import model_trainer_nlb as tr
 
 #---Workaround for "tensorflow.python.framework.errors_impl.UnknownError: Fail to find the dnn implementation."
 from tensorflow.compat.v1 import ConfigProto

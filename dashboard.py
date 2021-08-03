@@ -3,6 +3,7 @@ os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices'
 import sys
 import getopt
 import streamlit as st
+import json
 #import SessionState
 # import tkinter as tk
 # from tkinter import filedialog
@@ -10,7 +11,7 @@ import time
 
 import pandas as pd
 
-from model_prediction import model_predictor as pr
+from model_prediction import model_predictor_nlb as pr
 import lstm as training
 
 #---Workaround for "tensorflow.python.framework.errors_impl.UnknownError: Fail to find the dnn implementation."
@@ -197,13 +198,18 @@ def main(argv, filter_parms=None, filter_parameter=None):
         @st.cache(persist=True)
         def read_next_testlog():
             input_file = os.path.join('output_files', parameters['folder'], 'parameters', 'test_log.csv')
+            parameter_file = os.path.join('output_files', parameters['folder'], 'parameters', 'model_parameters.json')
             filter_log = pd.read_csv(input_file, dtype={'user': str})
             # Standard Code based on log_reader
             filter_log = filter_log.rename(columns=column_names)
             filter_log = filter_log.astype({'caseid': object})
             filter_log = (filter_log[(filter_log.task != 'Start') & (filter_log.task != 'End')].reset_index(drop=True))
             filter_log_columns = filter_log.columns
-            return filter_log, filter_log_columns
+            with open(parameter_file) as pfile:
+                parameter_data = json.load(pfile)
+                file_name = parameter_data["file_name"]
+                pfile.close()
+            return filter_log, filter_log_columns, file_name
 
         def next_columns(filter_log, display_columns):
             # Dashboard selection of Case ID
@@ -237,6 +243,26 @@ def main(argv, filter_parms=None, filter_parameter=None):
 
             return slider
 
+        def label_identifier(file_name):
+            # ---Logic to be added for other dataset
+            with st.sidebar.beta_expander('Type of Single Event Processing'):
+                if "sepsis" in file_name:
+                    st.info("Select the respective labeling mode for Sepsis Patient Condition")
+                    label_indicator = ["Returns to Emergency Room", "Admitted to Intensive Care",
+                                       "Discharged for other Reason"]
+                    _labelsel = st.radio("Labelling Indicator", label_indicator, key="radio_select_label")
+                    if _labelsel == "Returns to Emergency Room":
+                        parameters['label_activity'] = "Return ER"
+                    elif _labelsel == "Admitted to Intensive Care":
+                        parameters['label_activity'] = "Admission IC"
+                    elif _labelsel == "Discharged for other Reason":
+                        parameters['label_activity'] = "Release A"
+                    parameters['label_check_event'] = st.number_input("Check after number of events",
+                                                                      min_value=1, max_value=25, value=5,
+                                                                      step=1, key="radio_number_label")
+                else:
+                    st.error("Label Logic for dataset is not defined")
+
         if parameters['folder']  != "":
             if parameters['activity'] in ['predict_next', 'pred_sfx', 'pred_log']:
                 if parameters['mode'] in ['next']:
@@ -263,7 +289,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
                     elif next_option == 'Evaluation Mode':
                         next_option = 'next_action'
                     # Read the Test Log
-                    filter_log, filter_log_columns = read_next_testlog()
+                    filter_log, filter_log_columns, file_name = read_next_testlog()
                     essential_columns = ['task', 'role', 'end_timestamp']
                     extra_columns = ['caseid', 'label', 'dur', 'acc_cycle', 'daytime',
                                      'dur_norm', 'ac_index', 'rl_index', 'label_index',
@@ -274,6 +300,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
                     parameters['nextcaseid'] = filter_caseid
 
                     print("Display Attributes :", filter_attr_display.iloc[[2]])
+
                     st.subheader('🔦 State of the Process')
                     state_of_theprocess = st.empty()
 
@@ -288,6 +315,11 @@ def main(argv, filter_parms=None, filter_parameter=None):
                     parameters['next_mode'] = next_option
 
                     filter_caseid_attr_df = filter_caseid_attr_df[essential_columns].values.tolist()
+
+                    #---Logic to select the label
+                    label_identifier(file_name)
+
+
                     # --- Evaluation Mode
                     if next_option == 'next_action':
                         filter_caseid_attr_list = st.select_slider("Choose [Activity, User, Time]", options=filter_caseid_attr_df, key="caseid_attr_slider")
@@ -330,7 +362,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
                         _filterdf = filter_attr_display.iloc[[nxt_button_idx]]
                         _filterdf.index = [""] * len(_filterdf)
                         state_of_theprocess.dataframe(_filterdf)
-                        if (next_button) and ((nxt_button_idx) < len(filter_caseid_attr_df)):
+                        if (next_button) and ((nxt_button_idx) < len(filter_caseid_attr_df)+1):
 
                             nxt_button_idx += 1
                             st.experimental_set_query_params(my_saved_result=nxt_button_idx, my_saved_caseid=filter_caseid)  # Save value
@@ -352,11 +384,11 @@ def main(argv, filter_parms=None, filter_parameter=None):
                                 predictor = pr.ModelPredictor(parameters)
                                 print("predictor : ", predictor.acc)
                             st.success('Done')
-                            if (nxt_button_idx) >= len(filter_caseid_attr_df):
+                            if (nxt_button_idx) >= len(filter_caseid_attr_df)+1:
                                 #next_button.enabled = False
                                 st.experimental_set_query_params(my_saved_result=0)
                                 st.error('End of Current Case Id, Select the Next Case ID')
-                        elif ((nxt_button_idx) >= len(filter_caseid_attr_df)):
+                        elif ((nxt_button_idx) >= len(filter_caseid_attr_df)+1):
                             st.experimental_set_query_params(my_saved_result=0)  # reset value
                             st.error('End of Current Case Id, Select the Next Case ID')
                     #--- What-If Mode
@@ -385,6 +417,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
                         _filterdf.index = [""] * len(_filterdf)
                         state_of_theprocess.dataframe(_filterdf)
                         print("Prediction Choice : ", parameters['predchoice'])
+
                         if (next_button) and ((nxt_button_idx) < len(filter_caseid_attr_df)):
 
                             nxt_button_idx += 1

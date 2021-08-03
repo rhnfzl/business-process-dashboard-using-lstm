@@ -50,7 +50,8 @@ class FeaturesMannager():
     def filter_features(self, log, add_cols):
         print("Log Properties : ", log.dtypes, log.columns)
         # Add intercase features
-        columns = ['caseid', 'task', 'user', 'end_timestamp', 'role', 'dur', 'label'] #filtering features which will passed to train and test
+        #columns = ['caseid', 'task', 'user', 'end_timestamp', 'role', 'dur', 'label'] #filtering features which will passed to train and test
+        columns = ['caseid', 'task', 'user', 'end_timestamp', 'role', 'dur']  # filtering features which will passed to train and test
         if not self.one_timestamp:
             columns.extend(['start_timestamp', 'wait'])
         columns.extend(add_cols)

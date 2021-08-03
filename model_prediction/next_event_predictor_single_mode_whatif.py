@@ -67,6 +67,16 @@ class NextEventPredictor():
 
         print("State of the Sate Space Initially: ", st.session_state)
 
+        if 'multi_pred_ss' not in st.session_state:
+            st.session_state['multi_pred_ss'] = dict()
+            for _zx in range(parameters['multiprednum']):
+                st.session_state['multi_pred_ss']["ss_multipredict{0}".format(_zx + 1)] = {}
+                for _ux in range(parameters['multiprednum']):
+                    st.session_state['multi_pred_ss']["ss_multipredict" + str(_zx + 1)][
+                        "multiverse_predict{0}".format(_ux + 1)] = {'ac_pred': [], 'ac_prob': [], 'rl_pred': [],
+                                                                    'rl_prob': [], 'label_pred': [], 'label_prob': [],
+                                                                    'tm_pred': []}
+
         # --History of choice
         if 'prediction_choice_idx' not in st.session_state:
 
@@ -98,6 +108,35 @@ class NextEventPredictor():
 
             st.session_state['prediction_choice_idx'].extend([_selectpredidx])
             st.session_state['prediction_choice_name'].extend([parameters['predchoice']])
+
+            #-- Multiverse logic
+            for _ih in range(parameters['multiprednum']):
+
+                if "ss_initpredict"+str(_ih+1) in st.session_state['initial_prediction']:
+
+                    _serie_predict_ac = [st.session_state['initial_prediction']["ss_initpredict"+str(_ih+1)]["pos_ac_ss"][:idx]
+                                        for idx in range(1, pred_fltr_idx + 1)]  # range starts with 1 to avoid start
+                    _serie_predict_rl = [st.session_state['initial_prediction']["ss_initpredict"+str(_ih+1)]["pos_rl_ss"][:idx]
+                                        for idx in range(1, pred_fltr_idx + 1)]  # range starts with 1 to avoid start
+                    _serie_predict_lb = [st.session_state['initial_prediction']["ss_initpredict"+str(_ih+1)]["pos_lb_ss"][:idx]
+                                        for idx in range(1, pred_fltr_idx + 1)]  # range starts with 1 to avoid start
+                    _serie_predict_tm = [np.array(st.session_state['initial_prediction']["ss_initpredict"+str(_ih+1)]['pos_tm_ss'][:idx])
+                                        for idx in range(1, pred_fltr_idx + 1)]  # range starts with 1 to avoid start
+
+                #----Check the Vector length is same or not
+                    if (len(self.spl['prefixes']['activities'][:pred_fltr_idx]) == len(_serie_predict_ac)) and (
+                            len(self.spl['prefixes']['roles'][:pred_fltr_idx]) == len(_serie_predict_rl)) and (
+                            len(self.spl['prefixes']['label'][:pred_fltr_idx]) == len(_serie_predict_lb)) and (
+                            len(self.spl['prefixes']['times'][:pred_fltr_idx]) == len(_serie_predict_tm)) and (
+                            'multi_pred_ss' in st.session_state):
+
+                        print("--------------Input to Multiverse Prediction",(_ih+ 1), "--------------------")
+                        print("Activity Prefixes :", _serie_predict_ac)
+                        print("Role Prefixes :", _serie_predict_rl)
+                        print("Label Prefix :", _serie_predict_lb)
+                        print("Time Prefixes :", _serie_predict_tm)
+
+                        self._predict_next_event_shared_cat_pred(parameters, vectorizer, _serie_predict_ac, _serie_predict_rl, _serie_predict_lb, _serie_predict_tm, _ih)
 
             if parameters['predchoice'] != 'SME':
 
@@ -154,16 +193,12 @@ class NextEventPredictor():
                             self.spl['prefixes']['times'][:pred_fltr_idx] = serie_predict_tm
 
             elif parameters['predchoice'] == 'SME':
-
                 y_serie_predict_ac = [x[-1] for x in
                                       self.spl['prefixes']['activities'][:pred_fltr_idx]]  # selecting the last value from each list of list
-
                 y_serie_predict_rl = [x[-1] for x in
                                       self.spl['prefixes']['roles'][:pred_fltr_idx]]  # selecting the last value from each list of list
-
                 y_serie_predict_lb = [x[-1] for x in
                                       self.spl['prefixes']['label'][:pred_fltr_idx]]  # selecting the last value from each list of list
-
                 y_serie_predict_tm = [x[-1] for x in
                                       self.spl['prefixes']['times'][:pred_fltr_idx]]  # selecting the last value from each list of list
 
@@ -384,6 +419,134 @@ class NextEventPredictor():
             record['wait_pred'] = self.rescale(
                 preds[4], parms, parms['scale_args']['wait'])
         return record
+
+    def _predict_next_event_shared_cat_pred(self, parameters, vectorizer, serie_predict_ac, serie_predict_rl, serie_predict_lb, serie_predict_tm, index):
+        """Generate business process suffixes using a keras trained model.
+        Args:
+            model (keras model): keras trained model.
+            prefixes (list): list of prefixes.
+            ac_index (dict): index of activities.
+            rl_index (dict): index of roles.
+            imp (str): method of next event selection.
+        """
+        print("Starting of Multi Dimention Prediction : ", index + 1)
+        # Generation of predictions
+        pred_fltr_idx = parameters['nextcaseid_attr']["filter_index"] + 1
+
+        for i, _ in enumerate(serie_predict_ac):
+
+            x_ac_ngram = (np.append(
+                    np.zeros(parameters['dim']['time_dim']),
+                    np.array(serie_predict_ac[i]),
+                    axis=0)[-parameters['dim']['time_dim']:]
+                .reshape((1, parameters['dim']['time_dim'])))
+            #----------------------------------------------------------------------------------
+            x_rl_ngram = (np.append(
+                    np.zeros(parameters['dim']['time_dim']),
+                    np.array(serie_predict_rl[i]),
+                    axis=0)[-parameters['dim']['time_dim']:]
+                .reshape((1, parameters['dim']['time_dim'])))
+            # ----------------------------------------------------------------------------------
+            x_label_ngram = (np.append(
+                    np.zeros(parameters['dim']['time_dim']),
+                    np.array(serie_predict_lb[i]),
+                    axis=0)[-parameters['dim']['time_dim']:]
+                .reshape((1, parameters['dim']['time_dim'])))
+            # ----------------------------------------------------------------------------------
+            # times input shape(1,5,1)
+            times_attr_num = (serie_predict_tm[i].shape[1])
+            x_t_ngram = np.array(
+                [np.append(np.zeros(
+                    (parameters['dim']['time_dim'], times_attr_num)),
+                    serie_predict_tm[i], axis=0)
+                    [-parameters['dim']['time_dim']:]
+                    .reshape((parameters['dim']['time_dim'], times_attr_num))])
+            # add intercase features if necessary
+            # ----------------------------------------------------------------------------------
+            inter_attr_num = (self.spl['prefixes']['inter_attr'][:pred_fltr_idx][i].shape[1])
+            x_inter_ngram = np.array(
+                [np.append(np.zeros((
+                    parameters['dim']['time_dim'], inter_attr_num)),
+                    self.spl['prefixes']['inter_attr'][:pred_fltr_idx][i], axis=0)
+                    [-parameters['dim']['time_dim']:]
+                    .reshape((parameters['dim']['time_dim'], inter_attr_num))])
+            inputs = [x_ac_ngram, x_rl_ngram, x_label_ngram, x_t_ngram, x_inter_ngram]
+            # predict
+            preds = self.model.predict(inputs)
+
+            if self.imp == 'arg_max':
+                # Use this to get the max prediction
+
+                pos = np.argmax(preds[0][0])
+                pos_prob = preds[0][0][pos]
+
+                pos1 = np.argmax(preds[1][0])
+                pos1_prob = preds[1][0][pos1]
+
+                pos2 = np.argmax(preds[2][0])
+                pos2_prob = preds[2][0][pos2]
+
+            elif self.imp == 'multi_pred':
+
+                #---Selecting the multipred
+                acx = np.array(preds[0][0])
+                rlx = np.array(preds[1][0])
+                lbx = np.array(preds[2][0])
+
+                pos = (-acx).argsort()[:self.nx].tolist()
+                pos1 = (-rlx).argsort()[:self.nx].tolist()
+                pos2 = (-lbx).argsort()[:self.nx].tolist()
+
+                pos_prob = []
+                pos1_prob = []
+                pos2_prob = []
+
+                for ix in range(len(pos)):
+                    # probability of activity
+                    pos_prob.append(acx[pos[ix]])
+                for jx in range(len(pos1)):
+                    # probability of role
+                    pos1_prob.append(rlx[pos1[jx]])
+                for kx in range(len(pos2)):
+                    # probability of label
+                    pos2_prob.append(lbx[pos2[kx]])
+
+
+
+            if i == pred_fltr_idx-1:
+
+                for _iz in range(parameters['multiprednum']):
+                    if parameters['multiprednum'] > 1:
+
+                        st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['ac_pred'].extend(pos[_iz:_iz + 1])
+                        st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['ac_prob'].extend(pos_prob[_iz:_iz + 1])
+
+                        st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['rl_pred'].extend(pos1[_iz:_iz + 1])
+                        st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['rl_prob'].extend(pos1_prob[_iz:_iz + 1])
+
+                        if _iz + 1 > 2:
+                            st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['label_pred'].extend([None])
+                            st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['label_prob'].extend([0])
+
+                        elif _iz + 1 <= 2:
+                            st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['label_pred'].extend([pos2[_iz]])
+                            st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['label_prob'].extend([pos2_prob[_iz]])
+
+                        st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['tm_pred'].extend([[preds[3][0][0]]])
+
+                    elif parameters['multiprednum'] == 1:
+
+                        st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['ac_pred'].extend([pos])
+                        st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['ac_prob'].extend([pos_prob])
+
+                        st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['rl_pred'].extend([pos1])
+                        st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['rl_prob'].extend([pos1_prob])
+
+                        st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['label_pred'].extend([pos2])
+                        st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['label_prob'].extend([pos2_prob])
+
+                        st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['tm_pred'].extend([[preds[3][0][0]]])
+
 
 
     @staticmethod
