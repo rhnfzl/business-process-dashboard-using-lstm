@@ -30,7 +30,7 @@ class FeaturesMannager():
     def calculate(self, log, add_cols):
         log = self.add_resources(log)
         log = self.add_calculated_times(log)
-        print("Log Properties : ", log.dtypes, "Additional Cols :", add_cols)
+        # print("Log Properties : ", log.dtypes, "Additional Cols :", add_cols)
         #log = self.filter_features(log, add_cols) #----Filters out the features, Preprocessing of the vlaues helps to select the required features beforehand
         return self.scale_features(log, add_cols)
 
@@ -48,7 +48,7 @@ class FeaturesMannager():
         return log
 
     def filter_features(self, log, add_cols):
-        print("Log Properties : ", log.dtypes, log.columns)
+        # print("Log Properties : ", log.dtypes, log.columns)
         # Add intercase features
         #columns = ['caseid', 'task', 'user', 'end_timestamp', 'role', 'dur', 'label'] #filtering features which will passed to train and test
         columns = ['caseid', 'task', 'user', 'end_timestamp', 'role', 'dur']  # filtering features which will passed to train and test
@@ -135,7 +135,7 @@ class FeaturesMannager():
                 log, _ = self.scale_feature(log, 'open_cases', 'max')
             else:
                 log, _ = self.scale_feature(log, col, self.norm_method, True)
-        print("Log :", log.columns, log.head(5))
+        # print("Log :", log.columns, log.head(5))
         return log, scale_args
 
     # def _scale_inter(self, log, add_cols):
@@ -205,7 +205,4 @@ class FeaturesMannager():
             raise ValueError(method)
         if replace:
             log = log.drop(feature, axis=1)
-
-        print("--", feature, "---")
-        print("Scaled Args Value : ", scale_args)
         return log, scale_args

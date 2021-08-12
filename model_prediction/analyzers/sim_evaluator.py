@@ -21,12 +21,14 @@ import numpy as np
 
 class Evaluator():
 
-    def __init__(self, one_timestamp, variant):
+    def __init__(self, one_timestamp, variant, mode):
         """constructor"""
         self.one_timestamp = one_timestamp
         self.variant = variant
+        self.mode = mode
         print("onetimestamp :", self.one_timestamp)
         print("Variant :", self.variant)
+        print("Mode : ", self.mode)
 
     def measure(self, metric, data, feature=None):
         evaluator = self._get_metric_evaluator(metric)
@@ -80,6 +82,9 @@ class Evaluator():
 
     def _mae_next_evaluation(self, data, feature):
         data = data.copy()
+        print("Inside MAE : ", data[(feature + '_pred')])
+        if self.mode in ['next_action']:
+            data[(feature + '_pred')] = np.mean(data[(feature + '_pred')].tolist(), axis=1)
         data = data[[(feature + '_expect'), (feature + '_pred'),
                      'run_num', 'implementation']]
         ae = (lambda x: np.abs(x[feature + '_expect'] - x[feature + '_pred']))

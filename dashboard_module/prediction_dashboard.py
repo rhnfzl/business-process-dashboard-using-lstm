@@ -166,8 +166,8 @@ class DashPredictor():
 
     @staticmethod
     def dashboard_nextprediction_history(results_dash, parms):
-        st.beta_expander('Expander')
-        with st.beta_expander('Expand'):
+        st.expander('Expander')
+        with st.expander('Expand'):
             st.write('Juicy deets')
 
 
@@ -185,7 +185,7 @@ class DashPredictor():
     def dashboard_nextprediction_execute_write(results_dash, parms):
         # When not in SME mode, the historical data has to be the predicted output of the model
         st.subheader('📜 Historical Behaviour')
-        with st.beta_expander('ℹ️'):
+        with st.expander('ℹ️'):
             st.info("Events which has already been executed")
             # if parms['predchoice'] not in ['SME']:
             #     _hist_columns = ['pos_ac_ss', 'pos_rl_ss', 'pos_lb_ss', 'pos_tm_ss'] #selecting the columns
@@ -214,7 +214,7 @@ class DashPredictor():
             st.dataframe(results_dash_expected.iloc[:-1])
         st.markdown("""---""")
         if parms['variant'] in ['multi_pred']:
-            cols = st.beta_columns(parms['multiprednum'])
+            cols = st.columns(parms['multiprednum'])
 
             multipreddict = DashPredictor.dashboard_multiprediction_columns(parms)
 
@@ -223,7 +223,7 @@ class DashPredictor():
                     DashPredictor.dashboard_nextprediction_write_acrl(results_dash, parms, multipreddict, kz)
             st.markdown("""---""")
             with st.beta_container():
-                colstm = st.beta_columns(1)
+                colstm = st.columns(1)
                 with colstm[0]:
                     st.subheader('⌛ Predicted Time Duration')
                     st.write(results_dash[["tm_pred"]].rename(columns={"tm_pred": 'Expected'}, inplace=False).iloc[-1:].T,
@@ -232,7 +232,7 @@ class DashPredictor():
 
         else:
             st.header("🤔 Max Probability Prediction")
-            cols1, cols2, cols3, cols4 = st.beta_columns([2, 2, 2, 1])
+            cols1, cols2, cols3, cols4 = st.columns([2, 2, 2, 1])
             with cols1:
                 st.subheader('🏋️ Activity')
                 # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
@@ -256,7 +256,7 @@ class DashPredictor():
     @staticmethod
     def dashboard_nextprediction_evaluate_write(results_dash, parms):
         if parms['variant'] in ['multi_pred']:
-            cols = st.beta_columns(parms['multiprednum'] + 1)
+            cols = st.columns(parms['multiprednum'] + 1)
 
             multipreddict = DashPredictor.dashboard_multiprediction_columns(parms)
             for kz in range(parms['multiprednum'] + 1):
@@ -281,7 +281,7 @@ class DashPredictor():
                         st.write(results_dash[["label_expect"]].rename(columns={"label_expect": 'Expected'}, inplace=False))
             st.markdown("""---""")
             with st.beta_container():
-                colstm = st.beta_columns(2)
+                colstm = st.columns(2)
                 with colstm[0]:
                     st.subheader('⌛ Predicted Time Duration')
                     st.write(results_dash[["tm_pred"]].rename(columns={"tm_pred": 'Expected'}, inplace=False).T,
@@ -294,7 +294,7 @@ class DashPredictor():
 
         else:
             st.header("🤔 Max Probability Prediction")
-            cols1, cols2, cols3, cols4 = st.beta_columns([2, 2, 1, 2])
+            cols1, cols2, cols3, cols4 = st.columns([2, 2, 1, 2])
             with cols1:
                 st.subheader('🏋️ Activity')
                 # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
@@ -344,7 +344,7 @@ class DashPredictor():
                     st.write("None")
             elif parms['next_mode'] == 'history_with_next':
                 st.header("🤔 Prediction " + str(kz + 1))
-                with st.beta_expander('ℹ️'):
+                with st.expander('ℹ️'):
                     st.info("Predicted Events")
                     st.subheader('🏋️ Activity')
                     # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe

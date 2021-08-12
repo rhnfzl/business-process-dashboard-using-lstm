@@ -3,6 +3,7 @@
 Created on Tue Mar 17 10:49:28 2020
 
 @author: Manuel Camargo
+@subauthor : Rehan Fazal
 """
 import os
 import json
@@ -128,8 +129,8 @@ class ModelPredictor():
             self.rl_index = {v: k for k, v in self.parms['index_rl'].items()}
 
     def sampling(self, sampler):
-        print("Model Type : ", self.parms['model_type'])
-        print("Model Def : ", self.model_def['vectorizer'])
+        # print("Model Type : ", self.parms['model_type'])
+        # print("Model Def : ", self.model_def['vectorizer'])
         sampler.register_sampler(self.parms['model_type'],
                                  self.model_def['vectorizer'])
         self.samples = sampler.create_samples(
@@ -307,7 +308,6 @@ class ModelPredictor():
 
 
     @staticmethod
-    @st.cache(persist=True)
     def dashboard_prediction_batch(results_dash, parms):
         #All the results has to be displayed in Tabular form i.e DataFrame
         if parms['variant'] in ['multi_pred']:
@@ -338,12 +338,14 @@ class ModelPredictor():
             #     zip(['', 'Activity', '', '', 'Role', '', '', 'Time', ''],
             #         results_dash.columns))
 
-        #st.table(results_dash)
+        st.table(results_dash)
         #AgGrid(results_dash)
 
     @staticmethod
     @st.cache(persist=True)
     def dashboard_multiprediction_acrl(results_dash, parms):
+
+        print("Dataframe initially : ", results_dash.columns)
 
         multipreddict = ModelPredictor.dashboard_multiprediction_columns(parms)
 
@@ -376,8 +378,14 @@ class ModelPredictor():
             del results_dash['rl_pred'][ix][:ln]
             results_dash[multipreddict["rl_pred"]] = pd.DataFrame(results_dash.rl_pred.tolist(),
                                                                   index=results_dash.index)
+
             results_dash[multipreddict["rl_prob"]] = pd.DataFrame(results_dash.rl_prob.tolist(),
                                                                   index=results_dash.index)
+        if parms['next_mode'] == 'next_action':
+            # --------------------results_dash['tm_pred']
+            for ix in range(len(results_dash['tm_pred'])):
+                results_dash[multipreddict["tm_pred"]] = pd.DataFrame(results_dash.tm_pred.tolist(),
+                                                                      index=results_dash.index)
 
         return results_dash
 
@@ -415,9 +423,9 @@ class ModelPredictor():
             # creating the prefix for execution mode only, first the last row has been selected to accomodate all the input for
             # activity, role, time. for time it has been converted from numpy array to array of array and then to flat array
             # all the three attributes has been put in dictionary and then convrted to dataframe
-            print("Activity : ", pred_results_df['ac_prefix'].iloc[-1:].values.tolist()[0])
-            print("Role : ", pred_results_df['rl_prefix'].iloc[-1:].values.tolist()[0])
-            print("Time : ", sum([x.tolist() for x in pred_results_df['tm_prefix'].iloc[-1:].values.tolist()[0]], []))
+            # print("Activity : ", pred_results_df['ac_prefix'].iloc[-1:].values.tolist()[0])
+            # print("Role : ", pred_results_df['rl_prefix'].iloc[-1:].values.tolist()[0])
+            # print("Time : ", sum([x.tolist() for x in pred_results_df['tm_prefix'].iloc[-1:].values.tolist()[0]], []))
 
             result_dash_hist_execution = pd.DataFrame(
                 {"Activity": pred_results_df['ac_prefix'].iloc[-1:].values.tolist()[0],
@@ -445,7 +453,7 @@ class ModelPredictor():
         #
         #     ModelPredictor.dashboard_nextprediction_whatif_write(results_dash, parms)
 
-        print("------------------------------How Session State Looks Like : ", st.session_state)
+        # print("------------------------------How Session State Looks Like : ", st.session_state)
 
     @staticmethod
     def dashboard_nextprediction_execute_write(results_dash, parms):
@@ -460,12 +468,12 @@ class ModelPredictor():
 
             multipreddict = ModelPredictor.dashboard_multiprediction_columns(parms)
 
-            with st.beta_container():
-                colstm = st.beta_columns(1)
+            with st.container():
+                colstm = st.columns(1)
                 with colstm[0]:
                     st.subheader('⌛ Predicted Time Duration of Predictions')
                     st.write(results_dash[["tm_pred"]].rename(columns={"tm_pred": 'Expected'}, inplace=False).iloc[-1:].T, use_column_width=True)
-            cols = st.beta_columns(parms['multiprednum'])
+            cols = st.columns(parms['multiprednum'])
 
             for kz in range(parms['multiprednum']):
                     with cols[kz]:
@@ -474,7 +482,7 @@ class ModelPredictor():
 
         else:
             st.header("🤔 Max Probability Prediction")
-            cols1, cols2, cols3, cols4 = st.beta_columns([2, 2, 1, 0.5])
+            cols1, cols2, cols3, cols4 = st.columns([2, 2, 1, 0.5])
             with cols1:
                 st.subheader('🏋️ Activity')
                 # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
@@ -535,8 +543,8 @@ class ModelPredictor():
             _multi_predicted_df = pd.DataFrame.from_dict(_multi_predicted_dict)
             _multi_predicted_df = ModelPredictor.dashboard_maxprediction(_multi_predicted_df, parms)
             _multi_predicted_df.index = _multi_predicted_df.index + 1 #to match with the index value of the main prediction
-            st.subheader("🤔 Max Probability Prediction of " + nw(lk + 1, lang="en", to="ordinal_num") + " Prediction")
-            cols1, cols2, cols3, cols4 = st.beta_columns([2, 2, 1, 0.5])
+            st.subheader("🔮 Max Probability Prediction of " + nw(lk + 1, lang="en", to="ordinal_num") + " Prediction")
+            cols1, cols2, cols3, cols4 = st.columns([2, 2, 1, 0.5])
             with cols1:
                 st.subheader('🏋️ Activity')
                 # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
@@ -562,8 +570,8 @@ class ModelPredictor():
     def dashboard_nextprediction_evaluate_write(results_dash, parms, result_dash_hist_execution):
 
         # process_history_behaviour, label_status = ModelPredictor.dashboard_history_label()
-        # with st.beta_container():
-        #     colshist, colslabel = st.beta_columns(2)
+        # with st.container():
+        #     colshist, colslabel = st.columns(2)
 
         # Fixing Index Number for better readability
         _temp_result_dash_hist_execution = result_dash_hist_execution.iloc[:parms['nextcaseid_attr']["filter_index"] + 1]
@@ -573,52 +581,71 @@ class ModelPredictor():
         st.dataframe(_temp_result_dash_hist_execution)
         st.markdown("""---""")
 
-        print("Parameter : ", parms)
+        print("Prediction Dataframe  : ", results_dash.columns)
+
+        # print("Parameter : ", parms)
         results_dash.index = results_dash.index + (parms['nextcaseid_attr']["filter_index"] + 1)
 
         if parms['variant'] in ['multi_pred']:
-            cols = st.beta_columns(parms['multiprednum']+1)
+            cols = st.columns(parms['multiprednum']+2) #One for SME Case another for expecte
 
             multipreddict = ModelPredictor.dashboard_multiprediction_columns(parms)
-            for kz in range(parms['multiprednum']+1):
-                if kz <= (parms['multiprednum']-1):
+            _iterations = parms['multiprednum']+2 #One for SME Case another for expected
+            for kz in range(_iterations):
+                if kz <= (_iterations-2):
                     with cols[kz]:
                         ModelPredictor.dashboard_nextprediction_write_acrl(results_dash, parms, multipreddict, kz)
-                elif kz == (parms['multiprednum']) and parms['next_mode']:
+
+                elif kz == (_iterations-1) and parms['next_mode']:
                     with cols[kz]:
                         st.header("🧐 Expected ")
 
                         st.subheader('🏋️ Activity')
+                        st.write(results_dash[["ac_expect"]][0:1].rename(columns={"ac_expect": 'Expected'}, inplace=False))
+                        with st.expander('ℹ️'):
+                            st.info("Suffix of Expected Activity")
                         # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
-                        st.write(results_dash[["ac_expect"]].rename(columns={"ac_expect": 'Expected'}, inplace=False))
+                            st.write(results_dash[["ac_expect"]][1:].rename(columns={"ac_expect": 'Expected'}, inplace=False))
 
                         st.markdown("""---""")
                         st.subheader('👨‍💻 Role')
                         # writes Role and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
-                        st.write(results_dash[["rl_expect"]].rename(columns={"rl_expect": 'Expected'}, inplace=False))
+                        st.write(results_dash[["rl_expect"]][0:1].rename(columns={"rl_expect": 'Expected'}, inplace=False))
+                        with st.expander('ℹ️'):
+                            st.info("Suffix of Expected Role")
+                            st.write(results_dash[["rl_expect"]][1:].rename(columns={"rl_expect": 'Expected'}, inplace=False))
 
                         st.markdown("""---""")
+
+                        st.subheader('⌛ Time')
+                        st.write(results_dash[["tm_expect"]][0:1].rename(columns={"tm_expect": 'Expected'}, inplace=False))
+                        with st.expander('ℹ️'):
+                            st.info("Suffix of Expected Time")
+                            st.write(results_dash[["tm_expect"]][1:].rename(columns={"tm_expect": 'Expected'}, inplace=False))
+
+                        st.markdown("""---""")
+
                         st.subheader('🏷️ Label')
                         ModelPredictor.dashboard_label_decider(sum(results_dash[["ac_expect"]].values.tolist(), []), parms)
 
                         st.markdown("""---""")
 
             #st.markdown("""---""")
-            with st.beta_container():
-                colstm = st.beta_columns(2)
-                with colstm[0]:
-                    st.subheader('⌛ Predicted Time Duration')
-                    st.write(results_dash[["tm_pred"]].rename(columns={"tm_pred": 'Predicted'}, inplace=False).T,
-                             use_column_width=True)
-                with colstm[1]:
-                    st.subheader('⌚ Expected Time Duration')
-                    st.write(
-                        results_dash[["tm_expect"]].rename(columns={"tm_expect": 'Expected'}, inplace=False).T,
-                        use_column_width=True)
+            # with st.container():
+            #     colstm = st.columns(2)
+            #     with colstm[0]:
+            #         st.subheader('⌛ Predicted Time Duration')
+            #         st.write(results_dash[["tm_pred"]].rename(columns={"tm_pred": 'Predicted'}, inplace=False).T,
+            #                  use_column_width=True)
+            #     with colstm[1]:
+            #         st.subheader('⌚ Expected Time Duration')
+            #         st.write(
+            #             results_dash[["tm_expect"]].rename(columns={"tm_expect": 'Expected'}, inplace=False).T,
+            #             use_column_width=True)
 
         else:
             st.header("🤔 Max Probability Prediction")
-            cols1, cols2, cols3, cols4 = st.beta_columns([2, 2, 1, 0.5])
+            cols1, cols2, cols3, cols4 = st.columns([2, 2, 1, 0.5])
             with cols1:
                 st.subheader('🏋️ Activity')
                 # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
@@ -636,7 +663,7 @@ class ModelPredictor():
             st.markdown("""---""")
 
             st.header("🧐 Expected ")
-            ecols1, ecols2, ecols3, ecols4 = st.beta_columns([2, 2, 1, 0.5])
+            ecols1, ecols2, ecols3, ecols4 = st.columns([2, 2, 1, 0.5])
             with ecols1:
                 st.subheader('🏋️ Activity')
                 # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
@@ -673,12 +700,12 @@ class ModelPredictor():
 
             multipreddict = ModelPredictor.dashboard_multiprediction_columns(parms)
 
-            with st.beta_container():
-                colstm = st.beta_columns(1)
+            with st.container():
+                colstm = st.columns(1)
                 with colstm[0]:
                     st.subheader('⌛ Predicted Time Duration of Predictions')
                     st.write(results_dash[["tm_pred"]].rename(columns={"tm_pred": 'Expected'}, inplace=False).iloc[-1:].T, use_column_width=True)
-            cols = st.beta_columns(parms['multiprednum'])
+            cols = st.columns(parms['multiprednum'])
 
             for kz in range(parms['multiprednum']):
                     with cols[kz]:
@@ -687,7 +714,7 @@ class ModelPredictor():
 
         else:
             st.header("🤔 Max Probability Prediction")
-            cols1, cols2, cols3, cols4 = st.beta_columns([2, 2, 1, 0.5])
+            cols1, cols2, cols3, cols4 = st.columns([2, 2, 1, 0.5])
             with cols1:
                 st.subheader('🏋️ Activity')
                 # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
@@ -725,7 +752,6 @@ class ModelPredictor():
             _hist_multiverse_dict['pos_tm_ss'] = [ModelPredictor.rescale(x, parms, parms['scale_args']) for x in _hist_multiverse_dict['pos_tm_ss']]  # Normalizing back to original value
 
             _hist_multiverse_dict = {k: _hist_multiverse_dict[k][1:] for k in _hist_multiverse_dict}  # removing first item in each key in a dictionary
-            print("Historical Mutiverse Final : ", _hist_multiverse_dict)
             _hist_predicted_df = pd.DataFrame.from_dict(_hist_multiverse_dict)
             # Replacing from Dictionary Values to it's original name
             _hist_predicted_df['pos_ac_ss'] = _hist_predicted_df.pos_ac_ss.replace(parms['index_ac'])
@@ -736,7 +762,7 @@ class ModelPredictor():
             st.markdown("""---""")
             _multi_columns = ['ac_pred', 'ac_prob', 'rl_pred', 'rl_prob', 'tm_pred']
 
-            # cols = st.beta_columns(parms['multiprednum'])
+            # cols = st.columns(parms['multiprednum'])
             #
 
             for _lz in range(parms['multiprednum']):
@@ -751,11 +777,11 @@ class ModelPredictor():
                         st.subheader('⌛ Predicted Time Duration of Predictions')
                         st.write(_multi_multiverse_df[["tm_pred"]].rename(columns={"tm_pred": 'Expected'},
                                                                           inplace=False).iloc[-1:].T, use_column_width=True)
-                        cols = st.beta_columns(parms['multiprednum'])
+                        cols = st.columns(parms['multiprednum'])
 
                     with cols[_lz]:
-                    #----------------------------------------------------------------------------------------------------------
-
+                        st.subheader("🔮 " + nw(_lz + 1, lang="en", to="ordinal_num") + " Prediction of Prediction")
+                    #----------------------------------------------------------------------------------------------------------------------------------------
                         st.subheader('🏋️ Activity')
                         # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
                         st.write(_multi_multiverse_df[["ac_pred"] +
@@ -772,9 +798,9 @@ class ModelPredictor():
                         _lbkey = [sum(_hist_predicted_df[['Activity']].values.tolist(), [])[0]] + sum(_multi_multiverse_df[["ac_pred"]].values.tolist(), [])
                         ModelPredictor.dashboard_label_decider(_lbkey, parms)
                         st.markdown("""---""")
-
                 else:
-                    cols1, cols2, cols3, cols4 = st.beta_columns([2, 2, 1, 0.5])
+                    st.header("🔮 Max Probability Prediction")
+                    cols1, cols2, cols3, cols4 = st.columns([2, 2, 1, 0.5])
                     with cols1:
                         st.subheader('🏋️ Activity')
                         # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
@@ -816,8 +842,8 @@ class ModelPredictor():
                 #-------------------------------------------------------
                 #     multipreddict = ModelPredictor.dashboard_multiprediction_columns(parms)
                 #
-                #     with st.beta_container():
-                #         colstm = st.beta_columns(1)
+                #     with st.container():
+                #         colstm = st.columns(1)
                 #         with colstm[0]:
                 #             st.subheader('⌛ Predicted Time Duration of Predictions')
                 #             st.write(_multi_multiverse_df[["tm_pred"]].rename(columns={"tm_pred": 'Expected'}, inplace=False).iloc[-1:].T, use_column_width=True)
@@ -828,7 +854,7 @@ class ModelPredictor():
                 #
                 # else:
                 #     st.subheader("🤔 Max Probability Prediction of " + nw(_lz + 1, lang="en", to="ordinal_num") + " Prediction")
-                #     cols1, cols2, cols3, cols4 = st.beta_columns([2, 2, 2, 1])
+                #     cols1, cols2, cols3, cols4 = st.columns([2, 2, 2, 1])
                 #     with cols1:
                 #         st.subheader('🏋️ Activity')
                 #         # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
@@ -852,30 +878,56 @@ class ModelPredictor():
         if kz <= parms['multiprednum']:
             if parms['next_mode'] == 'next_action': #Evaluation Mode
                 #st.subheader("🤔", nw(kz + 1, lang="en", to="ordinal_num") + "Prediction")
-                st.header("🤔 " + nw(kz + 1, lang="en", to="ordinal_num") + " Prediction")
+                if kz == 0:
+                    st.header("👨‍💼 SME Predictions")
+                else:
+                    st.header("🤔 " + nw(kz, lang="en", to="ordinal_num") + " Prediction")
                 # print("results_dash : ", multipreddict["ac_pred"][kz])
                 # print("Dataframe : ", results_dash)
                 st.subheader('🏋️ Activity')
                 # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
-                st.write(results_dash[[multipreddict["ac_pred"][kz]] + [multipreddict["ac_prob"][kz]]].rename(
+                # st.write(results_dash[[multipreddict["ac_pred"][kz]] + [multipreddict["ac_prob"][kz]]].rename(
+                #     columns={multipreddict["ac_pred"][kz]: 'Predicted', multipreddict["ac_prob"][kz]: 'Confidence'},
+                #     inplace=False))
+                st.write(results_dash[[multipreddict["ac_pred"][kz]] + [multipreddict["ac_prob"][kz]]][0:1].rename(
                     columns={multipreddict["ac_pred"][kz]: 'Predicted', multipreddict["ac_prob"][kz]: 'Confidence'},
                     inplace=False))
+                with st.expander('ℹ️'):
+                    st.info("Suffix of Predicted Activity")
+                    st.write(results_dash[[multipreddict["ac_pred"][kz]] + [multipreddict["ac_prob"][kz]]][1:].rename(
+                        columns={multipreddict["ac_pred"][kz]: 'Predicted', multipreddict["ac_prob"][kz]: 'Confidence'},
+                        inplace=False))
                 st.markdown("""---""")
                 st.subheader('👨‍💻 Role')
                 # writes Role and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
-                st.write(results_dash[[multipreddict["rl_pred"][kz]] + [multipreddict["rl_prob"][kz]]].rename(
+                st.write(results_dash[[multipreddict["rl_pred"][kz]] + [multipreddict["rl_prob"][kz]]][0:1].rename(
                     columns={multipreddict["rl_pred"][kz]: 'Predicted', multipreddict["rl_prob"][kz]: 'Confidence'},
                     inplace=False))
+                with st.expander('ℹ️'):
+                    st.info("Suffix of Predicted Role")
+                    st.write(results_dash[[multipreddict["rl_pred"][kz]] + [multipreddict["rl_prob"][kz]]][1:].rename(
+                        columns={multipreddict["rl_pred"][kz]: 'Predicted', multipreddict["rl_prob"][kz]: 'Confidence'},
+                        inplace=False))
                 st.markdown("""---""")
-                # st.subheader('⌛ Time')
+
+                st.subheader('⌛ Time')
                 # st.write(results_dash[["tm_pred"]].rename(columns={"tm_pred": 'Predicted'}, inplace=False))
+                st.write(results_dash[[multipreddict["tm_pred"][kz]]][0:1].rename(
+                    columns={multipreddict["tm_pred"][kz]: 'Predicted'}, inplace=False))
+                with st.expander('ℹ️'):
+                    st.info("Suffix of Predicted Time")
+                    st.write(results_dash[[multipreddict["tm_pred"][kz]]][1:].rename(
+                        columns={multipreddict["tm_pred"][kz]: 'Predicted'}, inplace=False))
+
+                st.markdown("""---""")
+
                 st.subheader('🏷️ Label')
                 ModelPredictor.dashboard_label_decider(sum(results_dash[[multipreddict["ac_pred"][kz]]].values.tolist(), []), parms)
                 st.markdown("""---""")
             elif parms['next_mode'] in ['history_with_next', 'what_if']: #Execution Mode
                 # st.header("🤔 Prediction " + str(kz + 1))
                 st.header("🤔 " + nw(kz + 1, lang="en", to="ordinal_num") + " Prediction")
-                # with st.beta_expander('ℹ️'):
+                # with st.expander('ℹ️'):
                 #     st.info("Predicted Events")
                 st.subheader('🏋️ Activity')
                 # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
@@ -905,17 +957,29 @@ class ModelPredictor():
         ac_prob_lst = []
         rl_pred_lst = []
         rl_prob_lst = []
+
+        if parms['next_mode'] == 'next_action':
+            tm_pred_lst = []
+            _numofcols = parms['multiprednum'] + 1
+        else :
+            _numofcols = parms['multiprednum']
+
         multipreddict = {}
-        for zx in range(parms['multiprednum']):
+
+        for zx in range(_numofcols):
             zx += 1
             ac_pred_lst.append("ac_pred" + str(zx))
             ac_prob_lst.append("ac_prob" + str(zx))
             rl_pred_lst.append("rl_pred" + str(zx))
             rl_prob_lst.append("rl_prob" + str(zx))
+            if parms['next_mode'] == 'next_action':
+                tm_pred_lst.append("tm_pred" + str(zx))
         multipreddict["ac_pred"] = ac_pred_lst
         multipreddict["ac_prob"] = ac_prob_lst
         multipreddict["rl_pred"] = rl_pred_lst
         multipreddict["rl_prob"] = rl_prob_lst
+        if parms['next_mode'] == 'next_action':
+            multipreddict["tm_pred"] = tm_pred_lst
         return multipreddict
 
     # ------Supporting Functions
@@ -947,7 +1011,7 @@ class ModelPredictor():
     # @staticmethod
     # @st.cache(persist=True)
     # def dashboard_history_label():
-    #     colstm = st.beta_columns(2)
+    #     colstm = st.columns(2)
     #     with colstm[0]:
     #         process_history_behaviour = st.empty()
     #     with colstm[1]:
@@ -990,7 +1054,7 @@ class EvaluateTask():
 
     def _evaluate_predict_next(self, data, parms):
         exp_desc = self.clean_parameters(parms.copy())
-        evaluator = ev.Evaluator(parms['one_timestamp'], parms['variant'])
+        evaluator = ev.Evaluator(parms['one_timestamp'], parms['variant'], parms['next_mode'])
 
         ac_sim = evaluator.measure('accuracy', data, 'ac')
         rl_sim = evaluator.measure('accuracy', data, 'rl')
@@ -1008,6 +1072,7 @@ class EvaluateTask():
         self.save_results(ac_sim, 'ac', parms)
         self.save_results(rl_sim, 'rl', parms)
         if parms['one_timestamp']:
+            print("How data looks like : ", data['tm_expect'])
             tm_mae = evaluator.measure('mae_next', data, 'tm')
             tm_mae = pd.concat([tm_mae, exp_desc], axis=1).to_dict('records')
             self.save_results(tm_mae, 'tm', parms)
@@ -1023,7 +1088,7 @@ class EvaluateTask():
 
     def _evaluate_pred_sfx(self, data, parms):
         exp_desc = self.clean_parameters(parms.copy())
-        evaluator = ev.Evaluator(parms['one_timestamp'], parms['variant'])
+        evaluator = ev.Evaluator(parms['one_timestamp'], parms['variant'], parms['next_mode'])
         ac_sim = evaluator.measure('similarity', data, 'ac')
         rl_sim = evaluator.measure('similarity', data, 'rl')
         mean_sim = ac_sim['mean'].mean()
@@ -1048,7 +1113,7 @@ class EvaluateTask():
 
     def _evaluate_predict_log(self, data, parms):
         exp_desc = self.clean_parameters(parms.copy())
-        evaluator = ev.Evaluator(parms['one_timestamp'], parms['variant'])
+        evaluator = ev.Evaluator(parms['one_timestamp'], parms['variant'], parms['next_mode'])
         dl = evaluator.measure('dl', data)
         els = evaluator.measure('els', data)
         mean_els = els.els.mean()
@@ -1093,7 +1158,7 @@ class EvaluateTask():
                     os.path.join(
                         output_route,
                         model_name + '_' + feature + '_' + parms['activity'] + '.csv'))
-                print("output_route : ", output_route)
+                # print("output_route : ", output_route)
             else:
                 if os.path.exists(os.path.join(
                         'output_files', feature + '_' + parms['activity'] + '.csv')):

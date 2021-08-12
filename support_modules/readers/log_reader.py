@@ -5,6 +5,7 @@ import gzip
 import zipfile as zf
 import os
 import itertools as it
+import pm4py
 
 import pandas as pd
 from operator import itemgetter
@@ -21,7 +22,7 @@ class LogReader(object):
     def __init__(self, input, settings):
         """constructor"""
         #print("log reader input :", self.input)
-        print("log reader settings :", settings)
+        # print("log reader settings :", settings)
         self.input = input
         self.file_name, self.file_extension = self.define_ftype()
         self.timeformat = settings['timeformat']
@@ -122,7 +123,6 @@ class LogReader(object):
         """
         this method match the duplicated events on the .xes log
         """
-        print("Re-ordering xes log file")
         temp_data = pd.DataFrame(temp_data)
         ordered_event_log = list()
         if self.one_timestamp:
@@ -248,7 +248,7 @@ class LogReader(object):
                                                     format=self.timeformat)
             log['end_timestamp'] = pd.to_datetime(log['end_timestamp'],
                                                   format=self.timeformat)
-#        print("Users : ", log['user'])
+
         log['user'].fillna('SYS', inplace=True)
         self.data = log.to_dict('records')
         self.append_csv_start_end()

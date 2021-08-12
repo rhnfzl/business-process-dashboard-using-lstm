@@ -6,6 +6,7 @@
 #---Workaround for Not creating XLA devices, tf_xla_enable_xla_devices not set
 import os
 os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices'
+# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 #---
 
 import sys
@@ -13,8 +14,6 @@ import getopt
 import time
 import streamlit as st
 
-from model_prediction import model_predictor as pr
-# from model_training import model_trainer as tr
 from model_training import model_trainer_nlb as tr
 
 #---Workaround for "tensorflow.python.framework.errors_impl.UnknownError: Fail to find the dnn implementation."
@@ -25,10 +24,8 @@ config.gpu_options.allow_growth = True # dynamically grow the memory used on the
 session = InteractiveSession(config=config)
 #-----
 
-
 # --setup--
 def main(argv):
-
 
     def catch_parameter(opt):
         """Change the captured parameters names"""
@@ -45,7 +42,8 @@ def main(argv):
             raise Exception('Invalid option ' + opt)
 
     st.title("⏭️Next Event Training Dashboard")  # Adding title bar
-    formt = st.form(key="my_training_form")
+    st.header("Training and Model Evaluation")
+    formt = st.sidebar.form(key="my_training_form")
     """Main aplication method"""
     parameters = dict()
     column_names = {'Case ID': 'caseid',
@@ -54,19 +52,20 @@ def main(argv):
                     'Resource': 'user'}
     parameters['one_timestamp'] = True # Only one timestamp for each activity i.e the start and end time will be same
     # Similarity btw the resources profile execution (Song e.t. all)
-    role_threshold = formt.number_input("Role Similarity Threshold", min_value=0.50, max_value=0.95, step=0.05)
-    batch_size_threshold = formt.number_input("Batch Size", min_value=16, max_value=512, step=16)
-    epochs_size_threshold = formt.number_input("Epochs", min_value=150, max_value=500, step=50)
+    role_threshold = formt.number_input("Role Similarity Threshold", min_value=0.50, max_value=0.95, value=0.85, step=0.05)
+    batch_size_threshold = formt.number_input("Batch Size", min_value=16, max_value=512, value=32, step=16)
+    epochs_size_threshold = formt.number_input("Epochs", min_value=50, max_value=2000, value=200,step=10)
     parameters['rp_sim'] = role_threshold #0.85
     parameters['batch_size'] = batch_size_threshold #64 # Usually 16/32/64/128/256, 0 for Automatic
     parameters['epochs'] = epochs_size_threshold #200 #v1 200, for embedded training it's 100.
     # Parameters setting manual fixed or catched by console
     '''
         **Concept**
-        One Epoch is when an ENTIRE dataset is passed forward and backward through the neural network only ONCE. Since one epoch is too big to feed to the computer at once we divide it in several smaller batches.
+        One Epoch is when an ENTIRE dataset is passed forward and backward through the neural network only ONCE. 
+        Since one epoch is too big to feed to the computer at once we divide it in several smaller batches.
         Batch size is total number of training examples present in a single batch and Iterations is the number of batches needed to complete one epoch.
-        e.g : For 2000 training examples we can divide the dataset of 2000 examples into batches of 500 then it will take 4 iterations to complete 1 epoch. Where Batch Size is 500 and Iterations is 4, for 1 complete epoch.
-        Conclusion : Lower the Batch size higher will be the Epoch Value
+        e.g : For 2000 training examples we can divide the dataset of 2000 examples into batches of 500 then it will take 4 iterations to complete 1 epoch.
+         Where Batch Size is 500 and Iterations is 4, for 1 complete epoch. Conclusion : Lower the Batch size higher will be the Epoch Value
     '''
     if not argv:
         # Type of LSTM task -> training, pred_log
@@ -83,40 +82,41 @@ def main(argv):
         # General training parameters
         if parameters['activity'] in ['training']:
             # Event-log parameters
-            train_file_name = formt.text_input("Traing File Name")
+            # train_file_name = formt.text_input("Training File Name")
+            train_file_name = formt.selectbox("Training File Name", ["Sepsis Dataset"], index=0)
+            if train_file_name == "Sepsis Dataset":
+                train_file_name = 'sepsis_cases.csv'
+            else:
+                print('Invalid file')
+
             parameters['file_name'] = train_file_name #'sepsis_cases_1.csv' #Change Here
             # Specific model training parameters
             if parameters['activity'] == 'training':
-                type_of_execution = formt.selectbox("Execute On", ["CPU", "GPU"])
+                type_of_execution = formt.selectbox("Execute On", ["CPU", "GPU"], index=1)
                 if type_of_execution == "CPU":
                     parameters['imp'] = 1
                 elif type_of_execution == "GPU":
                     parameters['imp'] = 2  # keras lstm implementation 1 cpu,2 gpu
-                #Recurrent networks still commonly use Tanh or sigmoid activation functions, or even both. For example, the LSTM commonly uses the Sigmoid activation for recurrent connections and the Tanh activation for output.
-                lstm_activation = formt.selectbox("LSTM Activation Layer", [None, "tanh"])
+                #Recurrent networks still commonly use Tanh or sigmoid activation functions, or even both. For example,
+                # the LSTM commonly uses the Sigmoid activation for recurrent connections and the Tanh activation for output.
+                lstm_activation = formt.selectbox("LSTM Activation Layer", [None, "tanh", "selu", "relu", "sigmoid", "softmax"], index=2)
                 parameters['lstm_act'] = lstm_activation #'tanh' # optimization function Keras
-                dense_activation = formt.selectbox("Dense Layer", ['sigmoid', 'linear'])
-                parameters['dense_act'] = dense_activation #'sigmoid'  # optimization function Keras, used at output layer for time opt: linear or sigmoid
-                optimization_func = formt.selectbox("Optimization Function", ['Nadam', 'Adam', 'SGD', 'Adagrad'])
+                dense_activation = formt.selectbox("Dense Layer", [None, 'sigmoid', 'linear', 'tanh', 'selu', 'relu'], index=1)
+                parameters['dense_act'] = dense_activation #'sigmoid'  # optimization function Keras,
+                                                            # used at output layer for time opt: linear or sigmoid
+                optimization_func = formt.selectbox("Optimization Function", ['Nadam', 'Adam', 'SGD', 'Adagrad'], index=0)
                 parameters['optim'] = optimization_func #'Nadam'  # optimization function Keras
-                norm_method_opt = formt.selectbox("Normalization Method", ['lognorm', 'max', 'standard', 'normal'])
+                norm_method_opt = formt.selectbox("Normalization Method", ['lognorm', 'max', 'standard', 'normal'], index=0)
                 parameters['norm_method'] = norm_method_opt #'lognorm' # max, lognorm
-                # Model types --> shared_cat, specialized, concatenated, 
+                # Model types --> shared_cat, specialized, concatenated,
                 #                 shared_cat_gru, specialized_gru, concatenated_gru
                 parameters['model_type'] = 'concatenated'
-                n_gram_value = formt.number_input("N-Gram Size", min_value=5, max_value=30,
+                n_gram_value = formt.number_input("N-Gram Size", min_value=5, max_value=30, value=10,
                                                     step=5)
-                lstm_layer_size = formt.number_input("LSTM Layer Size", min_value=20, max_value=150,
-                                                    step=10)
+                lstm_layer_size = formt.number_input("LSTM Layer Size", min_value=50, max_value=300, value=50,
+                                                    step=50)
                 parameters['n_size'] = n_gram_value #10  # n-gram sizeA
                 parameters['l_size'] = lstm_layer_size #50  # LSTM layer sizes
-                # Generation parameters
-        # elif parameters['activity'] in ['pred_log', 'pred_sfx', 'predict_next']:
-        #     parameters['folder'] = '20210428_68D85C7D_E0B5_47F8_92BC_79732E5F58C5'
-        #     parameters['model_file'] = 'model_concatenated_10-1.50.h5'
-        #     parameters['is_single_exec'] = True  # single or batch execution
-        #     parameters['variant'] = 'random_choice'  # random_choice, arg_max for variants and repetitions to be tested
-        #     parameters['rep'] = 1
         else:
             raise ValueError(parameters['activity'])
     else:
@@ -155,17 +155,12 @@ def main(argv):
     train_button = formt.form_submit_button("Train Model")
     if train_button:
         if parameters['activity'] == 'training':
-            print(parameters)
+            start = time.time()
             trainer = tr.ModelTrainer(parameters)
             print(trainer.output, trainer.model, sep=' ')
-        # elif parameters['activity'] in ['predict_next', 'pred_sfx', 'pred_log']:
-        #     print(parameters)
-        #     print(parameters['folder'])
-        #     print(parameters['model_file'])
-        #     start = time.time()
-        #     predictor = pr.ModelPredictor(parameters)
-        #     end = time.time()
-        #     print("Elapsed Time : ", end - start)
-        #     print(predictor.acc)
+            end = time.time()
+            st.sidebar.write("Elapsed Time (in minutes) : ", (end - start)/60)
+            st.success('Done')
+
 if __name__ == "__main__":
     main(sys.argv[1:])

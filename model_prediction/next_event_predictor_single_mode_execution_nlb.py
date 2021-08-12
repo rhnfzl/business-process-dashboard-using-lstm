@@ -11,7 +11,6 @@ import streamlit as st
 
 
 from support_modules import support as sup
-from model_prediction import interfaces as it
 
 class NextEventPredictor():
 
@@ -80,7 +79,7 @@ class NextEventPredictor():
             y_serie_predict_tm = [x[-1] for x in
                                   serie_predict_tm]  # selecting the last value from each list of list
 
-            print("y-serie time:", y_serie_predict_tm)
+            # print("y-serie time:", y_serie_predict_tm)
 
         elif 'pos_tm_ss' not in st.session_state:
             st.session_state['pos_tm_ss'] = [[0]]
@@ -109,10 +108,10 @@ class NextEventPredictor():
                             len(self.spl['prefixes']['times'][:pred_fltr_idx]) == len(serie_predict_tm)) and (
                             'multi_pred_ss' in st.session_state):
 
-                        print("--------------Input to Prediction",(_ih+ 1), "--------------------")
-                        print("Activity Prefixes :", serie_predict_ac)
-                        print("Role Prefixes :", serie_predict_rl)
-                        print("Time Prefixes :", serie_predict_tm)
+                        # print("--------------Input to Prediction",(_ih+ 1), "--------------------")
+                        # print("Activity Prefixes :", serie_predict_ac)
+                        # print("Role Prefixes :", serie_predict_rl)
+                        # print("Time Prefixes :", serie_predict_tm)
 
                         self._predict_next_event_shared_cat_pred(parameters, vectorizer, serie_predict_ac, serie_predict_rl, serie_predict_tm, _ih)
 
@@ -124,7 +123,7 @@ class NextEventPredictor():
                                                                                                'pos_rl_ss': [0]}
 
         results = list()
-        print("Initial Session STate : ", st.session_state)
+        # print("Initial Session STate : ", st.session_state)
         for i, _ in enumerate(self.spl['prefixes']['activities'][:pred_fltr_idx]):
 
             x_ac_ngram = (np.append(
@@ -227,7 +226,7 @@ class NextEventPredictor():
                         st.session_state['initial_prediction']['ss_initpredict' + str(_ik + 1)]['pos_rl_ss'].extend(
                             [pos1])
 
-                print("State of Dictionary for the iteration", _ik, " : ", st.session_state['initial_prediction'])
+                # print("State of Dictionary for the iteration", _ik, " : ", st.session_state['initial_prediction'])
                 # -Time
                 st.session_state['pos_tm_ss'].extend([[preds[2][0][0]]])
 
@@ -293,7 +292,7 @@ class NextEventPredictor():
             rl_index (dict): index of roles.
             imp (str): method of next event selection.
         """
-        print("Starting of Multi Dimention Prediction : ", index + 1)
+        # print("Starting of Multi Dimention Prediction : ", index + 1)
         # Generation of predictions
         pred_fltr_idx = parameters['nextcaseid_attr']["filter_index"] + 1
 

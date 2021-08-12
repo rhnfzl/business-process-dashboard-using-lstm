@@ -11,7 +11,6 @@ import streamlit as st
 
 
 from support_modules import support as sup
-from model_prediction import interfaces as it
 
 class NextEventPredictor():
 
@@ -125,10 +124,10 @@ class NextEventPredictor():
                             len(self.spl['prefixes']['times'][:pred_fltr_idx]) == len(_serie_predict_tm)) and (
                             'multi_pred_ss' in st.session_state):
 
-                        print("--------------Input to Multiverse Prediction",(_ih+ 1), "--------------------")
-                        print("Activity Prefixes :", _serie_predict_ac)
-                        print("Role Prefixes :", _serie_predict_rl)
-                        print("Time Prefixes :", _serie_predict_tm)
+                        # print("--------------Input to Multiverse Prediction",(_ih+ 1), "--------------------")
+                        # print("Activity Prefixes :", _serie_predict_ac)
+                        # print("Role Prefixes :", _serie_predict_rl)
+                        # print("Time Prefixes :", _serie_predict_tm)
 
                         self._predict_next_event_shared_cat_pred(parameters, vectorizer, _serie_predict_ac, _serie_predict_rl, _serie_predict_tm, _ih)
 
@@ -191,10 +190,10 @@ class NextEventPredictor():
                     st.session_state['history_of_choice']['hist_tm_prefix'].extend([y_serie_predict_tm[-1].tolist()])
                     st.session_state['history_of_choice']['hist_pred_prefix'].extend([parameters['predchoice']])
 
-            print("--------------Input to Prediction", "--------------------")
-            print("Activity Prefixes :", y_serie_predict_ac)
-            print("Role Prefixes :", y_serie_predict_rl)
-            print("Time Prefixes :", y_serie_predict_tm[-1].tolist())
+            # print("--------------Input to Prediction", "--------------------")
+            # print("Activity Prefixes :", y_serie_predict_ac)
+            # print("Role Prefixes :", y_serie_predict_rl)
+            # print("Time Prefixes :", y_serie_predict_tm[-1].tolist())
 
         # Creating Dictionary
         if 'initial_prediction' not in st.session_state:

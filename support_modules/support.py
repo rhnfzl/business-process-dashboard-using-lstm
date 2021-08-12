@@ -8,14 +8,23 @@ import uuid
 import json
 import platform as pl
 import time
+from networkx.readwrite import json_graph
+import functools
+import traceback
 
 #Utilities used for pre-processing of event logs
 
 def folder_id():
     return datetime.datetime.today().strftime('%Y%m%d_') + str(uuid.uuid4()).upper().replace('-', '_')
+
+def file_id(prefix='',extension='.csv'):
+    return (prefix+datetime.datetime.today()
+            .strftime('%Y%m%d_%H%M%S%f')+extension)
+
 #generate unique bimp element ids
 def gen_id():
     return "qbp_" + str(uuid.uuid4())
+
 #printing process functions
 def print_progress(percentage, text):
     stdout.write("\r%s" % text + str(percentage)[0:5] + chr(37) + "...      ")
@@ -109,6 +118,14 @@ def round_preserve(l,expected_sum):
     l[idx] +=difference
     return l
 
+def avoid_zero_prob(l):
+    if len(l) == 2:
+        if l[0] == 0.00:
+            l = [0.01, 0.99]
+        elif l[1]==0:
+            l = [0.99, 0.01]
+    return l
+
 def create_symetric_list(width, length):
     positions = list()
     numbers = list()
@@ -127,32 +144,85 @@ def copy(source, destiny):
     else:
         os.system('cp "' + source + '" "' + destiny + '"')
 
+def save_graph(graph, output_file):
+    data = json_graph.node_link_data(graph)
+    with open(output_file, 'w') as f:
+        f.write(json.dumps(data))
+        f.close()
 
-def timeit(method) -> dict:
+# def timeit(method) -> dict:
+#     """
+#     Decorator to measure execution times of methods
+#
+#     Parameters
+#     ----------
+#     method : Any method.
+#
+#     Returns
+#     -------
+#     dict : execution time record
+#
+#     """
+#     def timed(*args, **kw):
+#         ts = time.time()
+#         result = method(*args, **kw)
+#         te = time.time()
+#         if 'log_time' in kw:
+#             name = kw.get('log_name', method.__name__.upper())
+#             kw['log_time'][name] = int((te - ts) * 1000)
+#         else:
+#             print('%r  %2.2f ms' % \
+#                   (method.__name__, (te - ts) * 1000))
+#         return result
+#     return timed
+
+def timeit(func=None, rec_name=None) -> dict:
     """
     Decorator to measure execution times of methods
-
     Parameters
     ----------
     method : Any method.
-
     Returns
     -------
     dict : execution time record
-
     """
-    def timed(*args, **kw):
+    if not func:
+        return functools.partial(timeit, rec_name=rec_name)
+    @functools.wraps(func)
+    def wrapper(*args, **kw):
         ts = time.time()
-        result = method(*args, **kw)
+        result = func(*args, **kw)
         te = time.time()
         if 'log_time' in kw:
-            name = kw.get('log_name', method.__name__.upper())
+            name = rec_name if rec_name else kw.get('log_name', func.__name__.upper())
             kw['log_time'][name] = int((te - ts) * 1000)
         else:
             print('%r  %2.2f ms' % \
-                  (method.__name__, (te - ts) * 1000))
+                  (func.__name__, (te - ts) * 1000))
         return result
-    return timed
+    return wrapper
+
+
+def safe_exec(method):
+    """
+    Decorator to safe execute methods and return the state
+    ----------
+    method : Any method.
+    Returns
+    -------
+    dict : execution status
+    """
+    def safety_check(*args, **kw):
+        is_safe = kw.get('is_safe', method.__name__.upper())
+        if is_safe:
+            try:
+                method(*args)
+            except Exception as e:
+                print(e)
+                traceback.print_exc()
+                is_safe = False
+        return is_safe
+    return safety_check
 
 # #%%
 # import re

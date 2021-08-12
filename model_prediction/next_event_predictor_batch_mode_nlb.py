@@ -25,7 +25,7 @@ class NextEventPredictor():
         self.model = model
         #print("spl :", spl)
         self.spl = spl
-        print("What is Imp :", imp)
+        # print("What is Imp :", imp)
         self.imp = imp
         # if params['mode'] == 'next':
         #     fltr_idx = params['nextcaseid_attr']["filter_index"]

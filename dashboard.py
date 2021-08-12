@@ -24,7 +24,8 @@ config.intra_op_parallelism_threads = 4
 session = InteractiveSession(config=config)
 #-----
 
-st.set_page_config(layout="wide", initial_sidebar_state="auto", page_title='NxEventPred', page_icon="🎯")
+st.set_page_config(layout="wide", initial_sidebar_state="auto", page_title='NxEventPred', page_icon="🌌")
+# st.set_page_config(initial_sidebar_state="auto", page_title='NxEventPred', page_icon="🌌")
 
 #Page Customization
 max_width_str = f"max-width: 1500px;"
@@ -69,9 +70,20 @@ def catch_parameter(opt):
         raise Exception('Invalid option ' + opt)
 
 
+def clear_cache():
+    session_state_key_list = ['multi_pred_ss', 'pos_tm_ss', 'initial_prediction',
+                              'prediction_choice_idx', 'prediction_choice_name', 'history_of_choice']
+    _temp_sessionstate_keys = [*st.session_state]
+    # print("Keys Before : ", [*st.session_state])
+    for key in _temp_sessionstate_keys:
+        if key in session_state_key_list:
+            del st.session_state[key]
+    # print("Keys After : ", [*st.session_state])
+
+
 def main(argv, filter_parms=None, filter_parameter=None):
 
-    navigate_page = st.sidebar.selectbox("🔗 Navigate", ["Home", "Training", "About"], key="navigation_page")
+    navigate_page = st.sidebar.selectbox("🔗 Navigate", ["Home", "Training", "About"], key="navigation_page", on_change=clear_cache)
     if navigate_page == "Training":
         training.main(argv)
         #st.write("Dashboard coming Up")
@@ -107,11 +119,11 @@ def main(argv, filter_parms=None, filter_parameter=None):
             if parameters['activity'] in ['pred_log', 'pred_sfx', 'predict_next']:
 
                 #--Hard Coded Value
-                parameters['is_single_exec'] = True  # single or batch execution
+                parameters['is_single_exec'] = True
                 parameters['rep'] = 1
-                with st.sidebar.beta_expander('Folder Name'):
+                with st.sidebar.expander('Folder Name'):
                     st.info("Provide the folder for which the prediction has to be simulated")
-                    _folder_name  = st.text_input('', key="folder_name")
+                    _folder_name  = st.text_input('', key="folder_name", on_change=clear_cache)
                 #st.sidebar.markdown("""---""")
                 parameters['folder'] = _folder_name
 
@@ -126,12 +138,12 @@ def main(argv, filter_parms=None, filter_parameter=None):
                     parameters['model_file'] = _model_name[-1]
 
                     #--Selecting Mode
-                    with st.sidebar.beta_expander('Type of Prediction Processing Mode'):
+                    with st.sidebar.expander('Type of Prediction Processing Mode'):
                         st.info("Select **Batch Processing** for the prediction of eintire log file,"
                                 " **Single Processing** to simulate the prediction for each Case Id individually")
                         #next_option = st.sidebar.radio('', ['Execution Mode', 'Evaluation Mode'])
                         #st.sidebar.subheader("Choose Mode of Prediction")
-                        _mode_sel = st.radio('Processing', ['Batch Processing', 'Single Event Processing'], key="processing_type")
+                        _mode_sel = st.radio('Processing', ['Batch Processing', 'Single Event Processing'], key="processing_type", on_change=clear_cache)
                     #st.sidebar.markdown("""---""")
 
                     if _mode_sel == 'Batch Processing':
@@ -181,6 +193,17 @@ def main(argv, filter_parms=None, filter_parameter=None):
             _res_dct = dict(zip(_it, _it))
             return _res_dct
 
+
+        # def clear_cache():
+        #     session_state_key_list = ['multi_pred_ss', 'pos_tm_ss', 'initial_prediction',
+        #                               'prediction_choice_idx', 'prediction_choice_name', 'history_of_choice']
+        #     _temp_sessionstate_keys = [*st.session_state]
+        #     for key in _temp_sessionstate_keys:
+        #         print(key)
+        #         if key in session_state_key_list:
+        #             del st.session_state[key]
+
+
         # if parameters['mode'] in ['next']:
         #     #   Saves the result in the URL in the Next mode
         #     app_state = st.experimental_get_query_params()
@@ -213,7 +236,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
 
         def next_columns(filter_log, display_columns):
             # Dashboard selection of Case ID
-            filter_caseid = st.selectbox("🆔 Select Case ID", filter_log["caseid"].unique(), key="caseid_select")
+            filter_caseid = st.selectbox("🆔 Select Case ID", filter_log["caseid"].unique(), key="caseid_select", on_change=clear_cache)
             filter_caseid_attr_df = filter_log.loc[filter_log["caseid"].isin([filter_caseid])]
             filter_attr_display = filter_caseid_attr_df[display_columns]
             return filter_attr_display, filter_caseid, filter_caseid_attr_df
@@ -227,7 +250,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
             else:
                 _dfmax = _df['task'].nunique()
 
-            with st.sidebar.beta_expander('Variant'):
+            with st.sidebar.expander('Variant'):
                 st.info("Select the slider value **equal to 1** for **Max Probability** "
                         "otherwise choose the number **greater than 1** for "
                         "**Multiple Predictions** sorted in decreasing order based on probability of it's ocurrance")
@@ -239,18 +262,18 @@ def main(argv, filter_parms=None, filter_parameter=None):
 
                 slider = st.slider(
                     label='', min_value=1,
-                    max_value=_dfmax, key='my_number_prediction_slider')
+                    max_value=_dfmax, key='my_number_prediction_slider', on_change=clear_cache)
 
             return slider
 
         def label_identifier(file_name):
             # ---Logic to be added for other dataset
-            with st.sidebar.beta_expander('Type of Single Event Processing'):
+            with st.sidebar.expander('Type of Single Event Processing'):
                 if "sepsis" in file_name:
                     st.info("Select the respective labeling mode for Sepsis Patient Condition")
                     label_indicator = ["Returns to Emergency Room", "Admitted to Intensive Care",
                                        "Discharged for other Reason"]
-                    _labelsel = st.radio("Labelling Indicator", label_indicator, key="radio_select_label")
+                    _labelsel = st.radio("Labelling Indicator", label_indicator, key="radio_select_label", on_change=clear_cache)
                     if _labelsel == "Returns to Emergency Room":
                         parameters['label_activity'] = "Return ER"
                     elif _labelsel == "Admitted to Intensive Care":
@@ -259,7 +282,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
                         parameters['label_activity'] = "Release A"
                     parameters['label_check_event'] = st.number_input("Check after number of events",
                                                                       min_value=1, max_value=25, value=5,
-                                                                      step=1, key="radio_number_label")
+                                                                      step=1, key="radio_number_label", on_change=clear_cache)
                 else:
                     st.error("Label Logic for dataset is not defined")
 
@@ -277,9 +300,9 @@ def main(argv, filter_parms=None, filter_parameter=None):
                         nxt_button_idx = 0
 
                     #next_option = st.sidebar.selectbox("Type of Single Event Processing", ('Prediction of Next Event', 'Prediction of Next Events with Suffix'), key='next_dropdown_opt')
-                    with st.sidebar.beta_expander('Type of Single Event Processing'):
+                    with st.sidebar.expander('Type of Single Event Processing'):
                         st.info("Select **Execution Mode** for simulating the dashboard for the Users, **Evaluation Mode** to judge the trustworthiness of the ML model prediction")
-                        next_option = st.radio('', ['Execution Mode', 'What-If Mode', 'Evaluation Mode'], key="single_event_processing")
+                        next_option = st.radio('', ['Execution Mode', 'What-If Mode', 'Evaluation Mode'], key="single_event_processing", on_change=clear_cache)
                     #st.sidebar.markdown("""---""")
 
                     if next_option == 'Execution Mode':
@@ -299,7 +322,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
                     filter_attr_display, filter_caseid, filter_caseid_attr_df = next_columns(filter_log, display_columns)
                     parameters['nextcaseid'] = filter_caseid
 
-                    print("Display Attributes :", filter_attr_display.iloc[[2]])
+                    # print("Display Attributes :", filter_attr_display.iloc[[2]])
 
                     st.subheader('🔦 State of the Process')
                     state_of_theprocess = st.empty()
@@ -322,7 +345,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
 
                     # --- Evaluation Mode
                     if next_option == 'next_action':
-                        filter_caseid_attr_list = st.select_slider("Choose [Activity, User, Time]", options=filter_caseid_attr_df, key="caseid_attr_slider")
+                        filter_caseid_attr_list = st.select_slider("Choose [Activity, User, Time]", options=filter_caseid_attr_df, key="caseid_attr_slider", on_change=clear_cache)
 
                         _idx = filter_caseid_attr_df.index(filter_caseid_attr_list)
                         filter_caseid_attr_list.append(_idx)
@@ -348,7 +371,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
                             if st.sidebar.button("Process", key='next_process'):
                                 with st.spinner(text='In progress'):
                                     predictor = pr.ModelPredictor(parameters)
-                                    print("predictor : ", predictor.acc)
+                                    # print("predictor : ", predictor.acc)
                                 st.success('Done')
                         else:
                             st.error('Reselect the Suffix to a lower Value')
@@ -382,7 +405,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
 
                             with st.spinner(text='In progress'):
                                 predictor = pr.ModelPredictor(parameters)
-                                print("predictor : ", predictor.acc)
+                                # print("predictor : ", predictor.acc)
                             st.success('Done')
                             if (nxt_button_idx) >= len(filter_caseid_attr_df)+1:
                                 #next_button.enabled = False
@@ -403,7 +426,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
                             choose_pred_lst.append("Prediction " + str(_dx))
                         st.write('<style>div.row-widget.stRadio > div{flex-direction:row;}</style>', unsafe_allow_html=True)
                         # # --------------------------------------------------------------------------
-                        # with st.beta_expander('Choice of Prediction'):
+                        # with st.expander('Choice of Prediction'):
                         form.info("Choose the Prediction according to which System generates the next prediction, "
                                 "**SME** (Subject Matter Expert): decision solely based on users instinct and knowledge of business process about the process, "
                                 "**Prediction n** : decision solely based on the respective ranked confidence of the process")
@@ -416,7 +439,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
                         _filterdf = filter_attr_display.iloc[[nxt_button_idx]]
                         _filterdf.index = [""] * len(_filterdf)
                         state_of_theprocess.dataframe(_filterdf)
-                        print("Prediction Choice : ", parameters['predchoice'])
+                        # print("Prediction Choice : ", parameters['predchoice'])
 
                         if (next_button) and ((nxt_button_idx) < len(filter_caseid_attr_df)):
 
@@ -439,7 +462,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
                             parameters['nextcaseid_attr'] = filter_caseid_attr_dict
                             with st.spinner(text='In progress'):
                                 predictor = pr.ModelPredictor(parameters)
-                                print("predictor : ", predictor.acc)
+                                # print("predictor : ", predictor.acc)
                             st.success('Done')
                             if (nxt_button_idx) >= len(filter_caseid_attr_df):
                                 # next_button.enabled = False
@@ -451,13 +474,13 @@ def main(argv, filter_parms=None, filter_parameter=None):
 
                 elif parameters['mode'] in ['batch']:
                     parameters['multiprednum'] = 3  # Change here for batch mode Prediction
-                    with st.sidebar.beta_expander('Variant'):
+                    with st.sidebar.expander('Variant'):
                         st.info("Select **Max Probability** for the most probable events,"
                                 " **Multiple Prediction** for the prediction of the multiple events, "
                                 "and **Random Prediction** for prediction of random recommendation of events")
-                        variant_opt = st.sidebar.selectbox("", (
+                        variant_opt = st.selectbox("", (
                         'Max Probability', 'Multiple Prediction', 'Random Prediction'),
-                                                           key='variant_opt')
+                                                           key='variant_opt', on_change=clear_cache)
                     #st.sidebar.markdown("""---""")
 
                     if variant_opt == 'Max Probability':
@@ -471,16 +494,17 @@ def main(argv, filter_parms=None, filter_parameter=None):
                     parameters['predchoice'] = ''
                     st.sidebar.markdown("""---""")
                     if st.sidebar.button("Process", key='batch_process'):
-                        print(parameters)
-                        print(parameters['folder'])
-                        print(parameters['model_file'])
+                        # print(parameters)
+                        # print(parameters['folder'])
+                        # print(parameters['model_file'])
                         start = time.time()
 
                         with st.spinner(text='In progress'):
                             predictor = pr.ModelPredictor(parameters)
                         end = time.time()
+                        st.sidebar.write("Elapsed Time (in minutes) : ", (end - start) / 60)
                         st.success('Done')
-                        print("Elapsed Time : ", end - start)
+                        # print("Elapsed Time : ", end - start)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

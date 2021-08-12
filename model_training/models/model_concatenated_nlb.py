@@ -7,16 +7,20 @@ Created on Thu Feb 28 10:15:12 2019
 import os
 import pandas as pd
 import numpy as np
+import streamlit as st
+import matplotlib.pyplot as plt
 
 from tensorflow.keras.models import Model
 from keras.layers import Input, Embedding, Dot, Reshape, Multiply, Concatenate
 from tensorflow.keras.layers import Dense, LSTM, BatchNormalization
 from tensorflow.keras.optimizers import Nadam, Adam, SGD, Adagrad
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, CSVLogger
 from tensorflow.python.keras.layers import Reshape
 
 from support_modules.callbacks import time_callback as tc
 from support_modules.callbacks import clean_models_callback as cm
+
+# st.set_option('deprecation.showPyplotGlobalUse', False)
 
 def _training_model(vec, ac_weights, rl_weights, output_folder, args):
     """Example function with types documented in the docstring.
@@ -158,7 +162,11 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
     if args['optim'] == 'Nadam':
         opt = Nadam(learning_rate=0.002, beta_1=0.9, beta_2=0.999)
     elif args['optim'] == 'Adam':
-        opt = Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False)
+        opt = Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False) #Hyperparameter Opt with amsgrad=True/False
+                                                                #   AMSGrad is an extension to the Adam version of
+                                                                #   gradient descent that attempts to improve the
+                                                                #   convergence properties of the algorithm, avoiding
+                                                                #   large abrupt changes in the learning rate for each input variable
     elif args['optim'] == 'SGD':
         opt = SGD(learning_rate=0.01, momentum=0.0, nesterov=False)
     elif args['optim'] == 'Adagrad':
@@ -166,11 +174,12 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
 
     model.compile(loss={'act_output': 'categorical_crossentropy',
                         'role_output': 'categorical_crossentropy',
-                        'time_output': 'mae'}, optimizer=opt)
+                        'time_output': 'mae'}, optimizer=opt, metrics=['accuracy'])
 
     model.summary()
-
-    early_stopping = EarlyStopping(monitor='val_loss', patience=50)
+    model_history_file_path = os.path.join(output_folder, "parameters", "model_history_log.csv")
+    csv_logger = CSVLogger(model_history_file_path, append=True)
+    early_stopping = EarlyStopping(monitor='val_loss', patience=20)
     cb = tc.TimingCallback(output_folder)
     clean_models = cm.CleanSavedModelsCallback(output_folder, 2)
 
@@ -199,12 +208,12 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
         batch_size = vec['prefixes']['activities'].shape[1]
     else:
         batch_size = args['batch_size']
-    print("Batch Size : ", batch_size)
+    # print("Batch Size : ", batch_size)
     #print("Input Activities :", vec['prefixes']['activities'])
     #print("Input Roles :", vec['prefixes']['roles'])
     #print("Input Prefixes Times :", vec['prefixes']['times'])
     #print("Input Next Event Times :", vec['next_evt']['times'])
-    model.fit({'ac_input': vec['prefixes']['activities'],
+    history = model.fit({'ac_input': vec['prefixes']['activities'],
                         'rl_input': vec['prefixes']['roles'],
                        't_input': vec['prefixes']['times'],
                        'inter_input': vec['prefixes']['inter_attr']},
@@ -214,6 +223,68 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
                       validation_split=0.2,
                       verbose=2,
                       callbacks=[early_stopping, model_checkpoint,
-                                 lr_reducer, cb, clean_models],
+                                 lr_reducer, cb, clean_models, csv_logger],
                       batch_size=batch_size,
                       epochs=args['epochs'])
+
+    #
+    # plt.title('Accuracy')
+    # plt.plot(history.history['acc'], label='train')
+    # plt.plot(history.history['val_acc'], label='test')
+    # plt.legend()
+    # plt.show();
+    # st.plotly_chart(fig)
+
+    # print("Model History : ", history)
+    # print("Model History Keys : ", history.history.keys())
+
+    with st.container():
+
+        fcol1, fcol2, fcol3 = st.columns([2, 2, 2])
+
+        with fcol1:
+            fig1 = plt.figure()
+            plt.plot(history.history['act_output_loss'], label='train')
+            plt.plot(history.history['val_act_output_loss'], label='test')
+            plt.plot(history.history['act_output_accuracy'], label='acc')
+            plt.title('Activity Loss')
+            plt.ylabel('loss/accuracy')
+            plt.xlabel('epoch')
+            plt.legend(['train', 'test', 'acc'], loc='upper left')
+            # plt.show()
+            st.write(fig1);
+
+        with fcol2:
+            fig2 = plt.figure()
+            plt.plot(history.history['role_output_loss'], label='train')
+            plt.plot(history.history['val_role_output_loss'], label='test')
+            plt.plot(history.history['act_output_accuracy'], label='acc')
+            plt.title('Role Loss')
+            plt.ylabel('loss/accuracy')
+            plt.xlabel('epoch')
+            plt.legend(['train', 'test', 'acc'], loc='upper left')
+            st.write(fig2);
+
+        with fcol3:
+            fig3 = plt.figure()
+            plt.plot(history.history['time_output_loss'], label='train')
+            plt.plot(history.history['val_time_output_loss'], label='test')
+            plt.plot(history.history['act_output_accuracy'], label='acc')
+            plt.title('Time Loss')
+            plt.ylabel('loss/accuracy')
+            plt.xlabel('epoch')
+            plt.legend(['train', 'test', 'acc'], loc='upper left')
+            st.write(fig3);
+
+
+    # with st.container():
+    # fcol4 = st.columns(1)
+    # with fcol4:
+    fig4 = plt.figure()
+    plt.plot(history.history['loss'], label='train')
+    plt.plot(history.history['val_loss'], label='test')
+    plt.title('Model Loss')
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'test'], loc='upper left')
+    st.write(fig4);
