@@ -11,7 +11,7 @@ import time
 
 import pandas as pd
 
-from model_prediction import model_predictor_nlb as pr
+from model_prediction import model_predictor as pr
 import lstm as training
 
 #---Workaround for "tensorflow.python.framework.errors_impl.UnknownError: Fail to find the dnn implementation."
@@ -91,7 +91,12 @@ def main(argv, filter_parms=None, filter_parameter=None):
 
     elif navigate_page == "Home":
         #Dashboard Title
-        st.title("⏭️Next Event Prediction Dashboard") #Adding title bar
+        html_temp = """
+        <div style="background-color:tomato;padding:1.5px">
+        <h1 style="color:white;text-align:center;">⏭️Next Event Prediction Dashboard </h1>
+        </div><br>"""
+        st.markdown(html_temp, unsafe_allow_html=True)
+        # st.title("⏭️Next Event Prediction Dashboard") #Adding title bar
         st.sidebar.title("🎛️ App Control Menu")  #Adding the header to the sidebar as well as the sidebar
         #st.sidebar.markdown("""---""")
         #st.markdown("This dashboard is used to *predict* and *recommend* next event for the provided eventlog")
@@ -325,7 +330,11 @@ def main(argv, filter_parms=None, filter_parameter=None):
                     # print("Display Attributes :", filter_attr_display.iloc[[2]])
 
                     st.subheader('🔦 State of the Process')
-                    state_of_theprocess = st.empty()
+                    statecols, buttoncols = st.columns([2, 0.25])
+                    with statecols:
+                        state_of_theprocess = st.empty()
+                    with buttoncols:
+                        button_of_theprocess = st.empty()
 
                     parameters['multiprednum'] = num_predictions(filter_caseid_attr_df)
 
@@ -368,7 +377,8 @@ def main(argv, filter_parms=None, filter_parameter=None):
                             _filterdf.index = [""] * len(_filterdf)
                             state_of_theprocess.dataframe(_filterdf)
                             st.sidebar.markdown("""---""")
-                            if st.sidebar.button("Process", key='next_process'):
+                            # if st.sidebar.button("Process", key='next_process'):
+                            if button_of_theprocess.button("Process", key='next_process'):
                                 with st.spinner(text='In progress'):
                                     predictor = pr.ModelPredictor(parameters)
                                     # print("predictor : ", predictor.acc)
@@ -380,7 +390,8 @@ def main(argv, filter_parms=None, filter_parameter=None):
                         st.experimental_set_query_params(my_saved_caseid=filter_caseid)
 
                         st.sidebar.markdown("""---""")
-                        next_button = st.sidebar.button("Process", key='next_process_action')
+                        # next_button = st.sidebar.button("Process", key='next_process_action')
+                        next_button = button_of_theprocess.button("Process", key='next_process_action')
 
                         _filterdf = filter_attr_display.iloc[[nxt_button_idx]]
                         _filterdf.index = [""] * len(_filterdf)
@@ -473,22 +484,45 @@ def main(argv, filter_parms=None, filter_parameter=None):
                             st.error('End of Current Case Id, Select the Next Case ID')
 
                 elif parameters['mode'] in ['batch']:
-                    parameters['multiprednum'] = 3  # Change here for batch mode Prediction
+
                     with st.sidebar.expander('Variant'):
                         st.info("Select **Max Probability** for the most probable events,"
                                 " **Multiple Prediction** for the prediction of the multiple events, "
                                 "and **Random Prediction** for prediction of random recommendation of events")
                         variant_opt = st.selectbox("", (
-                        'Max Probability', 'Multiple Prediction', 'Random Prediction'),
+                        'Max Probability', 'Multiple Prediction', 'Random Prediction', 'Multiple Random Prediction'),
                                                            key='variant_opt', on_change=clear_cache)
                     #st.sidebar.markdown("""---""")
 
                     if variant_opt == 'Max Probability':
                         variant_opt = 'arg_max'
-                    elif variant_opt == 'Multiple Prediction':
-                        variant_opt = 'multi_pred'
                     elif variant_opt == 'Random Prediction':
                         variant_opt = 'random_choice'
+                    elif variant_opt in ['Multiple Prediction', 'Multiple Random Prediction']:
+                        if variant_opt == 'Multiple Prediction':
+                            variant_opt = 'multi_pred'
+                        elif variant_opt == 'Multiple Random Prediction':
+                            variant_opt = 'multi_pred_rand'
+                        # variant_opt = 'multi_pred'
+
+                        _log, _, _ = read_next_testlog()
+                        rolecount = min(_log.groupby('caseid')['role'].nunique())
+                        actcount = min(_log.groupby('caseid')['task'].nunique())
+
+                        if actcount > rolecount:
+                            _maxmulti = rolecount
+                        elif rolecount > actcount:
+                            _maxmulti = actcount
+                        else:
+                            _maxmulti = actcount
+
+                        with st.sidebar.expander('Number of Predictions'):
+                            st.info("**Multiple Predictions : ** minimum 2 predictions and maximum value based on slider")
+                            slider = st.slider(
+                                label='', min_value=2,
+                                max_value=_maxmulti, key='my_number_prediction_slider_batch', on_change=clear_cache)
+                        parameters['multiprednum'] = slider  # 3  # Change here for batch mode Prediction
+
                     parameters['variant'] = variant_opt  # random_choice, arg_max for variants and repetitions to be tested
                     parameters['next_mode'] = ''
                     parameters['predchoice'] = ''

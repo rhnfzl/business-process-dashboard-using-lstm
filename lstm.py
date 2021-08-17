@@ -14,7 +14,7 @@ import getopt
 import time
 import streamlit as st
 
-from model_training import model_trainer_nlb as tr
+from model_training import model_trainer as tr
 
 #---Workaround for "tensorflow.python.framework.errors_impl.UnknownError: Fail to find the dnn implementation."
 from tensorflow.compat.v1 import ConfigProto
@@ -99,14 +99,14 @@ def main(argv):
                     parameters['imp'] = 2  # keras lstm implementation 1 cpu,2 gpu
                 #Recurrent networks still commonly use Tanh or sigmoid activation functions, or even both. For example,
                 # the LSTM commonly uses the Sigmoid activation for recurrent connections and the Tanh activation for output.
-                lstm_activation = formt.selectbox("LSTM Activation Layer", [None, "tanh", "selu", "relu", "sigmoid", "softmax"], index=2)
+                lstm_activation = formt.selectbox("LSTM Activation Layer", [None, "tanh", "selu", "relu", "sigmoid", "softmax"], index=1)
                 parameters['lstm_act'] = lstm_activation #'tanh' # optimization function Keras
-                dense_activation = formt.selectbox("Dense Layer", [None, 'sigmoid', 'linear', 'tanh', 'selu', 'relu'], index=1)
+                dense_activation = formt.selectbox("Dense Layer", [None, 'sigmoid', 'linear', 'tanh', 'selu', 'relu'], index=0)
                 parameters['dense_act'] = dense_activation #'sigmoid'  # optimization function Keras,
                                                             # used at output layer for time opt: linear or sigmoid
                 optimization_func = formt.selectbox("Optimization Function", ['Nadam', 'Adam', 'SGD', 'Adagrad'], index=0)
                 parameters['optim'] = optimization_func #'Nadam'  # optimization function Keras
-                norm_method_opt = formt.selectbox("Normalization Method", ['lognorm', 'max', 'standard', 'normal'], index=0)
+                norm_method_opt = formt.selectbox("Normalization Method", ['lognorm', 'max', 'standard', 'normal'], index=1)
                 parameters['norm_method'] = norm_method_opt #'lognorm' # max, lognorm
                 # Model types --> shared_cat, specialized, concatenated,
                 #                 shared_cat_gru, specialized_gru, concatenated_gru

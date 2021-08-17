@@ -73,14 +73,14 @@ class AlphaOracle(object):
         temp_df['alias'] = temp_df.apply(alias, axis=1)
         self.log = temp_df
         log_df = self.log.to_dict('records')
-        if self.one_timestamp:
-            log_df = sorted(log_df, key=lambda x: (x['caseid'], x['end_timestamp']))
-        else:
-            log_df = sorted(log_df, key=lambda x: (x['caseid'], x['start_timestamp']))
+        log_df = sorted(log_df, key=lambda x: (x['caseid'], x['run_num']))
+        # if self.one_timestamp:
+        #     log_df = sorted(log_df, key=lambda x: (x['caseid'], x['end_timestamp']))
+        # else:
+        #     log_df = sorted(log_df, key=lambda x: (x['caseid'], x['start_timestamp']))
             
         for key, group in itertools.groupby(log_df, key=lambda x: x['caseid']):
             trace = list(group)
             serie = [y['alias'] for y in trace]
             temp_data.append(serie)
         return temp_data
-    

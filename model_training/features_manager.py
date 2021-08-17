@@ -25,10 +25,13 @@ class FeaturesMannager():
         self._scalers = dict()
         # self.scale_dispatcher = {'basic': self._scale_base,
         #                          'inter': self._scale_inter}
-        self.scale_dispatcher = {'basic': self._scale_base}
+        self.scale_dispatcher = {'basic': self._scale_base} #since only inter case feature models are being trained the configuration file is renamed in such a way
 
-    def calculate(self, log, add_cols):
-        log = self.add_resources(log)
+    def calculate(self, log, add_cols, type_call):
+        if type_call == 'train':
+            log = self.add_resources(log)
+        elif type_call == 'predict' and 'role' not in log.columns: #if the role hasn't been calculated before hand
+            log = self.add_resources(log)
         log = self.add_calculated_times(log)
         # print("Log Properties : ", log.dtypes, "Additional Cols :", add_cols)
         #log = self.filter_features(log, add_cols) #----Filters out the features, Preprocessing of the vlaues helps to select the required features beforehand
@@ -103,6 +106,7 @@ class FeaturesMannager():
                 time = events[i][ordk].time()
                 time = time.second + time.minute*60 + time.hour*3600
                 events[i]['daytime'] = time
+                events[i]['weekday'] = events[i]['end_timestamp'].weekday()
         return pd.DataFrame.from_dict(log)
 
     def scale_features(self, log, add_cols):
@@ -132,10 +136,11 @@ class FeaturesMannager():
             if col == 'daytime':
                 log, _ = self.scale_feature(log, 'daytime', 'day_secs', True)
             elif col == 'open_cases':
-                log, _ = self.scale_feature(log, 'open_cases', 'max')
+                log, _ = self.scale_feature(log, 'open_cases', 'normal')
+            elif col == 'weekday':
+                continue
             else:
                 log, _ = self.scale_feature(log, col, self.norm_method, True)
-        # print("Log :", log.columns, log.head(5))
         return log, scale_args
 
     # def _scale_inter(self, log, add_cols):

@@ -45,41 +45,34 @@ class ModelTrainer():
         self.rl_index = dict()
         self.index_rl = dict()
 
-        self.label_index = dict()
-        self.index_label = dict()
         # Training examples
         self.examples = dict()
         # Embedded dimensions
         self.ac_weights = list()
         self.rl_weights = list()
-        self.label_weights = list() #--Change for label code change
-        #self.label_weights = np.array([[-1.], [1.]]) #-1: 'deviant', 1: 'regular' #--Change for label code change
         # Model definition
         self.model_def = dict()
         self.read_model_definition(params['model_type'])
-        print(self.model_def)
+        # print(self.model_def)
         # Preprocess the event-log
         self.preprocess(params)
         # Train model
         m_loader = mload.ModelLoader(params)
-        #print(self.examples)
+        # print(self.examples)
         # print("Activity Weight :", self.ac_weights)
         # print("Role Weight : ", self.rl_weights)
-        # print("Label Weight : ", self.label_weights)
 
         m_loader.register_model(params['model_type'],
                                 self.model_def['trainer'])
         m_loader.train(params['model_type'],
-                        self.examples,
-                        self.ac_weights,
-                        self.rl_weights,
-                        self.label_weights,
-                        self.output_folder)
+                       self.examples,
+                       self.ac_weights,
+                       self.rl_weights,
+                       self.output_folder)
 
         list_of_files = glob.glob(os.path.join(self.output_folder, '*.h5'))
         latest_file = max(list_of_files, key=os.path.getctime)
         self.model = os.path.basename(latest_file)
-
 
     def preprocess(self, params):
         # Features treatement
@@ -90,68 +83,57 @@ class ModelTrainer():
         inp.register_scaler(params['model_type'], self.model_def['scaler'])
         # Scale features
         self.log, params['scale_args'] = inp.calculate(
-            self.log, self.model_def['additional_columns'])
+            self.log, self.model_def['additional_columns'], 'train')
         # indexes creation for catagorical attributes
         self.indexing()
 
         self.split_timeline(0.3, params['one_timestamp'])
 
         # Creates a sequence in the form of dictionary where the structure looks like
-        # dict{'prefixes' : {'activities': [[]], 'roles' : [[]], 'label' : [[]], 'times' : [[]]}, 'next_evt' : {'activities' : [], 'roles' : [], 'label' : [], 'times' : []}
         # create examples
         seq_creator = exc.SequencesCreator(self.log_train,
                                            params['one_timestamp'],
                                            self.ac_index,
-                                           self.rl_index,
-                                           self.label_index)
+                                           self.rl_index)
 
-        #model type : Contenate, Shared, Basic | Vectorizer : Basic Inter
+        # model type : Contenate, Shared, Basic | Vectorizer : Basic Inter
         seq_creator.register_vectorizer(params['model_type'],
                                         self.model_def['vectorizer'])
         self.examples = seq_creator.vectorize(
             params['model_type'], params, self.model_def['additional_columns'])
 
         # Load embedded matrix
-        ac_emb_name = 'ac_' + params['file_name'].split('.')[0]+'.emb'
-        rl_emb_name = 'rl_' + params['file_name'].split('.')[0]+'.emb'
-        label_emb_name = 'label_' + params['file_name'].split('.')[0]+'.emb' #--Change for label code change
+        ac_emb_name = 'ac_' + params['file_name'].split('.')[0] + '.emb'
+        rl_emb_name = 'rl_' + params['file_name'].split('.')[0] + '.emb'
 
-        print("Parmameter Values : ", params)
-        print("Activity Indexed : ", self.ac_index)
-        print("Roles Indexed : ", self.rl_index)
-        print("Label Indexed : ", self.label_index)
+        # print("Parmameter Values : ", params)
+        # print("Activity Indexed : ", self.ac_index)
+        # print("Roles Indexed : ", self.rl_index)
 
         if os.path.exists(os.path.join('input_files',
                                        'embedded_matix',
                                        ac_emb_name)):
             self.ac_weights = self.load_embedded(self.index_ac, ac_emb_name)
             self.rl_weights = self.load_embedded(self.index_rl, rl_emb_name)
-            #self.label_weights = np.fromiter(self.index_label.keys(), dtype=float)
-            #self.label_weights = np.array(list(self.label_index.items()))
-            self.label_weights = self.load_embedded(self.index_label, label_emb_name) #--Change for label code change
         else:
             em.training_model(params,
                               self.log,
                               self.ac_index, self.index_ac,
-                              self.rl_index, self.index_rl,
-                              self.label_index, self.index_label) #--Change for label code change
+                              self.rl_index, self.index_rl)
             self.ac_weights = self.load_embedded(self.index_ac, ac_emb_name)
             self.rl_weights = self.load_embedded(self.index_rl, rl_emb_name)
-            #self.label_weights = np.fromiter(self.index_label.keys(), dtype=float)
-            #self.label_weights = np.array(list(self.label_index.items()))
-            self.label_weights = self.load_embedded(self.index_label, label_emb_name) #--Change for label code change
         # Export parameters
         self.export_parms(params)
 
     @staticmethod
     def load_log(params):
         params['read_options']['filter_d_attrib'] = False
-        print("Input File:", os.path.join('input_files', params['file_name']),
-                           params['read_options'])
+        # print("Input File:", os.path.join('input_files', params['file_name']),
+        #                    params['read_options'])
         log = lr.LogReader(os.path.join('input_files', params['file_name']),
                            params['read_options'])
         log_df = pd.DataFrame(log.data)
-        #print("log_df caseid : ", log_df.columns)
+        # print("log_df caseid : ", log_df.columns)
         if set(['Unnamed: 0', 'role']).issubset(set(log_df.columns)):
             log_df.drop(columns=['Unnamed: 0', 'role'], inplace=True)
         log_df = log_df[~log_df.task.isin(['Start', 'End'])]
@@ -168,18 +150,11 @@ class ModelTrainer():
         self.rl_index['start'] = 0
         self.rl_index['end'] = len(self.rl_index)
         self.index_rl = {v: k for k, v in self.rl_index.items()}
-        # Label index creation
-        self.label_index = self.create_index(self.log, 'label')
-        #self.label_index['start'] = 0 /-- Removed because the start and end was being predicted in multi predict
-        #self.label_index['end'] = len(self.label_index)
-        self.index_label = {v: k for k, v in self.label_index.items()}
         # Add index to the event log
         ac_idx = lambda x: self.ac_index[x['task']]
         self.log['ac_index'] = self.log.apply(ac_idx, axis=1)
         rl_idx = lambda x: self.rl_index[x['role']]
         self.log['rl_index'] = self.log.apply(rl_idx, axis=1)
-        label_idx = lambda x: self.label_index[x['label']]
-        self.log['label_index'] = self.log.apply(label_idx, axis=1)
 
     @staticmethod
     def create_index(log_df, column):
@@ -196,9 +171,9 @@ class ModelTrainer():
         alias = dict()
         for i, _ in enumerate(subsec_set):
             if column == 'label':
-                alias[subsec_set[i]] = i #In case of start and end to be removed from training
+                alias[subsec_set[i]] = i  # In case of start and end to be removed from training
             else:
-                alias[subsec_set[i]] = i + 1 #In the case of Start and End to be included
+                alias[subsec_set[i]] = i + 1  # In the case of Start and End to be included
         return alias
 
     def split_timeline(self, percentage: float, one_timestamp: bool) -> None:
@@ -211,7 +186,7 @@ class ModelTrainer():
         one_timestamp : bool, Support only one timestamp.
         """
         log = self.log.to_dict('records')
-        #print("Log : ", type(log))
+        # print("Log : ", type(log))
         log = sorted(log, key=lambda x: x['caseid'])
         for key, group in itertools.groupby(log, key=lambda x: x['caseid']):
             events = list(group)
@@ -223,14 +198,13 @@ class ModelTrainer():
         log = pd.DataFrame.from_dict(log)
         log.sort_values(by='end_timestamp', ascending=False, inplace=True)
 
-        
-        num_events = int(np.round(len(log)*percentage))
+        num_events = int(np.round(len(log) * percentage))
 
         df_test = log.iloc[:num_events]
         df_train = log.iloc[num_events:]
 
         # Incomplete final traces
-        df_train = df_train.sort_values(by=['caseid','pos_trace'],
+        df_train = df_train.sort_values(by=['caseid', 'pos_trace'],
                                         ascending=True)
         inc_traces = pd.DataFrame(df_train.groupby('caseid')
                                   .last()
@@ -240,10 +214,10 @@ class ModelTrainer():
 
         # Drop incomplete traces
         df_test = df_test[~df_test.caseid.isin(inc_traces)]
-        df_test = df_test.drop(columns=['trace_len','pos_trace'])
+        df_test = df_test.drop(columns=['trace_len', 'pos_trace'])
 
         df_train = df_train[~df_train.caseid.isin(inc_traces)]
-        df_train = df_train.drop(columns=['trace_len','pos_trace'])
+        df_train = df_train.drop(columns=['trace_len', 'pos_trace'])
 
         key = 'end_timestamp' if one_timestamp else 'start_timestamp'
         self.log_test = (df_test
@@ -269,9 +243,9 @@ class ModelTrainer():
             filereader = csv.reader(csvfile, delimiter=',', quotechar='"')
             for row in filereader:
                 cat_ix = int(row[0])
-                #if index[cat_ix] not in exclude_list: #Added to exclude start and end going for training
+                # if index[cat_ix] not in exclude_list: #Added to exclude start and end going for training
                 if index[cat_ix] == row[1].strip():
-                    #print("Load Embedded :", cat_ix, "---Index of Load Embedded : ", index[cat_ix],"---Row in Strip : ", row[1].strip(), "Weight : ", [float(x) for x in row[2:]])
+                    # print("Load Embedded :", cat_ix, "---Index of Load Embedded : ", index[cat_ix],"---Row in Strip : ", row[1].strip(), "Weight : ", [float(x) for x in row[2:]])
                     weights.append([float(x) for x in row[2:]])
             csvfile.close()
         return np.array(weights)
@@ -282,11 +256,10 @@ class ModelTrainer():
             os.makedirs(os.path.join(self.output_folder, 'parameters'))
 
         parms['max_trace_size'] = self.get_max_trace_size(self.log)
-        
+
         parms['index_ac'] = self.index_ac
         parms['index_rl'] = self.index_rl
-        parms['index_label'] = self.index_label
-        
+
         if not parms['model_type'] == 'simple_gan':
             shape = self.examples['prefixes']['activities'].shape
             parms['dim'] = dict(
@@ -302,16 +275,17 @@ class ModelTrainer():
                                           'test_log.csv'),
                              index=False,
                              encoding='utf-8')
+
     @staticmethod
     def get_max_trace_size(log):
-        return int(log.groupby('caseid')['task'].count().max())        
+        return int(log.groupby('caseid')['task'].count().max())
 
     def read_model_definition(self, model_type):
         Config = cp.ConfigParser(interpolation=None)
         Config.read('models_spec.ini')
-        #File name with extension
+        # File name with extension
         self.model_def['additional_columns'] = sup.reduce_list(
-            Config.get(model_type,'additional_columns'), dtype='str')
+            Config.get(model_type, 'additional_columns'), dtype='str')
         self.model_def['scaler'] = Config.get(
             model_type, 'scaler')
         self.model_def['vectorizer'] = Config.get(

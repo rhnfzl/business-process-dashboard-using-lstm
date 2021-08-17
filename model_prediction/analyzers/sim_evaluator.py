@@ -3,6 +3,12 @@ Created on Fri Jan 10 11:40:46 2020
 
 @author: Manuel Camargo
 """
+from sys import stdout
+import shutil
+import time
+import os
+
+import warnings
 import random
 import itertools
 from operator import itemgetter
@@ -10,6 +16,7 @@ from operator import itemgetter
 import jellyfish as jf
 import swifter
 from scipy.optimize import linear_sum_assignment
+from scipy.stats import wasserstein_distance
 
 from model_prediction.analyzers import alpha_oracle as ao
 from model_prediction.analyzers.alpha_oracle import Rel
@@ -21,14 +28,15 @@ import numpy as np
 
 class Evaluator():
 
-    def __init__(self, one_timestamp, variant, mode):
+    def __init__(self, one_timestamp, variant, next_mode, mode):
         """constructor"""
         self.one_timestamp = one_timestamp
         self.variant = variant
+        self.next_mode = next_mode
         self.mode = mode
-        print("onetimestamp :", self.one_timestamp)
-        print("Variant :", self.variant)
-        print("Mode : ", self.mode)
+        # print("onetimestamp :", self.one_timestamp)
+        # print("Variant :", self.variant)
+        # print("Mode : ", self.mode)
 
     def measure(self, metric, data, feature=None):
         evaluator = self._get_metric_evaluator(metric)
@@ -36,9 +44,15 @@ class Evaluator():
 
     def _get_metric_evaluator(self, metric):
         if metric == 'accuracy':
-            return self._accuracy_evaluation
+            if self.mode in ['next']:
+                return self._accuracy_evaluation
+            elif self.mode in ['batch']:
+                return self._accuracy_evaluation_batch
         if metric == 'mae_next':
-            return self._mae_next_evaluation
+            if self.mode in ['next']:
+                return self._mae_next_evaluation
+            elif self.mode in ['batch']:
+                return self._mae_next_evaluation_batch
         elif metric == 'similarity':
             return self._similarity_evaluation
         elif metric == 'mae_suffix':
@@ -62,7 +76,7 @@ class Evaluator():
         #accuracy evaluation exp = pred then 1 else 0 in case of multi_pred it checks if the predicted value is in the list then it sets it to 1
         if self.variant in ['multi_pred']:
             eval_acc = (lambda x:
-                         1 if x[feature + '_expect'] in x[feature + '_pred'] else 0)
+                        1 if x[feature + '_expect'] in x[feature + '_pred'] else 0)
         else:
             eval_acc = (lambda x:
                         1 if x[feature + '_expect'] == x[feature + '_pred'] else 0)
@@ -80,16 +94,51 @@ class Evaluator():
         #print("data accuracy 5:", data)
         return data
 
+    def _accuracy_evaluation_batch(self, data, feature):
+        data = data.copy()
+        #print("Data Initially in Accuracy Meaurement :", data)
+        data = data[[(feature + '_expect'), (feature + '_pred'),
+                     'caseid']]
+        eval_acc = (lambda x:
+                    1 if x[feature + '_expect'] == x[feature + '_pred'] else 0)
+        #print("Data After Accuracy Measurement:", data)
+        data[feature + '_acc'] = data.apply(eval_acc, axis=1)
+
+        # agregate true positives
+        data = (data.groupby(['caseid'])[feature + '_acc']
+                .agg(['sum', 'count'])
+                .reset_index())
+
+        # calculate accuracy
+        data['accuracy'] = np.divide(data['sum'], data['count'])
+
+        #print("data accuracy 5:", data)
+        return data
+
     def _mae_next_evaluation(self, data, feature):
         data = data.copy()
-        print("Inside MAE : ", data[(feature + '_pred')])
-        if self.mode in ['next_action']:
+        # print("Inside MAE : ", data[(feature + '_pred')])
+        if self.next_mode in ['next_action']:
             data[(feature + '_pred')] = np.mean(data[(feature + '_pred')].tolist(), axis=1)
         data = data[[(feature + '_expect'), (feature + '_pred'),
                      'run_num', 'implementation']]
         ae = (lambda x: np.abs(x[feature + '_expect'] - x[feature + '_pred']))
         data['ae'] = data.apply(ae, axis=1)
         data = (data.groupby(['implementation', 'run_num'])['ae']
+                .agg(['mean'])
+                .reset_index()
+                .rename(columns={'mean': 'mae'}))
+        return data
+
+    def _mae_next_evaluation_batch(self, data, feature):
+        data = data.copy()
+        # if self.next_mode in ['next_action']:
+        #     data[(feature + '_pred')] = np.mean(data[(feature + '_pred')].tolist(), axis=1)
+        data = data[[(feature + '_expect'), (feature + '_pred'),
+                     'caseid']]
+        ae = (lambda x: np.abs(x[feature + '_expect'] - x[feature + '_pred']))
+        data['ae'] = data.apply(ae, axis=1)
+        data = (data.groupby(['caseid'])['ae']
                 .agg(['mean'])
                 .reset_index()
                 .rename(columns={'mean': 'mae'}))
@@ -102,15 +151,16 @@ class Evaluator():
         # append all values and create alias
         values = (data[feature + '_pred'].tolist() +
                   data[feature + '_expect'].tolist())
-        values = list(set(itertools.chain.from_iterable(values)))
+        # values = list(set(itertools.chain.from_iterable(values)))
+        values = np.unique(np.array(values)).tolist()
         index = self.create_task_alias(values)
         for col in ['_expect', '_pred']:
-            list_to_string = lambda x: ''.join([index[y] for y in x])
+            list_to_string = lambda x: ''.join([index[y] for y in [x]])
             data['suff' + col] = (data[feature + col]
                                   .swifter.progress_bar(False)
                                   .apply(list_to_string))
-        # measure similarity between pairs
 
+        # measure similarity between pairs
         def distance(x, y):
             return (1 - (jf.damerau_levenshtein_distance(x, y) /
                          np.max([len(x), len(y)])))
@@ -118,7 +168,6 @@ class Evaluator():
                               .swifter.progress_bar(False)
                               .apply(lambda x: distance(x.suff_expect,
                                                         x.suff_pred), axis=1))
-
         # agregate similarities
         data = (data.groupby(['implementation', 'run_num', 'pref_size'])['similarity']
                 .agg(['mean'])
@@ -134,12 +183,16 @@ class Evaluator():
                                margins_name='mean')
                 .reset_index())
         data = data[data.run_num != 'mean']
+        # print("--Data--")
+        # print(data)
         return data
 
     def _mae_remaining_evaluation(self, data, feature):
+        # print("data @@@")
+        # print(data)
         data = data.copy()
         data = data[[(feature + '_expect'), (feature + '_pred'),
-                     'run_num', 'implementation', 'pref_size']]
+                                'run_num', 'implementation', 'pref_size']]
         ae = (lambda x: np.abs(np.sum(x[feature + '_expect']) -
                                np.sum(x[feature + '_pred'])))
         data['ae'] = data.apply(ae, axis=1)
@@ -160,10 +213,14 @@ class Evaluator():
         return data
 
 # =============================================================================
-# Timed string distance
+# Timed string distance (Event Log Similarity - ELS)
 # =============================================================================
     def _els_metric_evaluation(self, data, feature):
-        data = self.add_calculated_times(data)
+        # print(data)
+        # print(data.columns)
+        if 'dur' not in data.columns:
+            #then it must have end timestamp and start timestamp
+            data = self.add_calculated_times(data)
         data = self.scaling_data(data)
         log_data = data[data.implementation == 'log']
         alias = self.create_task_alias(data.task.unique())
@@ -214,7 +271,9 @@ class Evaluator():
         return data
 
     def _els_min_evaluation(self, data, feature):
-        data = self.add_calculated_times(data)
+        if 'dur' not in data.columns:
+            #then it must have end timestamp and start timestamp
+            data = self.add_calculated_times(data)
         data = self.scaling_data(data)
         log_data = data[data.implementation == 'log']
         alias = self.create_task_alias(data.task.unique())
@@ -379,7 +438,9 @@ class Evaluator():
         similarity : float
 
         """
-        data = self.add_calculated_times(data)
+        if 'dur' not in data.columns:
+            #then it must have end timestamp and start timestamp
+            data = self.add_calculated_times(data)
         data = self.scaling_data(data)
         log_data = data[data.implementation == 'log']
         alias = self.create_task_alias(data.task.unique())
@@ -465,7 +526,11 @@ class Evaluator():
         similarity : float
 
         """
-        data = self.add_calculated_times(data)
+        # print(data)
+        # print(data.columns)
+        if 'dur' not in data.columns:
+            #then it must have end timestamp and start timestamp
+            data = self.add_calculated_times(data)
         data = self.scaling_data(data)
         log_data = data[data.implementation == 'log']
         alias = self.create_task_alias(data.task.unique())
@@ -489,11 +554,24 @@ class Evaluator():
             # start = timer()
             for i in range(0, mx_len):
                 for j in range(0, mx_len):
-                    cicle_time_s1 = (pred_data[i]['end_time'] -
-                                     pred_data[i]['start_time']).total_seconds()
-                    cicle_time_s2 = (log_data[j]['end_time'] -
-                                     log_data[j]['start_time']).total_seconds()
-                    ae = np.abs(cicle_time_s1 - cicle_time_s2)
+                    # cicle_time_s1 = (pred_data[i]['end_time'] -
+                    #                  pred_data[i]['start_time']).total_seconds()
+                    # cicle_time_s2 = (log_data[j]['end_time'] -
+                    #                  log_data[j]['start_time']).total_seconds()
+                    print("CaseId and Enent No of prediction : ", pred_data[i]['caseid'], pred_data[i]['event_nr'])
+                    print("CaseId and Enent No of prediction : ", log_data[j]['caseid'], log_data[j]['event_nr'])
+                    ae_aggr = list()
+                    _length = min(len(pred_data[i]['dur']), len(log_data[j]['dur']))
+                    for k in range(0, _length):
+                        print("length : ", len(pred_data[i]['dur']), len(log_data[j]['dur']), k)
+                        cicle_time_s1 = (pred_data[i]['dur'][k])
+                        cicle_time_s2 = (log_data[j]['dur'][k])
+                        print("cicle_time_s1 : ", cicle_time_s1)
+                        print("log duration : ", cicle_time_s2)
+                        print("Difference ", cicle_time_s1 - cicle_time_s2)
+                        ae_aggr.append(cicle_time_s1 - cicle_time_s2)
+                    print("List of difference : ", ae_aggr)
+                    ae = np.abs(ae_aggr)
                     ae_matrix[i][j] = ae
             # end = timer()
             # print(end - start)
@@ -514,10 +592,45 @@ class Evaluator():
                 .reset_index()
                 .rename(columns={'mean': 'mae_log'}))
         return data
-
 # =============================================================================
 # Support methods
 # =============================================================================
+    @staticmethod
+    def calculate_splits(df, max_cases=1000):
+        print(len(df.caseid.unique()))
+        # calculate the number of bytes a row occupies
+        n_splits = int(np.ceil(len(df.caseid.unique()) / max_cases))
+        return n_splits
+
+    @staticmethod
+    def folding_creation(df, splits, output):
+        idxs = [x for x in range(0, len(df), round(len(df)/splits))]
+        idxs.append(len(df))
+        folds = [pd.DataFrame(df.iloc[idxs[i-1]:idxs[i]])
+                 for i in range(1, len(idxs))]
+        # Export folds
+        file_names = list()
+        for i, fold in enumerate(folds):
+            file_name = os.path.join(output,'split_'+str(i+1)+'.csv')
+            fold.to_csv(file_name, index=False)
+            file_names.append(file_name)
+        return file_names
+
+    @staticmethod
+    def define_ranges(data, num_folds):
+        num_events = int(np.round(len(data)/num_folds))
+        folds = list()
+        for i in range(0, num_folds):
+            sidx = i * num_events
+            eidx = (i + 1) * num_events
+            if i == 0:
+                folds.append({'min': 0, 'max': eidx})
+            elif i == (num_folds - 1):
+                folds.append({'min': sidx, 'max': len(data)})
+            else:
+                folds.append({'min': sidx, 'max': eidx})
+        return folds
+
     @staticmethod
     def create_task_alias(categories):
         """
@@ -547,7 +660,7 @@ class Evaluator():
         Returns:
             Dataframe: The dataframe with the calculated features added.
         """
-        log['duration'] = 0
+        log['dur'] = 0
         log = log.to_dict('records')
         log = sorted(log, key=lambda x: x['caseid'])
         for _, group in itertools.groupby(log, key=lambda x: x['caseid']):
@@ -571,8 +684,8 @@ class Evaluator():
                     else:
                         wit = (events[i]['start_timestamp'] -
                                events[i-1]['end_timestamp']).total_seconds()
-                    events[i]['waiting'] = wit
-                events[i]['duration'] = dur
+                    events[i]['wait'] = wit
+                events[i]['dur'] = dur
         return pd.DataFrame.from_dict(log)
 
     def scaling_data(self, data):
@@ -590,13 +703,13 @@ class Evaluator():
         """
         df_modif = data.copy()
         np.seterr(divide='ignore')
-        summ = data.groupby(['task'])['duration'].max().to_dict()
-        dur_act_norm = (lambda x: x['duration']/summ[x['task']]
+        summ = data.groupby(['task'])['dur'].max().to_dict()
+        dur_act_norm = (lambda x: x['dur']/summ[x['task']]
                         if summ[x['task']] > 0 else 0)
         df_modif['dur_act_norm'] = df_modif.apply(dur_act_norm, axis=1)
         if not self.one_timestamp:
-            summ = data.groupby(['task'])['waiting'].max().to_dict()
-            wait_act_norm = (lambda x: x['waiting']/summ[x['task']]
+            summ = data.groupby(['task'])['wait'].max().to_dict()
+            wait_act_norm = (lambda x: x['wait']/summ[x['task']]
                             if summ[x['task']] > 0 else 0)
             df_modif['wait_act_norm'] = df_modif.apply(wait_act_norm, axis=1)
         return df_modif
@@ -619,12 +732,12 @@ class Evaluator():
         temp_data = list()
         # define ordering keys and columns
         if self.one_timestamp:
-            columns = ['alias', 'duration', 'dur_act_norm']
-            sort_key = 'end_timestamp'
+            columns = ['alias', 'dur', 'dur_act_norm']
+            sort_key = 'event_nr'
         else:
-            sort_key = 'start_timestamp'
-            columns = ['alias', 'duration',
-                       'dur_act_norm', 'waiting', 'wait_act_norm']
+            sort_key = 'event_nr'
+            columns = ['alias', 'dur',
+                       'dur_act_norm', 'wait', 'wait_act_norm']
         data = sorted(data, key=lambda x: (x['caseid'], x[sort_key]))
         for key, group in itertools.groupby(data, key=lambda x: x['caseid']):
             trace = list(group)
@@ -636,8 +749,18 @@ class Evaluator():
                 else:
                     serie = [y[col] for y in trace]
                 temp_dict = {**{col: serie}, **temp_dict}
-            temp_dict = {**{'caseid': key, 'start_time': trace[0][sort_key],
-                            'end_time': trace[-1][sort_key]},
+            temp_dict = {**{'caseid': key, 'event_nr': trace[0][sort_key],
+                            'event_nr': trace[-1][sort_key]},
                          **temp_dict}
             temp_data.append(temp_dict)
-        return sorted(temp_data, key=itemgetter('start_time'))
+        return sorted(temp_data, key=itemgetter('event_nr'))
+
+
+    @staticmethod
+    def create_file_list(path, prefix):
+        file_list = list()
+        for root, dirs, files in os.walk(path):
+            for f in files:
+                if prefix in f:
+                    file_list.append(f)
+        return file_list

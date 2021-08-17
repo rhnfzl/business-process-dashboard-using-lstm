@@ -3,15 +3,18 @@
 Created on Tue Mar 17 10:49:28 2020
 
 @author: Manuel Camargo
+@co-author : Rehan Fazal
 """
 import os
 import json
+import copy
 
 import streamlit as st
 import pandas as pd
 import numpy as np
 import configparser as cp
 from num2words import num2words as nw
+import matplotlib.pyplot as plt
 
 from st_aggrid import AgGrid
 
@@ -21,9 +24,10 @@ from support_modules.readers import log_reader as lr
 from support_modules import support as sup
 
 # ----model_training import----
+from model_training import features_manager as feat
 from model_prediction import interfaces as it
 from model_prediction.analyzers import sim_evaluator as ev
-from dashboard_module import prediction_dashboard as pdash
+# import analyzers.sim_evaluator as evp
 
 
 class ModelPredictor():
@@ -44,24 +48,35 @@ class ModelPredictor():
 
         self.samples = dict()
         self.predictions = None
+        self.sim_values = list()
         self.run_num = 0
 
         self.model_def = dict()
         self.read_model_definition(self.parms['model_type'])
         # print("Model Type :", self.model_def)
         self.parms['additional_columns'] = self.model_def['additional_columns']
-        self.acc = self.execute_predictive_task()
+        # self.acc = self.execute_predictive_task()
+        self.execute_predictive_task()
+        # self._export_results(self.output_route)
 
     def execute_predictive_task(self):
+
+        # -- Adding the code block for going to feature manager to facilitate anyother test data which is not formated beforehand
+        feat_mannager = feat.FeaturesMannager(self.parms)
+        feat_mannager.register_scaler(self.parms['model_type'],
+                                      self.model_def['vectorizer'])
+        self.log, _ = feat_mannager.calculate(
+            self.log, self.parms['additional_columns'], 'predict')
+        # ---
+        sampler = it.SamplesCreator()
+        sampler.create(self, self.parms['activity'])
+
         # create examples for next event and suffix
-        if self.parms['activity'] == 'pred_log':
+        if self.parms['mode'] == 'batch':
             self.parms['num_cases'] = len(self.log.caseid.unique())
-        else:
-            sampler = it.SamplesCreator()
-            sampler.create(self, self.parms['activity'])
-
-        self.parms['caseid'] = np.array(self.log.caseid)  # adding caseid to the parms
-
+            # self.parms['start_time'] = self.log.end_timestamp.min()
+            self.parms['caseid'] = np.array(self.log.caseid)  # adding caseid to the parms for batch mode
+        # predict
         self.imp = self.parms['variant']  # passes value arg_max and random_choice
         self.run_num = 0
         #prediction call
@@ -69,18 +84,17 @@ class ModelPredictor():
             self.predict_values()
             self.run_num += 1
         # export predictions
-        self.export_predictions()
+        if self.parms['mode'] == 'batch':
+            self.export_predictions()
         # assesment
         evaluator = EvaluateTask()
-        if self.parms['activity'] == 'pred_log':
-            data = self.append_sources(self.log, self.predictions,
-                                       self.parms['one_timestamp'])
-            data['caseid'] = data['caseid'].astype(str)
-            return evaluator.evaluate(self.parms, data)
-        else:
-            results_copy = self.predictions.copy()
-            self.dashboard_prediction(results_copy, self.parms)
-            return evaluator.evaluate(self.parms, self.predictions)
+        results_copy = self.predictions.copy()
+        self.dashboard_prediction(results_copy, self.parms)
+
+        if self.parms['mode'] == 'next':
+            evaluator.evaluate(self.parms, self.predictions)
+        elif self.parms['mode'] == 'batch':
+            evaluator.evaluate(self.parms, self.predictions)
 
     def predict_values(self):
         # Predict values
@@ -122,23 +136,18 @@ class ModelPredictor():
                                       for k, v in data['index_ac'].items()}
             self.parms['index_rl'] = {int(k): v
                                       for k, v in data['index_rl'].items()}
-            self.parms['index_label'] = {int(k): v
-                                         for k, v in data['index_label'].items()}
 
             file.close()
             self.ac_index = {v: k for k, v in self.parms['index_ac'].items()}
             self.rl_index = {v: k for k, v in self.parms['index_rl'].items()}
-            self.label_index = {v: k for k, v in self.parms['index_label'].items()}
 
     def sampling(self, sampler):
-        print("Model Type : ", self.parms['model_type'])
-        print("Model Def : ", self.model_def['vectorizer'])
+        # print("Model Type : ", self.parms['model_type'])
+        # print("Model Def : ", self.model_def['vectorizer'])
         sampler.register_sampler(self.parms['model_type'],
                                  self.model_def['vectorizer'])
         self.samples = sampler.create_samples(
-            self.parms, self.log, self.ac_index,
-            self.rl_index, self.label_index, self.model_def['additional_columns'])
-        #print("Samples : ", self.samples)
+            self.parms, self.log, self.ac_index, self.rl_index, self.model_def['additional_columns'])
     #
     def predict(self, executioner, mode):
         if mode == 'next':
@@ -172,20 +181,6 @@ class ModelPredictor():
         filename = self.model_name + '_' + self.parms['activity'] + '.csv'
         self.predictions.to_csv(os.path.join(output_folder, filename),
                                 index=False)
-
-    @staticmethod
-    def append_sources(source_log, source_predictions, one_timestamp):
-        log = source_log.copy()
-        columns = ['caseid', 'task', 'end_timestamp', 'role']
-        if not one_timestamp:
-            columns += ['start_timestamp']
-        log = log[columns]
-        log['run_num'] = 0
-        log['implementation'] = 'log'
-        predictions = source_predictions.copy()
-        columns = log.columns
-        predictions = predictions[columns]
-        return log.append(predictions, ignore_index=True)
 
     @staticmethod
     # ------This Can be removed as it is not getting used anywhere------
@@ -245,22 +240,56 @@ class ModelPredictor():
     # -------------------------------------------------------------------------------------------------------------------
     @staticmethod
     def dashboard_prediction(pred_results_df, parms):
-        # Removing 'ac_prefix', 'rl_prefix', 'tm_prefix', 'run_num', 'implementation' from the result
-        results_dash = pred_results_df[
-            ['ac_prefix', 'rl_prefix', 'label_prefix', 'tm_prefix', 'run_num', 'implementation']].copy()
-        results_dash = pred_results_df.drop(
-            ['ac_prefix', 'rl_prefix', 'label_prefix', 'tm_prefix', 'run_num', 'implementation'], axis=1)
 
-        # Replacing from Dictionary Values to it's original name
-        results_dash['ac_expect'] = results_dash.ac_expect.replace(parms['index_ac'])
-        results_dash['rl_expect'] = results_dash.rl_expect.replace(parms['index_rl'])
-        results_dash['label_expect'] = results_dash.label_expect.replace(parms['index_label'])
-
+        # state_of_theprocess = st.empty()
+        # if parms['next_mode'] == 'next_action':
+        # # -----------------------------------------------------------------------------------------------------------------------------------
+        # # Removing 'ac_prefix', 'rl_prefix', 'tm_prefix', 'run_num', 'implementation' from the result
+        # #creating the prefix for execution mode only, first the last row has been selected to accomodate all the input for
+        # # activity, role, time. for time it has been converted from numpy array to array of array and then to flat array
+        # # all the three attributes has been put in dictionary and then convrted to dataframe
+        # print("Activity : ", pred_results_df['ac_prefix'].iloc[-1:].values.tolist()[0])
+        # print("Role : ", pred_results_df['rl_prefix'].iloc[-1:].values.tolist()[0])
+        # print("Time : ", sum([x.tolist() for x in pred_results_df['tm_prefix'].iloc[-1:].values.tolist()[0]], []))
+        #
+        # result_dash_hist_execution = pd.DataFrame({"Activity" : pred_results_df['ac_prefix'].iloc[-1:].values.tolist()[0],
+        #                               "Role" : pred_results_df['rl_prefix'].iloc[-1:].values.tolist()[0],
+        #                               "Time" : sum([x.tolist() for x in pred_results_df['tm_prefix'].iloc[-1:].values.tolist()[0]], [])})
+        #
+        # # Replacing from Dictionary Values to it's original name
+        # result_dash_hist_execution['Activity'] = result_dash_hist_execution.Activity.replace(parms['index_ac'])
+        # result_dash_hist_execution['Role'] = result_dash_hist_execution.Role.replace(parms['index_rl'])
+        # # removing the fist row
+        # result_dash_hist_execution = result_dash_hist_execution.iloc[1:]
+        # #-----------------------------------------------------------------------------------------------------------------------------------
+        # results_dash = pred_results_df[['ac_prefix', 'rl_prefix', 'tm_prefix', 'run_num', 'implementation']].copy()
+        # results_dash = pred_results_df.drop(['ac_prefix', 'rl_prefix', 'tm_prefix', 'run_num', 'implementation'], axis=1)
+        #
+        # # Replacing from Dictionary Values to it's original name
+        # results_dash['ac_expect'] = results_dash.ac_expect.replace(parms['index_ac'])
+        # results_dash['rl_expect'] = results_dash.rl_expect.replace(parms['index_rl'])
         if parms['mode'] in ['batch']:
+            results_dash = ModelPredictor.dashboard_prediction_intial_manuplation(pred_results_df, parms)
             #as the static function is calling static function class has to be mentioned
             ModelPredictor.dashboard_prediction_batch(results_dash, parms)
         elif parms['mode'] in ['next']:
-            ModelPredictor.dashboard_prediction_next(results_dash, parms)
+            # ModelPredictor.dashboard_prediction_next(results_dash, parms, result_dash_hist_execution)
+            # ModelPredictor.dashboard_prediction_next(pred_results_df, parms)
+            ModelPredictor.dashboard_nextprediction_write(pred_results_df, parms)
+
+    @staticmethod
+    def dashboard_prediction_intial_manuplation(pred_results_df, parms):
+        # if parms['mode'] == 'next':
+        #     results_dash = pred_results_df[['ac_prefix', 'rl_prefix', 'tm_prefix', 'pref_size', 'run_num', 'implementation']].copy()
+        #     results_dash = pred_results_df.drop(['ac_prefix', 'rl_prefix', 'tm_prefix', 'pref_size', 'run_num', 'implementation'], axis=1)
+        # elif parms['mode'] == 'batch':
+        results_dash = pred_results_df[['ac_prefix', 'rl_prefix', 'tm_prefix', 'run_num', 'implementation']].copy()
+        results_dash = pred_results_df.drop(['ac_prefix', 'rl_prefix', 'tm_prefix', 'run_num', 'implementation'], axis=1)
+        # Replacing from Dictionary Values to it's original name
+        results_dash['ac_expect'] = results_dash.ac_expect.replace(parms['index_ac'])
+        results_dash['rl_expect'] = results_dash.rl_expect.replace(parms['index_rl'])
+        return results_dash
+
 
     @staticmethod
     def dashboard_prediction_next(results_dash, parms):
@@ -269,58 +298,87 @@ class ModelPredictor():
 
             #converting the values to it's actual name from parms
             #--For Activity and Role
-            ModelPredictor.dashboard_multiprediction_acrl(results_dash, parms)
-            #--For Label
-            ModelPredictor.dashboard_multiprediction_label(results_dash, parms)
+            results_dash = ModelPredictor.dashboard_multiprediction_acrl(results_dash, parms)
 
         else:
             #converting the values to it's actual name from parms
-            #--For Activity, Role and Label
+            #--For Activity, Role
             results_dash = ModelPredictor.dashboard_maxprediction(results_dash, parms)
 
-        ModelPredictor.dashboard_nextprediction_write(results_dash, parms)
+        # ModelPredictor.dashboard_nextprediction_write(results_dash, parms, result_dash_hist_execution)
+        return results_dash
 
 
     @staticmethod
-    @st.cache(persist=True)
     def dashboard_prediction_batch(results_dash, parms):
         #All the results has to be displayed in Tabular form i.e DataFrame
-        if parms['variant'] in ['multi_pred']:
+        if parms['variant'] in ['multi_pred', 'multi_pred_rand']:
             #converting the values to it's actual name from parms
             #--For Activity and Role
             ModelPredictor.dashboard_multiprediction_acrl(results_dash, parms)
-            #--For Label
-            ModelPredictor.dashboard_multiprediction_label(results_dash, parms)
 
-            results_dash.drop(['ac_pred', 'ac_prob', 'rl_pred', 'rl_prob', 'label_pred', 'label_prob'], axis=1, inplace=True)
+            results_dash.drop(['ac_pred', 'ac_prob', 'rl_pred', 'rl_prob'], axis=1, inplace=True)
 
             multipreddict = ModelPredictor.dashboard_multiprediction_columns(parms)
 
-            _lst = [['caseid', 'ac_expect'] + multipreddict["ac_pred"] + multipreddict["ac_prob"] +
+            _lst = [['caseid', 'pref_size', 'ac_expect'] + multipreddict["ac_pred"] + multipreddict["ac_prob"] +
                     ['rl_expect'] + multipreddict["rl_pred"] + multipreddict["rl_prob"] +
-                    ['label_expect', 'label_pred1', 'label_pred2', 'label_prob1', 'label_prob2', 'tm_expect', 'tm_pred']]
+                    ['tm_expect', 'tm_pred']]
 
             results_dash = results_dash[_lst[0]]
 
+            #--rearrange
+            # results_dash = results_dash[['caseid', 'pref_size', 'ac_expect', 'ac_pred1', 'ac_prob1',
+            #                              'ac_pred2', 'ac_prob2', 'ac_pred3', 'ac_prob3', 'rl_expect',
+            #                              'rl_pred1', 'rl_prob1', 'rl_pred2', 'rl_prob2', 'rl_pred3',
+            #                              'rl_prob3', 'tm_expect', 'tm_pred']]
+            #--rename
+            for _iz in range(parms['multiprednum']):
+                for _, _jz in enumerate(results_dash.columns):
+                    if _jz[:2] == 'ac':
+                        if _jz[3:8] == 'pred'+str(_iz+1):
+                            results_dash.rename(
+                                columns={_jz : nw(_iz + 1, lang="en", to="ordinal_num") + " AC Prediction"}, inplace=True)
+                        elif _jz[3:8] == 'prob'+str(_iz+1):
+                            results_dash.rename(
+                                columns={_jz: nw(_iz + 1, lang="en", to="ordinal_num") + " AC Confidence"}, inplace=True)
+                    elif _jz[:2] == 'rl':
+                        if _jz[3:8] == 'pred'+str(_iz+1):
+                            results_dash.rename(
+                                columns={_jz : nw(_iz + 1, lang="en", to="ordinal_num") + " RL Prediction"}, inplace=True)
+                            continue
+                        elif _jz[3:8] == 'prob'+str(_iz+1):
+                            results_dash.rename(
+                                columns={_jz : nw(_iz + 1, lang="en", to="ordinal_num") + " RL Confidence"}, inplace=True)
+
+            results_dash.rename(
+                columns={'caseid': 'Case ID', 'pref_size': 'Event_Number', 'ac_expect': 'AC Expected',
+                         'rl_expect': 'RL Expected', 'tm_expect': 'TM Expected', 'tm_pred': 'TM Predicted'}, inplace=True)
+
         else:
             #converting the values to it's actual name from parms
-            #--For Activity, Role and Label
+            #--For Activity, Role
             results_dash = ModelPredictor.dashboard_maxprediction(results_dash, parms)
             results_dash.rename(
-                columns={'caseid': 'Case_ID', 'ac_expect': 'AC Expected', 'ac_pred': 'AC Predicted', 'ac_prob': 'AC Confidence',
-                         'rl_expect': 'RL Expected', 'rl_pred': 'RL Predicted', 'rl_prob': 'RL Confidence',
-                         'label_expect': 'LB Expected', 'label_pred': 'LB Predicted', 'label_prob': 'LB Confidence',
-                         "tm_expect": 'TM Expected', 'tm_pred': 'TM Predicted'}, inplace=True)
+                columns={'caseid': 'Case_ID', 'pref_size': 'Event_Number', 'ac_expect': 'AC Expected',
+                         'ac_pred': 'AC Predicted', 'ac_prob': 'AC Confidence', 'rl_expect': 'RL Expected',
+                         'rl_pred': 'RL Predicted', 'rl_prob': 'RL Confidence', "tm_expect": 'TM Expected',
+                         'tm_pred': 'TM Predicted'}, inplace=True)
 
             # results_dash.columns = pd.MultiIndex.from_tuples(
-            #     zip(['', 'Activity', '', '', 'Role', '', '', 'Label', '', '', 'Time', ''],
+            #     zip(['', 'Activity', '', '', 'Role', '', '', 'Time', ''],
             #         results_dash.columns))
 
-        #st.table(results_dash)
-        #AgGrid(results_dash)
+        # with st.expander('ℹ️'):
+        #     st.info("🔮 Batch processed Prediction")
+        #--Rounding all the decimal value
+        results_dash = results_dash.round(2)
+        st.subheader("🔮 Batch Processed Predictions")
+        # AgGrid(results_dash, fit_columns_on_grid_load=True)
+        AgGrid(results_dash)
 
     @staticmethod
-    @st.cache(persist=True)
+    @st.cache(persist=True, allow_output_mutation=True)
     def dashboard_multiprediction_acrl(results_dash, parms):
 
         multipreddict = ModelPredictor.dashboard_multiprediction_columns(parms)
@@ -340,7 +398,6 @@ class ModelPredictor():
                                                                   index=results_dash.index)
             results_dash[multipreddict["ac_prob"]] = pd.DataFrame(results_dash.ac_prob.tolist(),
                                                                   index=results_dash.index)
-
         #print("Session State At dashboard_multiprediction_acrl After for loop: ", st.session_state)
         # --------------------results_dash['rl_pred'] = results_dash.rl_pred.replace(parms['index_rl'])
         for ix in range(len(results_dash['rl_pred'])):
@@ -354,27 +411,16 @@ class ModelPredictor():
             del results_dash['rl_pred'][ix][:ln]
             results_dash[multipreddict["rl_pred"]] = pd.DataFrame(results_dash.rl_pred.tolist(),
                                                                   index=results_dash.index)
+
             results_dash[multipreddict["rl_prob"]] = pd.DataFrame(results_dash.rl_prob.tolist(),
-                                                                  index=results_dash.index)
+                                                         index=results_dash.index)
 
-        return results_dash
+        if parms['next_mode'] == 'next_action':
+            # --------------------results_dash['tm_pred']
+            for ix in range(len(results_dash['tm_pred'])):
+                results_dash[multipreddict["tm_pred"]] = pd.DataFrame(results_dash.tm_pred.tolist(),
+                                                                      index=results_dash.index)
 
-    @staticmethod
-    @st.cache(persist=True)
-    def dashboard_multiprediction_label(results_dash, parms):
-        for ix in range(len(results_dash['label_pred'])):
-            for jx in range(len(results_dash['label_pred'][ix])):
-                # replacing the value from the parms dictionary
-                results_dash['label_pred'][ix].append(parms['index_label'][results_dash.label_pred[ix][jx]])
-                # Converting probability into percentage
-                results_dash['label_prob'][ix][jx] = (results_dash['label_prob'][ix][jx] * 100)
-            # popping out the values from the list
-            ln = int(len(results_dash['label_pred'][ix]) / 2)
-            del results_dash['label_pred'][ix][:ln]
-            results_dash[['label_pred1', 'label_pred2']] = pd.DataFrame(results_dash.label_pred.tolist(),
-                                                                        index=results_dash.index)
-            results_dash[['label_prob1', 'label_prob2']] = pd.DataFrame(results_dash.label_prob.tolist(),
-                                                                        index=results_dash.index)
         return results_dash
 
     @staticmethod
@@ -382,34 +428,73 @@ class ModelPredictor():
     def dashboard_maxprediction(results_dash, parms):
         results_dash['ac_pred'] = results_dash.ac_pred.replace(parms['index_ac'])
         results_dash['rl_pred'] = results_dash.rl_pred.replace(parms['index_rl'])
-        results_dash['label_pred'] = results_dash.label_pred.replace(parms['index_label'])
         results_dash['ac_prob'] = (results_dash['ac_prob'] * 100)
         results_dash['rl_prob'] = (results_dash['rl_prob'] * 100)
-        results_dash['label_prob'] = (results_dash['label_prob'] * 100)
         return results_dash
 
     @staticmethod
-    def dashboard_nextprediction_write(results_dash, parms):
+    # def dashboard_nextprediction_write(results_dash, parms, result_dash_hist_execution):
+    def dashboard_nextprediction_write(pred_results_df, parms):
 
-        if parms['next_mode'] == 'history_with_next':
+        if parms['next_mode'] in ['history_with_next', 'what_if']:
 
-            ModelPredictor.dashboard_nextprediction_execute_write(results_dash, parms)
+            results_dash = ModelPredictor.dashboard_prediction_intial_manuplation(pred_results_df, parms)
+
+            results_dash = ModelPredictor.dashboard_prediction_next(results_dash, parms)
+
+            if parms['next_mode'] == 'history_with_next':
+
+                ModelPredictor.dashboard_nextprediction_execute_write(results_dash, parms)
+
+            elif parms['next_mode'] == 'what_if':
+
+                ModelPredictor.dashboard_nextprediction_whatif_write(results_dash, parms)
+
         elif parms['next_mode'] == 'next_action':
 
-            ModelPredictor.dashboard_nextprediction_evaluate_write(results_dash, parms)
+            # -----------------------------------------------------------------------------------------------------------------------------------
+            # Removing 'ac_prefix', 'rl_prefix', 'tm_prefix', 'run_num', 'implementation' from the result
+            # creating the prefix for execution mode only, first the last row has been selected to accomodate all the input for
+            # activity, role, time. for time it has been converted from numpy array to array of array and then to flat array
+            # all the three attributes has been put in dictionary and then convrted to dataframe
+            # print("Activity : ", pred_results_df['ac_prefix'].iloc[-1:].values.tolist()[0])
+            # print("Role : ", pred_results_df['rl_prefix'].iloc[-1:].values.tolist()[0])
+            # print("Time : ", sum([x.tolist() for x in pred_results_df['tm_prefix'].iloc[-1:].values.tolist()[0]], []))
 
-        elif parms['next_mode'] == 'what_if':
+            result_dash_hist_execution = pd.DataFrame(
+                {"Activity": pred_results_df['ac_prefix'].iloc[-1:].values.tolist()[0],
+                 "Role": pred_results_df['rl_prefix'].iloc[-1:].values.tolist()[0],
+                 "Time": sum([x.tolist() for x in pred_results_df['tm_prefix'].iloc[-1:].values.tolist()[0]], [])})
 
-            ModelPredictor.dashboard_nextprediction_whatif_write(results_dash, parms)
+            # Replacing from Dictionary Values to it's original name
+            result_dash_hist_execution['Activity'] = result_dash_hist_execution.Activity.replace(parms['index_ac'])
+            result_dash_hist_execution['Role'] = result_dash_hist_execution.Role.replace(parms['index_rl'])
+            # removing the fist row
+            result_dash_hist_execution = result_dash_hist_execution.iloc[1:]
+            # -----------------------------------------------------------------------------------------------------------------------------------
 
-        print("------------------------------How Session State Looks Like : ", st.session_state)
+            results_dash = ModelPredictor.dashboard_prediction_intial_manuplation(pred_results_df, parms)
+
+            results_dash = ModelPredictor.dashboard_prediction_next(results_dash, parms)
+
+            ModelPredictor.dashboard_nextprediction_evaluate_write(results_dash, parms, result_dash_hist_execution)
+
+        # elif parms['next_mode'] == 'what_if':
+        #
+        #     results_dash = ModelPredictor.dashboard_prediction_intial_manuplation(pred_results_df, parms)
+        #
+        #     results_dash = ModelPredictor.dashboard_prediction_next(results_dash, parms)
+        #
+        #     ModelPredictor.dashboard_nextprediction_whatif_write(results_dash, parms)
+
+        # print("------------------------------How Session State Looks Like : ", st.session_state)
 
     @staticmethod
     def dashboard_nextprediction_execute_write(results_dash, parms):
         st.header('📜 Process Historical Behaviour')
-        results_dash_expected = results_dash[['ac_expect', 'rl_expect', 'label_expect', "tm_expect"]]
+        results_dash_expected = results_dash[['ac_expect', 'rl_expect', "tm_expect"]]
         results_dash_expected.rename(
-            columns={'ac_expect': 'Activity', 'pos_rl_ss': 'Role', 'pos_lb_ss': 'Label', "pos_tm_ss": 'Time'},
+            columns={'ac_expect': 'Activity', 'pos_rl_ss': 'Role', "pos_tm_ss": 'Time'},
             inplace=True)
         st.dataframe(results_dash_expected.iloc[:-1])
         st.markdown("""---""")
@@ -417,7 +502,7 @@ class ModelPredictor():
 
             multipreddict = ModelPredictor.dashboard_multiprediction_columns(parms)
 
-            with st.beta_container():
+            with st.container():
                 colstm = st.columns(1)
                 with colstm[0]:
                     st.subheader('⌛ Predicted Time Duration of Predictions')
@@ -427,11 +512,11 @@ class ModelPredictor():
             for kz in range(parms['multiprednum']):
                     with cols[kz]:
                         ModelPredictor.dashboard_nextprediction_write_acrl(results_dash, parms, multipreddict, kz)
-            st.markdown("""---""")
+            #st.markdown("""---""")
 
         else:
             st.header("🤔 Max Probability Prediction")
-            cols1, cols2, cols3, cols4 = st.columns([2, 2, 2, 1])
+            cols1, cols2, cols3, cols4 = st.columns([2, 2, 1, 0.5])
             with cols1:
                 st.subheader('🏋️ Activity')
                 # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
@@ -443,12 +528,11 @@ class ModelPredictor():
                 st.write(results_dash[["rl_pred", "rl_prob"]].rename(
                     columns={"rl_pred": 'Predicted', "rl_prob": 'Confidence'}, inplace=False).iloc[-1:])
             with cols3:
-                st.subheader('🏷️ Label')
-                st.write(results_dash[["label_pred", "label_prob"]].rename(
-                    columns={"label_pred": 'Predicted', "label_prob": 'Confidence'}, inplace=False).iloc[-1:])
-            with cols4:
                 st.subheader('⌛ Time')
                 st.write(results_dash[["tm_pred"]].rename(columns={"tm_pred": 'Predicted'}, inplace=False).iloc[-1:])
+            with cols4:
+                st.subheader('🏷️ Label')
+                ModelPredictor.dashboard_label_decider(sum(results_dash[["ac_pred"]].values.tolist(), []), parms)
             st.markdown("""---""")
         #--Predictions of Predictions
         if st.session_state['multi_pred_ss']['ss_multipredict1']['ac_pred'] != []:
@@ -459,7 +543,7 @@ class ModelPredictor():
         for lk in range(parms['multiprednum']):
             st.header("📜 " + nw(lk + 1, lang="en", to="ordinal_num") + " Prediction " + " Historical Behaviour ")
 
-            _hist_columns = ['pos_ac_ss', 'pos_rl_ss', 'pos_lb_ss']  # selecting the columns
+            _hist_columns = ['pos_ac_ss', 'pos_rl_ss']  # selecting the columns
             _hist_predicted_dict = dict(
                 [(k, st.session_state['initial_prediction']['ss_initpredict' + str(lk + 1)][k]) for k in
                  _hist_columns])  # constructing new dict fromm sessionstate
@@ -476,15 +560,14 @@ class ModelPredictor():
             # Replacing from Dictionary Values to it's original name
             _hist_predicted_df['pos_ac_ss'] = _hist_predicted_df.pos_ac_ss.replace(parms['index_ac'])
             _hist_predicted_df['pos_rl_ss'] = _hist_predicted_df.pos_rl_ss.replace(parms['index_rl'])
-            _hist_predicted_df['pos_lb_ss'] = _hist_predicted_df.pos_lb_ss.replace(parms['index_label'])
             _hist_predicted_df.rename(
-                columns={'pos_ac_ss': 'Activity', 'pos_rl_ss': 'Role', 'pos_lb_ss': 'Label', "pos_tm_ss": 'Time'},
+                columns={'pos_ac_ss': 'Activity', 'pos_rl_ss': 'Role', "pos_tm_ss": 'Time'},
                 inplace=True)
 
             # _hist_predicted_df = _hist_predicted_df.iloc[1:]
             st.dataframe(_hist_predicted_df.iloc[:-1])
             st.markdown("""---""")
-            _multi_columns = ['ac_pred', 'ac_prob', 'rl_pred', 'rl_prob', 'label_pred', 'label_prob', 'tm_pred']
+            _multi_columns = ['ac_pred', 'ac_prob', 'rl_pred', 'rl_prob', 'tm_pred']
 
             _multi_predicted_dict = dict(
                 [(k, st.session_state['multi_pred_ss']['ss_multipredict' + str(lk + 1)][k]) for k in _multi_columns])
@@ -494,8 +577,8 @@ class ModelPredictor():
             _multi_predicted_df = pd.DataFrame.from_dict(_multi_predicted_dict)
             _multi_predicted_df = ModelPredictor.dashboard_maxprediction(_multi_predicted_df, parms)
             _multi_predicted_df.index = _multi_predicted_df.index + 1 #to match with the index value of the main prediction
-            st.subheader("🤔 Max Probability Prediction of " + nw(lk + 1, lang="en", to="ordinal_num") + " Prediction")
-            cols1, cols2, cols3, cols4 = st.columns([2, 2, 2, 1])
+            st.subheader("🔮 Max Probability Prediction of " + nw(lk + 1, lang="en", to="ordinal_num") + " Prediction")
+            cols1, cols2, cols3, cols4 = st.columns([2, 2, 1, 0.5])
             with cols1:
                 st.subheader('🏋️ Activity')
                 # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
@@ -507,57 +590,96 @@ class ModelPredictor():
                 st.write(_multi_predicted_df[["rl_pred", "rl_prob"]].rename(
                     columns={"rl_pred": 'Predicted', "rl_prob": 'Confidence'}, inplace=False).iloc[-1:])
             with cols3:
-                st.subheader('🏷️ Label')
-                st.write(_multi_predicted_df[["label_pred", "label_prob"]].rename(
-                    columns={"label_pred": 'Predicted', "label_prob": 'Confidence'}, inplace=False).iloc[-1:])
-            with cols4:
                 st.subheader('⌛ Time')
                 st.write(
                     _multi_predicted_df[["tm_pred"]].rename(columns={"tm_pred": 'Predicted'}, inplace=False).iloc[-1:])
-            st.markdown("""---""")
+            with cols4:
+                st.subheader('🏷️ Label')
+                _lbkey = [sum(_hist_predicted_df[['Activity']].values.tolist(), [])[0]] + sum(_multi_predicted_df[["ac_pred"]].values.tolist(), []) #concatenate
+                # _lbkey = sorted(set(_lbkey), key=_lbkey.index) #remove duplicates and maintain the order
+                # print("Multiverse " + str(lk), _lbkey, [sum(_hist_predicted_df[['Activity']].values.tolist(), [])[0]], sum(_multi_predicted_df[["ac_pred"]].values.tolist(), []))
+                ModelPredictor.dashboard_label_decider(_lbkey, parms)
 
     @staticmethod
-    def dashboard_nextprediction_evaluate_write(results_dash, parms):
+    def dashboard_nextprediction_evaluate_write(results_dash, parms, result_dash_hist_execution):
+
+        # process_history_behaviour, label_status = ModelPredictor.dashboard_history_label()
+        # with st.container():
+        #     colshist, colslabel = st.columns(2)
+
+        # Fixing Index Number for better readability
+        _temp_result_dash_hist_execution = result_dash_hist_execution.iloc[:parms['nextcaseid_attr']["filter_index"] + 1]
+        _temp_result_dash_hist_execution.index = _temp_result_dash_hist_execution.index - 1
+
+        st.header('📜 Process Historical Behaviour')
+        st.dataframe(_temp_result_dash_hist_execution)
+        st.markdown("""---""")
+
+        print("Prediction Dataframe  : ", results_dash.columns)
+
+        # print("Parameter : ", parms)
+        results_dash.index = results_dash.index + (parms['nextcaseid_attr']["filter_index"] + 1)
+
         if parms['variant'] in ['multi_pred']:
-            cols = st.columns(parms['multiprednum']+1)
+            cols = st.columns(parms['multiprednum']+2) #One for SME Case another for expecte
 
             multipreddict = ModelPredictor.dashboard_multiprediction_columns(parms)
-            for kz in range(parms['multiprednum']+1):
-                if kz <= (parms['multiprednum']-1):
+            _iterations = parms['multiprednum']+2 #One for SME Case another for expected
+            for kz in range(_iterations):
+                if kz <= (_iterations-2):
                     with cols[kz]:
                         ModelPredictor.dashboard_nextprediction_write_acrl(results_dash, parms, multipreddict, kz)
-                elif kz == (parms['multiprednum']) and parms['next_mode']:
+
+                elif kz == (_iterations-1) and parms['next_mode']:
                     with cols[kz]:
                         st.header("🧐 Expected ")
 
                         st.subheader('🏋️ Activity')
+                        st.write(results_dash[["ac_expect"]][0:1].rename(columns={"ac_expect": 'Expected'}, inplace=False))
+                        with st.expander('ℹ️'):
+                            st.info("Suffix of Expected Activity")
                         # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
-                        st.write(results_dash[["ac_expect"]].rename(columns={"ac_expect": 'Expected'}, inplace=False))
+                            st.write(results_dash[["ac_expect"]][1:].rename(columns={"ac_expect": 'Expected'}, inplace=False))
 
                         st.markdown("""---""")
                         st.subheader('👨‍💻 Role')
                         # writes Role and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
-                        st.write(results_dash[["rl_expect"]].rename(columns={"rl_expect": 'Expected'}, inplace=False))
+                        st.write(results_dash[["rl_expect"]][0:1].rename(columns={"rl_expect": 'Expected'}, inplace=False))
+                        with st.expander('ℹ️'):
+                            st.info("Suffix of Expected Role")
+                            st.write(results_dash[["rl_expect"]][1:].rename(columns={"rl_expect": 'Expected'}, inplace=False))
 
                         st.markdown("""---""")
+
+                        st.subheader('⌛ Time')
+                        st.write(results_dash[["tm_expect"]][0:1].rename(columns={"tm_expect": 'Expected'}, inplace=False))
+                        with st.expander('ℹ️'):
+                            st.info("Suffix of Expected Time")
+                            st.write(results_dash[["tm_expect"]][1:].rename(columns={"tm_expect": 'Expected'}, inplace=False))
+
+                        st.markdown("""---""")
+
                         st.subheader('🏷️ Label')
-                        st.write(results_dash[["label_expect"]].rename(columns={"label_expect": 'Expected'}, inplace=False))
-            st.markdown("""---""")
-            with st.beta_container():
-                colstm = st.columns(2)
-                with colstm[0]:
-                    st.subheader('⌛ Predicted Time Duration')
-                    st.write(results_dash[["tm_pred"]].rename(columns={"tm_pred": 'Expected'}, inplace=False).T,
-                             use_column_width=True)
-                with colstm[1]:
-                    st.subheader('⌚ Expected Time Duration')
-                    st.write(
-                        results_dash[["tm_expect"]].rename(columns={"tm_expect": 'Predicted'}, inplace=False).T,
-                        use_column_width=True)
+                        ModelPredictor.dashboard_label_decider(sum(results_dash[["ac_expect"]].values.tolist(), []), parms)
+
+                        st.markdown("""---""")
+
+            #st.markdown("""---""")
+            # with st.container():
+            #     colstm = st.columns(2)
+            #     with colstm[0]:
+            #         st.subheader('⌛ Predicted Time Duration')
+            #         st.write(results_dash[["tm_pred"]].rename(columns={"tm_pred": 'Predicted'}, inplace=False).T,
+            #                  use_column_width=True)
+            #     with colstm[1]:
+            #         st.subheader('⌚ Expected Time Duration')
+            #         st.write(
+            #             results_dash[["tm_expect"]].rename(columns={"tm_expect": 'Expected'}, inplace=False).T,
+            #             use_column_width=True)
 
         else:
             st.header("🤔 Max Probability Prediction")
-            cols1, cols2, cols3, cols4 = st.columns([2, 2, 1, 2])
+            cols1, cols2, cols3, cols4 = st.columns([2, 2, 1, 0.5])
             with cols1:
                 st.subheader('🏋️ Activity')
                 # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
@@ -571,13 +693,31 @@ class ModelPredictor():
                 st.write(results_dash[["tm_pred"]].rename(columns={"tm_pred": 'Predicted'}, inplace=False))
             with cols4:
                 st.subheader('🏷️ Label')
-                st.write(results_dash[["label_pred", "label_prob"]].rename(columns={"label_pred": 'Predicted', "label_prob": 'Confidence'}, inplace=False))
+                ModelPredictor.dashboard_label_decider(sum(results_dash[["ac_pred"]].values.tolist(), []), parms)
+            st.markdown("""---""")
 
+            st.header("🧐 Expected ")
+            ecols1, ecols2, ecols3, ecols4 = st.columns([2, 2, 1, 0.5])
+            with ecols1:
+                st.subheader('🏋️ Activity')
+                # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
+                st.write(results_dash[["ac_expect"]].rename(columns={"ac_expect": 'Expected'}, inplace=False))
+                st.markdown("""---""")
+            with ecols2:
+                st.subheader('👨‍💻 Role')
+                # writes Role and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
+                st.write(results_dash[["rl_expect"]].rename(columns={"rl_expect": 'Expected'}, inplace=False))
+            with ecols3:
+                st.subheader('⌛ Time')
+                st.write(results_dash[["tm_expect"]].rename(columns={"tm_expect": 'Expected'}, inplace=False))
+            with ecols4:
+                st.subheader('🏷️ Label')
+                ModelPredictor.dashboard_label_decider(sum(results_dash[["ac_expect"]].values.tolist(), []), parms)
 
     @staticmethod
     def dashboard_nextprediction_whatif_write(results_dash, parms):
         st.header('📜 Process Historical Behaviour')
-        _hist_columns = ['hist_ac_prefix', 'hist_rl_prefix', 'hist_lb_prefix', 'hist_tm_prefix', 'hist_pred_prefix']  # selecting the columns
+        _hist_columns = ['hist_ac_prefix', 'hist_rl_prefix', 'hist_tm_prefix', 'hist_pred_prefix']  # selecting the columns
         _hist_choice_dict = dict([(k, st.session_state['history_of_choice'][k]) for k in _hist_columns])  # constructing new dict fromm sessionstate
         _hist_choice_dict['hist_tm_prefix'] = sum(_hist_choice_dict['hist_tm_prefix'], []) # flattening of time
         _hist_choice_dict['hist_tm_prefix'] = [ModelPredictor.rescale(x, parms, parms['scale_args']) for x in _hist_choice_dict['hist_tm_prefix']]  # Normalizing back to original value
@@ -585,9 +725,8 @@ class ModelPredictor():
         # Replacing from Dictionary Values to it's original name
         _hist_choice_df ['hist_ac_prefix'] = _hist_choice_df.hist_ac_prefix.replace(parms['index_ac'])
         _hist_choice_df['hist_rl_prefix'] = _hist_choice_df.hist_rl_prefix.replace(parms['index_rl'])
-        _hist_choice_df['hist_lb_prefix'] = _hist_choice_df.hist_lb_prefix.replace(parms['index_label'])
 
-        _hist_choice_df.rename(columns={'hist_ac_prefix': 'Activity', 'hist_rl_prefix': 'Role', 'hist_lb_prefix': 'Label', 'hist_tm_prefix': 'Time', 'hist_pred_prefix':'Choice'}, inplace=True)
+        _hist_choice_df.rename(columns={'hist_ac_prefix': 'Activity', 'hist_rl_prefix': 'Role', 'hist_tm_prefix': 'Time', 'hist_pred_prefix':'Choice'}, inplace=True)
 
         st.dataframe(_hist_choice_df)
         st.markdown("""---""")
@@ -595,7 +734,7 @@ class ModelPredictor():
 
             multipreddict = ModelPredictor.dashboard_multiprediction_columns(parms)
 
-            with st.beta_container():
+            with st.container():
                 colstm = st.columns(1)
                 with colstm[0]:
                     st.subheader('⌛ Predicted Time Duration of Predictions')
@@ -605,11 +744,11 @@ class ModelPredictor():
             for kz in range(parms['multiprednum']):
                     with cols[kz]:
                         ModelPredictor.dashboard_nextprediction_write_acrl(results_dash, parms, multipreddict, kz)
-            st.markdown("""---""")
+            #st.markdown("""---""")
 
         else:
             st.header("🤔 Max Probability Prediction")
-            cols1, cols2, cols3, cols4 = st.columns([2, 2, 2, 1])
+            cols1, cols2, cols3, cols4 = st.columns([2, 2, 1, 0.5])
             with cols1:
                 st.subheader('🏋️ Activity')
                 # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
@@ -621,12 +760,11 @@ class ModelPredictor():
                 st.write(results_dash[["rl_pred", "rl_prob"]].rename(
                     columns={"rl_pred": 'Predicted', "rl_prob": 'Confidence'}, inplace=False).iloc[-1:])
             with cols3:
-                st.subheader('🏷️ Label')
-                st.write(results_dash[["label_pred", "label_prob"]].rename(
-                    columns={"label_pred": 'Predicted', "label_prob": 'Confidence'}, inplace=False).iloc[-1:])
-            with cols4:
                 st.subheader('⌛ Time')
                 st.write(results_dash[["tm_pred"]].rename(columns={"tm_pred": 'Predicted'}, inplace=False).iloc[-1:])
+            with cols4:
+                st.subheader('🏷️ Label')
+                ModelPredictor.dashboard_label_decider(sum(results_dash[["ac_pred"]].values.tolist(), []), parms)
             st.markdown("""---""")
 
         #--Predictions of Predictions
@@ -635,28 +773,31 @@ class ModelPredictor():
 
     @staticmethod
     def dashboard_nextprediction_whatif_multiverse(parms):
+        st.info("Predictions of what could happen for the respective above predictions if selected")
         for lk in range(parms['multiprednum']):
             st.header("📜 " + nw(lk + 1, lang="en", to="ordinal_num") + " Prediction " + " Historical Behaviour ")
 
-            _hist_columns = ['pos_ac_ss', 'pos_rl_ss', 'pos_lb_ss', 'pos_tm_ss']  # selecting the columns
+            _hist_columns = ['pos_ac_ss', 'pos_rl_ss', 'pos_tm_ss']  # selecting the columns
             _hist_multiverse_dict = dict([(k, st.session_state['initial_prediction']['ss_initpredict' + str(lk + 1)][k]) for k in _hist_columns])  # constructing new dict fromm sessionstate
+
             # --Manuplation to see the Value properly
             _hist_multiverse_dict['pos_tm_ss'] = sum(_hist_multiverse_dict['pos_tm_ss'], [])  # flattening of time
-            _hist_multiverse_dict['pos_tm_ss'] = [ModelPredictor.rescale(x, parms, parms['scale_args']) for x in _hist_multiverse_dict['pos_tm_ss']]  # Normalizing back to original value
-            _hist_multiverse_dict = {k: _hist_multiverse_dict[k][1:] for k in _hist_multiverse_dict}  # removing first item in each key in a dictionary
 
+            _hist_multiverse_dict['pos_tm_ss'] = [ModelPredictor.rescale(x, parms, parms['scale_args']) for x in _hist_multiverse_dict['pos_tm_ss']]  # Normalizing back to original value
+
+            _hist_multiverse_dict = {k: _hist_multiverse_dict[k][1:] for k in _hist_multiverse_dict}  # removing first item in each key in a dictionary
             _hist_predicted_df = pd.DataFrame.from_dict(_hist_multiverse_dict)
             # Replacing from Dictionary Values to it's original name
             _hist_predicted_df['pos_ac_ss'] = _hist_predicted_df.pos_ac_ss.replace(parms['index_ac'])
             _hist_predicted_df['pos_rl_ss'] = _hist_predicted_df.pos_rl_ss.replace(parms['index_rl'])
-            _hist_predicted_df['pos_lb_ss'] = _hist_predicted_df.pos_lb_ss.replace(parms['index_label'])
-            _hist_predicted_df.rename(columns={'pos_ac_ss': 'Activity', 'pos_rl_ss': 'Role', 'pos_lb_ss': 'Label', "pos_tm_ss": 'Time'}, inplace=True)
+            _hist_predicted_df.rename(columns={'pos_ac_ss': 'Activity', 'pos_rl_ss': 'Role', "pos_tm_ss": 'Time'}, inplace=True)
             # _hist_predicted_df = _hist_predicted_df.iloc[1:]
             st.dataframe(_hist_predicted_df.iloc[:-1])
             st.markdown("""---""")
-            _multi_columns = ['ac_pred', 'ac_prob', 'rl_pred', 'rl_prob', 'label_pred', 'label_prob', 'tm_pred']
+            _multi_columns = ['ac_pred', 'ac_prob', 'rl_pred', 'rl_prob', 'tm_pred']
 
-            cols = st.columns(parms['multiprednum'])
+            # cols = st.columns(parms['multiprednum'])
+            #
 
             for _lz in range(parms['multiprednum']):
                 _multi_multiverse_dict = dict([(k, st.session_state['multi_pred_ss']['ss_multipredict' + str(lk + 1)]['multiverse_predict' + str(_lz+1)][k]) for k in _multi_columns])
@@ -665,20 +806,77 @@ class ModelPredictor():
                 _multi_multiverse_df = pd.DataFrame.from_dict(_multi_multiverse_dict)
                 _multi_multiverse_df = ModelPredictor.dashboard_maxprediction(_multi_multiverse_df, parms)
                 _multi_multiverse_df.index = _multi_multiverse_df.index + 1  # to match with the index value of the main prediction
-
-
                 if parms['variant'] in ['multi_pred']:
-                    _multi_multiverse_df.rename(
-                        columns={'ac_pred': 'ac_pred' + str(_lz + 1), 'ac_prob': 'ac_prob' + str(_lz + 1),
-                                 'rl_pred': 'rl_pred' + str(_lz + 1), 'rl_prob': 'rl_prob' + str(_lz + 1),
-                                 'label_pred': 'label_pred' + str(_lz + 1), 'label_prob': 'label_prob' + str(_lz + 1)},
-                        inplace=True)
-                    print("-------------------------------------------")
-                    print("Multiverse Dataframe : ", _multi_multiverse_df)
+                    if _lz == 0:
+                        st.subheader('⌛ Predicted Time Duration of Predictions')
+                        st.write(_multi_multiverse_df[["tm_pred"]].rename(columns={"tm_pred": 'Expected'},
+                                                                          inplace=False).iloc[-1:].T, use_column_width=True)
+                        cols = st.columns(parms['multiprednum'])
 
+                    with cols[_lz]:
+                        st.subheader("🔮 " + nw(_lz + 1, lang="en", to="ordinal_num") + " Prediction of Prediction")
+                    #----------------------------------------------------------------------------------------------------------------------------------------
+                        st.subheader('🏋️ Activity')
+                        # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
+                        st.write(_multi_multiverse_df[["ac_pred"] +
+                                             ["ac_prob"]].iloc[-1:].rename(columns={"ac_pred": 'Predicted', "ac_prob": 'Confidence'}))
+                        st.markdown("""---""")
+
+                        st.subheader('👨‍💻 Role')
+                        # writes Role and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
+                        st.write(_multi_multiverse_df[["rl_pred"] +
+                                                      ["rl_prob"]].iloc[-1:].rename(columns={"rl_pred": 'Predicted', "rl_prob": 'Confidence'}))
+                        st.markdown("""---""")
+
+                        st.subheader('🏷️ Label')
+                        _lbkey = [sum(_hist_predicted_df[['Activity']].values.tolist(), [])[0]] + sum(_multi_multiverse_df[["ac_pred"]].values.tolist(), [])
+                        ModelPredictor.dashboard_label_decider(_lbkey, parms)
+                        st.markdown("""---""")
+                else:
+                    st.header("🔮 Max Probability Prediction")
+                    cols1, cols2, cols3, cols4 = st.columns([2, 2, 1, 0.5])
+                    with cols1:
+                        st.subheader('🏋️ Activity')
+                        # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
+                        st.write(_multi_multiverse_df[["ac_pred", "ac_prob"]].rename(
+                            columns={"ac_pred": 'Predicted', "ac_prob": 'Confidence'}, inplace=False).iloc[-1:])
+                    with cols2:
+                        st.subheader('👨‍💻 Role')
+                        # writes Role and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
+                        st.write(_multi_multiverse_df[["rl_pred", "rl_prob"]].rename(
+                            columns={"rl_pred": 'Predicted', "rl_prob": 'Confidence'}, inplace=False).iloc[-1:])
+                    with cols3:
+                        st.subheader('⌛ Time')
+                        st.write(_multi_multiverse_df[["tm_pred"]].rename(columns={"tm_pred": 'Predicted'}, inplace=False).iloc[-1:])
+                    with cols4:
+                        st.subheader('🏷️ Label')
+                        _lbkey = [sum(_hist_predicted_df[['Activity']].values.tolist(), [])[0]] + sum(_multi_multiverse_df[["ac_pred"]].values.tolist(), [])
+                        ModelPredictor.dashboard_label_decider(_lbkey, parms)
+                    st.markdown("""---""")
+
+                # st.subheader('🏋️ Activity')
+                # # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
+                # st.write(_multi_multiverse_df[["ac_pred" + str(_lz + 1)] +
+                #                      ["ac_prob" + str(_lz + 1)]].iloc[-1:].rename(columns={"ac_pred" + str(_lz + 1): 'Predicted', "ac_prob" + str(_lz + 1): 'Confidence'}))
+                # st.markdown("""---""")
+                #
+                # st.subheader('👨‍💻 Role')
+                # # writes Role and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
+                # st.write(_multi_multiverse_df[["rl_pred" + str(_lz + 1)] +
+                #                               ["rl_prob" + str(_lz + 1)]].iloc[-1:].rename(columns={"rl_pred" + str(_lz + 1): 'Predicted', "rl_prob" + str(_lz + 1): 'Confidence'}))
+                # st.markdown("""---""")
+                #
+                # st.subheader('🏷️ Label')
+                # # print("Historical data : ", [sum(_hist_predicted_df[['Activity']].values.tolist(), [])[0]])
+                # # print("Activity : ", sum(_multi_multiverse_df[["ac_pred" + str(_lz + 1)]].values.tolist(), []))
+                # # print("Length of Activity :", len(sum(_multi_multiverse_df[["ac_pred" + str(_lz + 1)]].values.tolist(), [])))
+                # _lbkey = [sum(_hist_predicted_df[['Activity']].values.tolist(), [])[0]] + sum(_multi_multiverse_df[["ac_pred" + str(_lz + 1)]].values.tolist(), [])
+                # ModelPredictor.dashboard_label_decider(_lbkey, parms)
+                # st.markdown("""---""")
+                #-------------------------------------------------------
                 #     multipreddict = ModelPredictor.dashboard_multiprediction_columns(parms)
                 #
-                #     with st.beta_container():
+                #     with st.container():
                 #         colstm = st.columns(1)
                 #         with colstm[0]:
                 #             st.subheader('⌛ Predicted Time Duration of Predictions')
@@ -701,11 +899,6 @@ class ModelPredictor():
                 #         # writes Role and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
                 #         st.write(_multi_multiverse_df[["rl_pred", "rl_prob"]].rename(
                 #             columns={"rl_pred": 'Predicted', "rl_prob": 'Confidence'}, inplace=False).iloc[-1:])
-                #     with cols3:
-                #         st.subheader('🏷️ Label')
-                #         st.write(_multi_multiverse_df[["label_pred", "label_prob"]].rename(
-                #             columns={"label_pred": 'Predicted', "label_prob": 'Confidence'}, inplace=False).iloc[
-                #                  -1:])
                 #     with cols4:
                 #         st.subheader('⌛ Time')
                 #         st.write(_multi_multiverse_df[["tm_pred"]].rename(columns={"tm_pred": 'Predicted'}, inplace=False).iloc[-1:])
@@ -718,28 +911,53 @@ class ModelPredictor():
     def dashboard_nextprediction_write_acrl(results_dash, parms, multipreddict, kz):
         if kz <= parms['multiprednum']:
             if parms['next_mode'] == 'next_action': #Evaluation Mode
-                st.subheader("🤔", nw(kz + 1, lang="en", to="ordinal_num") + "Prediction")
+                #st.subheader("🤔", nw(kz + 1, lang="en", to="ordinal_num") + "Prediction")
+                if kz == 0:
+                    st.header("👨‍💼 SME Predictions")
+                else:
+                    st.header("🤔 " + nw(kz, lang="en", to="ordinal_num") + " Prediction")
+                # print("results_dash : ", multipreddict["ac_pred"][kz])
+                # print("Dataframe : ", results_dash)
                 st.subheader('🏋️ Activity')
                 # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
-                st.write(results_dash[[multipreddict["ac_pred"][kz]] + [multipreddict["ac_prob"][kz]]].rename(
+                # st.write(results_dash[[multipreddict["ac_pred"][kz]] + [multipreddict["ac_prob"][kz]]].rename(
+                #     columns={multipreddict["ac_pred"][kz]: 'Predicted', multipreddict["ac_prob"][kz]: 'Confidence'},
+                #     inplace=False))
+                st.write(results_dash[[multipreddict["ac_pred"][kz]] + [multipreddict["ac_prob"][kz]]][0:1].rename(
                     columns={multipreddict["ac_pred"][kz]: 'Predicted', multipreddict["ac_prob"][kz]: 'Confidence'},
                     inplace=False))
+                with st.expander('ℹ️'):
+                    st.info("Suffix of Predicted Activity")
+                    st.write(results_dash[[multipreddict["ac_pred"][kz]] + [multipreddict["ac_prob"][kz]]][1:].rename(
+                        columns={multipreddict["ac_pred"][kz]: 'Predicted', multipreddict["ac_prob"][kz]: 'Confidence'},
+                        inplace=False))
                 st.markdown("""---""")
                 st.subheader('👨‍💻 Role')
                 # writes Role and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
-                st.write(results_dash[[multipreddict["rl_pred"][kz]] + [multipreddict["rl_prob"][kz]]].rename(
+                st.write(results_dash[[multipreddict["rl_pred"][kz]] + [multipreddict["rl_prob"][kz]]][0:1].rename(
                     columns={multipreddict["rl_pred"][kz]: 'Predicted', multipreddict["rl_prob"][kz]: 'Confidence'},
                     inplace=False))
-                st.markdown("""---""")
-                # st.subheader('⌛ Time')
-                # st.write(results_dash[["tm_pred"]].rename(columns={"tm_pred": 'Predicted'}, inplace=False))
-                st.subheader('🏷️ Label')
-                if kz <= 1:
-                    st.write(results_dash[["label_pred" + str(kz + 1)] + ["label_prob" + str(kz + 1)]].rename(
-                        columns={"label_pred" + str(kz + 1): 'Predicted', "label_prob" + str(kz + 1): 'Confidence'},
+                with st.expander('ℹ️'):
+                    st.info("Suffix of Predicted Role")
+                    st.write(results_dash[[multipreddict["rl_pred"][kz]] + [multipreddict["rl_prob"][kz]]][1:].rename(
+                        columns={multipreddict["rl_pred"][kz]: 'Predicted', multipreddict["rl_prob"][kz]: 'Confidence'},
                         inplace=False))
-                elif kz > 1:
-                    st.write("None")
+                st.markdown("""---""")
+
+                st.subheader('⌛ Time')
+                # st.write(results_dash[["tm_pred"]].rename(columns={"tm_pred": 'Predicted'}, inplace=False))
+                st.write(results_dash[[multipreddict["tm_pred"][kz]]][0:1].rename(
+                    columns={multipreddict["tm_pred"][kz]: 'Predicted'}, inplace=False))
+                with st.expander('ℹ️'):
+                    st.info("Suffix of Predicted Time")
+                    st.write(results_dash[[multipreddict["tm_pred"][kz]]][1:].rename(
+                        columns={multipreddict["tm_pred"][kz]: 'Predicted'}, inplace=False))
+
+                st.markdown("""---""")
+
+                st.subheader('🏷️ Label')
+                ModelPredictor.dashboard_label_decider(sum(results_dash[[multipreddict["ac_pred"][kz]]].values.tolist(), []), parms)
+                st.markdown("""---""")
             elif parms['next_mode'] in ['history_with_next', 'what_if']: #Execution Mode
                 # st.header("🤔 Prediction " + str(kz + 1))
                 st.header("🤔 " + nw(kz + 1, lang="en", to="ordinal_num") + " Prediction")
@@ -757,15 +975,12 @@ class ModelPredictor():
                     columns={multipreddict["rl_pred"][kz]: 'Predicted', multipreddict["rl_prob"][kz]: 'Confidence'},
                     inplace=False).iloc[-1:])
                 st.markdown("""---""")
+                st.subheader('🏷️ Label')
+                # print("Label Paramters : ", sum(results_dash[[multipreddict["ac_pred"][kz]]].values.tolist(), []))
+                ModelPredictor.dashboard_label_decider(sum(results_dash[[multipreddict["ac_pred"][kz]]].values.tolist(), []), parms)
+                st.markdown("""---""")
                 # st.subheader('⌛ Time')
                 # st.write(results_dash[["tm_pred"]].rename(columns={"tm_pred": 'Predicted'}, inplace=False))
-                st.subheader('🏷️ Label')
-                if kz <= 1:
-                    st.write(results_dash[["label_pred" + str(kz + 1)] + ["label_prob" + str(kz + 1)]].rename(
-                        columns={"label_pred" + str(kz + 1): 'Predicted', "label_prob" + str(kz + 1): 'Confidence'},
-                        inplace=False).iloc[-1:])
-                elif kz > 1:
-                    st.write("None")
 
     # ------Supporting Functions
     @staticmethod
@@ -776,17 +991,29 @@ class ModelPredictor():
         ac_prob_lst = []
         rl_pred_lst = []
         rl_prob_lst = []
+
+        if parms['next_mode'] == 'next_action':
+            tm_pred_lst = []
+            _numofcols = parms['multiprednum'] + 1
+        else :
+            _numofcols = parms['multiprednum']
+
         multipreddict = {}
-        for zx in range(parms['multiprednum']):
+
+        for zx in range(_numofcols):
             zx += 1
             ac_pred_lst.append("ac_pred" + str(zx))
             ac_prob_lst.append("ac_prob" + str(zx))
             rl_pred_lst.append("rl_pred" + str(zx))
             rl_prob_lst.append("rl_prob" + str(zx))
+            if parms['next_mode'] == 'next_action':
+                tm_pred_lst.append("tm_pred" + str(zx))
         multipreddict["ac_pred"] = ac_pred_lst
         multipreddict["ac_prob"] = ac_prob_lst
         multipreddict["rl_pred"] = rl_pred_lst
         multipreddict["rl_prob"] = rl_prob_lst
+        if parms['next_mode'] == 'next_action':
+            multipreddict["tm_pred"] = tm_pred_lst
         return multipreddict
 
     # ------Supporting Functions
@@ -815,110 +1042,312 @@ class ModelPredictor():
             raise ValueError(parms['norm_method'])
         return value
 
+    # @staticmethod
+    # @st.cache(persist=True)
+    # def dashboard_history_label():
+    #     colstm = st.columns(2)
+    #     with colstm[0]:
+    #         process_history_behaviour = st.empty()
+    #     with colstm[1]:
+    #         label_status = st.empty()
+    #     return process_history_behaviour, label_status
+
+    @staticmethod
+    def dashboard_label_decider(check_ac_list, parms):
+        pos_label = "### Deviant"
+        neg_label = "### Regular"
+        na_label = "### Not Decided"
+        if len(check_ac_list) >= parms['label_check_event']:
+            if parms['label_activity'] in check_ac_list:
+                st.markdown(pos_label)
+            elif parms['label_activity'] not in check_ac_list:
+                st.markdown(neg_label)
+        else:
+            st.markdown(na_label)
+
+    def _export_results(self, output_path) -> None:
+        # Save results
+        pd.DataFrame(self.sim_values).to_csv(
+            os.path.join(self.output_route, sup.file_id(prefix='SE_')),
+            index=False)
+        # Save logs
+        log_test = self.log[~self.log.task.isin(['Start', 'End'])]
+        log_test.to_csv(
+            os.path.join(self.output_route, 'tst_'+
+                         self.parms['model_file'].split('.')[0]+'.csv'),
+            index=False)
+
 class EvaluateTask():
 
     def evaluate(self, parms, data):
-        sampler = self._get_evaluator(parms['activity'])
-        if parms['variant'] in ['multi_pred']:
-            data['ac_expect'] = data.ac_expect.replace(parms['index_ac'])
-            data['rl_expect'] = data.rl_expect.replace(parms['index_rl'])
-            data['label_expect'] = data.label_expect.replace(parms['index_label'])
+        sampler = self._get_evaluator(parms['activity'], parms['mode'])
         # print("Evaluate Data:", data)
         return sampler(data, parms)
 
-    def _get_evaluator(self, activity):
-        if activity == 'predict_next':
+    def _get_evaluator(self, activity, mode):
+        if activity == 'predict_next' and mode == 'next':
             return self._evaluate_predict_next
-        elif activity == 'pred_sfx':
-            return self._evaluate_pred_sfx
-        elif activity == 'pred_log':
-            return self._evaluate_predict_log
+        elif activity == 'predict_next' and mode == 'batch':
+            return self._evaluate_predict_batch
         else:
             raise ValueError(activity)
 
     def _evaluate_predict_next(self, data, parms):
-        exp_desc = self.clean_parameters(parms.copy())
-        evaluator = ev.Evaluator(parms['one_timestamp'], parms['variant'])
+        evaluator = ev.Evaluator(parms['one_timestamp'], parms['variant'], parms['next_mode'], parms['mode'])
 
-        ac_sim = evaluator.measure('accuracy', data, 'ac')
-        rl_sim = evaluator.measure('accuracy', data, 'rl')
-        label_sim = evaluator.measure('accuracy', data, 'label')
+        if parms['variant'] in ['multi_pred']:
+            _data = data.copy()
+            _data['ac_expect'] = data.ac_expect.replace(parms['index_ac'])
+            _data['rl_expect'] = data.rl_expect.replace(parms['index_rl'])
+            ac_sim = evaluator.measure('accuracy', _data, 'ac')
+            rl_sim = evaluator.measure('accuracy', _data, 'rl')
+        else:
+            ac_sim = evaluator.measure('accuracy', data, 'ac')
+            rl_sim = evaluator.measure('accuracy', data, 'rl')
 
         mean_ac = ac_sim.accuracy.mean()
         mean_rl = rl_sim.accuracy.mean()
-        mean_label = label_sim.accuracy.mean()
-        exp_desc = pd.DataFrame([exp_desc])
 
         st.sidebar.write("Activity Prediction Accuracy : ", round((mean_ac * 100), 2), " %")
         st.sidebar.write("Role Prediction Accuracy : ", round((mean_rl * 100), 2), " %")
-        st.sidebar.write("Label Prediction Accuracy : ", round((mean_label * 100), 2), " %")
 
-        exp_desc = pd.concat([exp_desc] * len(ac_sim), ignore_index=True)
-        ac_sim = pd.concat([ac_sim, exp_desc], axis=1).to_dict('records')
-        rl_sim = pd.concat([rl_sim, exp_desc], axis=1).to_dict('records')
-        label_sim = pd.concat([label_sim, exp_desc], axis=1).to_dict('records')
-        self.save_results(ac_sim, 'ac', parms)
-        self.save_results(rl_sim, 'rl', parms)
-        self.save_results(label_sim, 'label', parms)
         if parms['one_timestamp']:
             tm_mae = evaluator.measure('mae_next', data, 'tm')
-            tm_mae = pd.concat([tm_mae, exp_desc], axis=1).to_dict('records')
-            self.save_results(tm_mae, 'tm', parms)
+            st.sidebar.write("Time MAE : ", round(tm_mae['mae'][0], 2))
         else:
             dur_mae = evaluator.measure('mae_next', data, 'dur')
             wait_mae = evaluator.measure('mae_next', data, 'wait')
-            dur_mae = pd.concat([dur_mae, exp_desc], axis=1).to_dict('records')
-            wait_mae = pd.concat([wait_mae, exp_desc], axis=1).to_dict('records')
-            self.save_results(dur_mae, 'dur', parms)
-            self.save_results(wait_mae, 'wait', parms)
-        st.sidebar.write("Time MAE : ", round(tm_mae[0]['mae'], 2))
-        return mean_ac
 
-    def _evaluate_pred_sfx(self, data, parms):
-        exp_desc = self.clean_parameters(parms.copy())
-        evaluator = ev.Evaluator(parms['one_timestamp'], parms['variant'])
+    # def _evaluate_pred_sfx(self, data, parms):
+    #
+    #     exp_desc = self.clean_parameters(parms.copy())
+    #     evaluator = ev.Evaluator(parms['one_timestamp'], parms['variant'], parms['next_mode'])
+    #     ac_sim = evaluator.measure('similarity', data, 'ac')
+    #     rl_sim = evaluator.measure('similarity', data, 'rl')
+    #     mean_sim = ac_sim['mean'].mean()
+    #     exp_desc = pd.DataFrame([exp_desc])
+    #     exp_desc = pd.concat([exp_desc] * len(ac_sim), ignore_index=True)
+    #     ac_sim = pd.concat([ac_sim, exp_desc], axis=1).to_dict('records')
+    #     rl_sim = pd.concat([rl_sim, exp_desc], axis=1).to_dict('records')
+    #     self.save_results(ac_sim, 'ac', parms)
+    #     self.save_results(rl_sim, 'rl', parms)
+    #     if parms['one_timestamp']:
+    #         tm_mae = evaluator.measure('mae_suffix', data, 'tm')
+    #         tm_mae = pd.concat([tm_mae, exp_desc], axis=1).to_dict('records')
+    #         self.save_results(tm_mae, 'tm', parms)
+    #     else:
+    #         dur_mae = evaluator.measure('mae_suffix', data, 'dur')
+    #         wait_mae = evaluator.measure('mae_suffix', data, 'wait')
+    #         dur_mae = pd.concat([dur_mae, exp_desc], axis=1).to_dict('records')
+    #         wait_mae = pd.concat([wait_mae, exp_desc], axis=1).to_dict('records')
+    #         self.save_results(dur_mae, 'dur', parms)
+    #         self.save_results(wait_mae, 'wait', parms)
+    #     return mean_sim
+    #
+    # def _evaluate_predict_log(self, data, parms):
+    #
+    #     exp_desc = self.clean_parameters(parms.copy())
+    #     evaluator = ev.Evaluator(parms['one_timestamp'], parms['variant'], parms['next_mode'])
+    #     dl = evaluator.measure('dl', data)
+    #     els = evaluator.measure('els', data)
+    #     mean_els = els.els.mean()
+    #     mae = evaluator.measure('mae_log', data)
+    #     exp_desc = pd.DataFrame([exp_desc])
+    #     exp_desc = pd.concat([exp_desc] * len(dl), ignore_index=True)
+    #     # exp_desc = pd.concat([exp_desc]*len(els), ignore_index=True)
+    #     dl = pd.concat([dl, exp_desc], axis=1).to_dict('records')
+    #     els = pd.concat([els, exp_desc], axis=1).to_dict('records')
+    #     mae = pd.concat([mae, exp_desc], axis=1).to_dict('records')
+    #     self.save_results(dl, 'dl', parms)
+    #     self.save_results(els, 'els', parms)
+    #     self.save_results(mae, 'mae', parms)
+    #     return mean_els
+
+
+    def _evaluate_predict_batch(self, _data, parms):
+
+        eval_data = _data.copy()
+        req_columns = ['caseid', 'ac_expect', 'ac_pred', 'rl_expect', 'rl_pred', 'tm_expect', 'tm_pred',
+                   'pref_size', 'run_num', 'implementation']
+        eval_data = eval_data[req_columns]
+
+        if parms['variant'] in ['multi_pred', 'multi_pred_rand']:
+            eval_ac_index = {v: k for k, v in parms['index_ac'].items()}
+            eval_rl_index = {v: k for k, v in parms['index_rl'].items()}
+
+            for ix in range(len(eval_data['ac_pred'])):
+                for jx in range(len(eval_data['ac_pred'][ix])):
+                    # replacing the value from the parms dictionary
+                    eval_data['ac_pred'][ix].append(eval_ac_index[eval_data.ac_pred[ix][jx]])
+                # poping out the values from the list
+                ln = int(len(eval_data['ac_pred'][ix]) / 2)
+                del eval_data['ac_pred'][ix][:ln]
+
+            for ix in range(len(eval_data['rl_pred'])):
+                for jx in range(len(eval_data['rl_pred'][ix])):
+                    # replacing the value from the parms dictionary
+                    eval_data['rl_pred'][ix].append(eval_rl_index[eval_data.rl_pred[ix][jx]])
+                # poping out the values from the list
+                ln = int(len(eval_data['rl_pred'][ix]) / 2)
+                del eval_data['rl_pred'][ix][:ln]
+
+            evaluationdf_list = list()
+            for i in range(parms['multiprednum']):
+                data = eval_data.copy()
+                data['ac_pred'] = eval_data['ac_pred'].str[i]
+                data['rl_pred'] = eval_data['rl_pred'].str[i]
+                evaluationdf = self._evaluate_predict_batch_subprocess(data, parms)
+
+                evaluationdf.insert(0, "Pred_Number", "Prediction " + str(i+1))
+
+                evaluationdf = evaluationdf.reset_index().groupby(["Pred_Number", 'Parameter'])['Mean Value'].aggregate(
+                    'first').unstack()
+                evaluationdf_list.append(evaluationdf)
+            # st.subheader("📊 Evaluation of " + nw(i + 1, lang="en", to="ordinal_num") + " Prediction")
+            st.subheader("📊 Evaluation of Prediction")
+            final_evaluationdf = pd.concat(evaluationdf_list)
+            final_evaluationdf = final_evaluationdf[['Activity Accuracy', 'Activity Similarity', 'Role Accuracy',
+                                                     'Role Similarity','Time MAE', 'Time MAE Similarity',
+                                                     'Control-Flow Log Similarity', 'Event Log Similarity']]
+            st.write(final_evaluationdf)
+            final_evaluationdf.reset_index(level=0, inplace=True)
+            figcols1, figcols2 = st.columns([2,2])
+            with figcols1:
+                #--Activity Accuracy
+                fig1 = plt.figure()
+                plt.plot(final_evaluationdf['Pred_Number'], final_evaluationdf['Activity Accuracy'], color='red', marker='o')
+                plt.title('Activity Accuracy Comparison', fontsize=14)
+                # plt.xlabel('Predictions', fontsize=10)
+                plt.ylabel('Accuracy', fontsize=10)
+                st.write(fig1);
+
+                #--Role Accuracy
+                fig2 = plt.figure()
+                plt.plot(final_evaluationdf['Pred_Number'], final_evaluationdf['Role Accuracy'], color='red', marker='o')
+                plt.title('Role Accuracy Comparison', fontsize=14)
+                # plt.xlabel('Predictions', fontsize=10)
+                plt.ylabel('Accuracy', fontsize=10)
+                st.write(fig2);
+
+                #--Control-Flow Log Similarity
+                fig6 = plt.figure()
+                plt.plot(final_evaluationdf['Pred_Number'], final_evaluationdf['Control-Flow Log Similarity'], color='red', marker='o')
+                plt.title('Control-Flow Log Similarity Comparison', fontsize=14)
+                # plt.xlabel('Predictions', fontsize=10)
+                plt.ylabel('Mean Value', fontsize=10)
+                st.write(fig6);
+
+            with figcols2:
+                #--Activity Similarity
+                fig4 = plt.figure()
+                plt.plot(final_evaluationdf['Pred_Number'], final_evaluationdf['Activity Similarity'], color='red', marker='o')
+                plt.title('Activity Similarity Comparison', fontsize=14)
+                # plt.xlabel('Predictions', fontsize=10)
+                plt.ylabel('Mean Value', fontsize=10)
+                st.write(fig4);
+
+                #--Role Similarity
+                fig5 = plt.figure()
+                plt.plot(final_evaluationdf['Pred_Number'], final_evaluationdf['Role Similarity'], color='red', marker='o')
+                plt.title('Role Similarity Comparison', fontsize=14)
+                # plt.xlabel('Predictions', fontsize=10)
+                plt.ylabel('Mean Value', fontsize=10)
+                st.write(fig5);
+
+                #--Event Log Similartiy
+                fig3 = plt.figure()
+                plt.plot(final_evaluationdf['Pred_Number'], final_evaluationdf['Event Log Similarity'], color='red', marker='o')
+                plt.title('Event Log Similarity Comparison', fontsize=14)
+                # plt.xlabel('Predictions', fontsize=10)
+                plt.ylabel('Mean Value', fontsize=10)
+                st.write(fig3);
+
+        else:
+            st.subheader("📊 Evaluation of Prediction")
+            evaluationdf = self._evaluate_predict_batch_subprocess(eval_data, parms)
+            st.write(evaluationdf)
+
+    @st.cache(persist=True)
+    def _evaluate_predict_batch_subprocess(self, data, parms):
+        evaluator = ev.Evaluator(parms['one_timestamp'], parms['variant'], parms['next_mode'], parms['mode'])
+        #--Accuracy Measurement
+        ac_acc = evaluator.measure('accuracy', data, 'ac')
+        rl_acc = evaluator.measure('accuracy', data, 'rl')
+
+        mean_acc_ac = ac_acc.accuracy.mean()
+        mean_acc_rl = rl_acc.accuracy.mean()
+
+        if parms['one_timestamp']:
+            tm_mae_acc = evaluator.measure('mae_next', data, 'tm')
+        else:
+            dur_mae = evaluator.measure('mae_next', data, 'dur')
+            wait_mae = evaluator.measure('mae_next', data, 'wait')
+
+        #---Similarity Measure (Control-Flow Log Similarity (CFLS) using Damerau-Levenshtein distance)
         ac_sim = evaluator.measure('similarity', data, 'ac')
+        ac_sim.insert(1, "Attributes", 'Activity')
         rl_sim = evaluator.measure('similarity', data, 'rl')
-        label_sim = evaluator.measure('similarity', data, 'label')
-        mean_sim = ac_sim['mean'].mean()
-        exp_desc = pd.DataFrame([exp_desc])
-        exp_desc = pd.concat([exp_desc] * len(ac_sim), ignore_index=True)
-        ac_sim = pd.concat([ac_sim, exp_desc], axis=1).to_dict('records')
-        rl_sim = pd.concat([rl_sim, exp_desc], axis=1).to_dict('records')
-        label_sim = pd.concat([label_sim, exp_desc], axis=1).to_dict('records')
-        self.save_results(ac_sim, 'ac', parms)
-        self.save_results(rl_sim, 'rl', parms)
-        self.save_results(label_sim, 'label', parms)
+        rl_sim.insert(1, "Attributes", 'Role')
         if parms['one_timestamp']:
             tm_mae = evaluator.measure('mae_suffix', data, 'tm')
-            tm_mae = pd.concat([tm_mae, exp_desc], axis=1).to_dict('records')
-            self.save_results(tm_mae, 'tm', parms)
+            tm_mae.insert(1, "Attributes", 'Time')
+            similarity_measure = pd.concat([ac_sim, rl_sim, tm_mae], ignore_index=True)
+            # similarity_measure = pd.concat([similarity_measure] * max[len(ac_sim), len(rl_sim), len(tm_mae)], ignore_index=True)
+            # similarity_measure.insert(1, "Attributes", ['Activity', 'Role', 'Time'])
         else:
             dur_mae = evaluator.measure('mae_suffix', data, 'dur')
             wait_mae = evaluator.measure('mae_suffix', data, 'wait')
-            dur_mae = pd.concat([dur_mae, exp_desc], axis=1).to_dict('records')
-            wait_mae = pd.concat([wait_mae, exp_desc], axis=1).to_dict('records')
-            self.save_results(dur_mae, 'dur', parms)
-            self.save_results(wait_mae, 'wait', parms)
-        return mean_sim
+            similarity_measure = pd.concat([ac_sim, rl_sim, dur_mae, wait_mae], ignore_index=True)
+            similarity_measure.insert(0, "Attributes", ['Activity', 'Role', 'Duration', 'Wait'])
+        similarity_measure = similarity_measure.to_dict('records')
+        self.save_results(similarity_measure, 'cfls', 'similarity', parms)
+        mean_sim_ac = ac_sim['mean'].mean()
+        mean_sim_rl = rl_sim['mean'].mean()
+        mean_sim_tm = tm_mae['mean'].mean()
 
-    def _evaluate_predict_log(self, data, parms):
-        exp_desc = self.clean_parameters(parms.copy())
-        evaluator = ev.Evaluator(parms['one_timestamp'], parms['variant'])
-        dl = evaluator.measure('dl', data)
-        els = evaluator.measure('els', data)
-        mean_els = els.els.mean()
-        mae = evaluator.measure('mae_log', data)
-        exp_desc = pd.DataFrame([exp_desc])
-        exp_desc = pd.concat([exp_desc] * len(dl), ignore_index=True)
-        # exp_desc = pd.concat([exp_desc]*len(els), ignore_index=True)
-        dl = pd.concat([dl, exp_desc], axis=1).to_dict('records')
-        els = pd.concat([els, exp_desc], axis=1).to_dict('records')
-        mae = pd.concat([mae, exp_desc], axis=1).to_dict('records')
-        self.save_results(dl, 'dl', parms)
-        self.save_results(els, 'els', parms)
-        self.save_results(mae, 'mae', parms)
-        return mean_els
+        #--Evaluate Predict Log
+        preddata = self.modify_log_pred(data, parms)
+        dl = evaluator.measure('dl', preddata)
+        els = evaluator.measure('els', preddata)
+        mean_dl = dl.dl.mean() #--Control-Flow Log Similarity
+        mean_els = els.els.mean() #--Event Log Similarity
+
+        evaluation = {'Parameter' : ["Activity Accuracy", "Role Accuracy", "Time MAE",
+                                     "Activity Similarity", "Role Similarity", "Time MAE Similarity",
+                                     "Control-Flow Log Similarity", "Event Log Similarity"],
+                      'Mean Value' : [mean_acc_ac, mean_acc_rl, round(tm_mae_acc['mae'][0], 2),
+                                      mean_sim_ac, mean_sim_rl, mean_sim_tm,
+                                      mean_dl, mean_els]}
+
+        evaluationdf = pd.DataFrame(evaluation)
+
+        return evaluationdf
+
+
+    @staticmethod
+    @st.cache(persist=True)
+    def modify_log_pred(_predictions, parms):
+
+        source_log = _predictions[['caseid', 'ac_expect', 'tm_expect', 'rl_expect', 'pref_size']]
+        source_predictions = _predictions[['caseid', 'ac_pred', 'tm_pred', 'rl_pred', 'pref_size', 'run_num', 'implementation']]
+
+        log = source_log.copy()
+
+        log.rename(
+            columns={'caseid': 'caseid', 'ac_expect': 'task',
+                     'rl_expect': 'role', 'tm_expect': 'dur', 'pref_size': 'event_nr'}, inplace=True)
+
+        predictions = source_predictions.copy()
+
+        predictions.rename(
+            columns={'caseid': 'caseid', 'ac_pred': 'task',
+                     'rl_pred': 'role', 'tm_pred': 'dur', 'pref_size': 'event_nr'}, inplace=True)
+
+        log['run_num'] = 0
+        log['implementation'] = 'log'
+
+        return log.append(predictions, ignore_index=True)
+
 
     @staticmethod
     def clean_parameters(parms):
@@ -930,15 +1359,23 @@ class EvaluateTask():
         exp_desc.pop('reorder', None)
         exp_desc.pop('index_ac', None)
         exp_desc.pop('index_rl', None)
-        exp_desc.pop('index_label', None)
         exp_desc.pop('dim', None)
         exp_desc.pop('max_dur', None)
         exp_desc.pop('variants', None)
         exp_desc.pop('is_single_exec', None)
+        exp_desc.pop('caseid', None)
+        exp_desc.pop('start_time', None)
+        exp_desc.pop('additional_columns', None)
+        exp_desc.pop('mode', None)
+        exp_desc.pop('variant', None)
+        exp_desc.pop('next_mode', None)
+        exp_desc.pop('predchoice', None)
+        exp_desc.pop('scale_args', None)
+        exp_desc.pop('imp', None)
         return exp_desc
 
     @staticmethod
-    def save_results(measurements, feature, parms):
+    def save_results(measurements, feature, evaltype, parms):
         if measurements:
             if parms['is_single_exec']:
                 output_route = os.path.join('output_files',
@@ -949,8 +1386,8 @@ class EvaluateTask():
                     measurements,
                     os.path.join(
                         output_route,
-                        model_name + '_' + feature + '_' + parms['activity'] + '.csv'))
-                print("output_route : ", output_route)
+                        model_name + '_' + feature + '_' + evaltype + '_' + parms['mode'] + '.csv'))
+                # print("output_route : ", output_route)
             else:
                 if os.path.exists(os.path.join(
                         'output_files', feature + '_' + parms['activity'] + '.csv')):
