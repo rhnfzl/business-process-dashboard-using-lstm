@@ -427,7 +427,7 @@ class Evaluator():
     def _dl_distance_evaluation(self, data, feature):
         """
         similarity score
-
+        Demerau-Levinstain distance measurement
         Parameters
         ----------
         log_data : list of events
@@ -509,7 +509,7 @@ class Evaluator():
         return d_l
 
 # =============================================================================
-# mae distance
+# mae distance : Earth Mover’s Distance (EMD)
 # =============================================================================
 
     def _mae_metric_evaluation(self, data, feature):
@@ -573,10 +573,20 @@ class Evaluator():
                     print("List of difference : ", ae_aggr)
                     ae = np.abs(ae_aggr)
                     ae_matrix[i][j] = ae
+                    print("Matrix Input")
+                    print(ae_matrix[i][j])
+                    print(type(print(ae_matrix[i][j])))
             # end = timer()
             # print(end - start)
+            print("Matrix Before")
+            print(ae_matrix)
+            print(type(ae_matrix))
             ae_matrix = np.array(ae_matrix)
+            print("Matrix After")
+            print(ae_matrix)
+            print(type(ae_matrix))
             # Matching using the hungarian algorithm
+            # ae_matrix = ae_matrix.tolist()
             row_ind, col_ind = linear_sum_assignment(np.array(ae_matrix))
             # Create response
             for idx, idy in zip(row_ind, col_ind):

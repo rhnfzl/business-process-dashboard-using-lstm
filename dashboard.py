@@ -220,6 +220,42 @@ def main(argv, filter_parms=None, filter_parameter=None):
         #         st.write("No result to display, compute a value first.")
         #         nxt_button_idx = 0
 
+        def common_batch_varient(actcount, rolecount):
+            with st.sidebar.expander('Variant'):
+                st.info("Select **Max Probability** for the most probable events,"
+                        " **Multiple Prediction** for the prediction of the multiple events, "
+                        "and **Random Prediction** for prediction of random recommendation of events")
+                variant_opt = st.selectbox("", (
+                    'Max Probability', 'Multiple Prediction', 'Random Prediction', 'Multiple Random Prediction'),
+                                           key='variant_opt', on_change=clear_cache)
+            # st.sidebar.markdown("""---""")
+            if variant_opt == 'Max Probability':
+                variant_opt = 'arg_max'
+                slider = 1
+            elif variant_opt == 'Random Prediction':
+                variant_opt = 'random_choice'
+                slider = 1
+            elif variant_opt in ['Multiple Prediction', 'Multiple Random Prediction']:
+                if variant_opt == 'Multiple Prediction':
+                    variant_opt = 'multi_pred'
+                elif variant_opt == 'Multiple Random Prediction':
+                    variant_opt = 'multi_pred_rand'
+                # variant_opt = 'multi_pred'
+
+                if actcount > rolecount:
+                    _maxmulti = rolecount
+                elif rolecount > actcount:
+                    _maxmulti = actcount
+                else:
+                    _maxmulti = actcount
+
+                with st.sidebar.expander('Number of Predictions'):
+                    st.info("**Multiple Predictions : ** minimum 2 predictions and maximum value based on slider")
+                    slider = st.slider(
+                        label='', min_value=2,
+                        max_value=_maxmulti, key='my_number_prediction_slider_batch', on_change=clear_cache)
+            return variant_opt, slider
+
 
 
 
@@ -239,12 +275,19 @@ def main(argv, filter_parms=None, filter_parameter=None):
                 pfile.close()
             return filter_log, filter_log_columns, file_name
 
-        def next_columns(filter_log, display_columns):
+        def next_columns(filter_log, display_columns, index=None, flag=None):
             # Dashboard selection of Case ID
-            filter_caseid = st.selectbox("🆔 Select Case ID", filter_log["caseid"].unique(), key="caseid_select", on_change=clear_cache)
+            if index == None :
+                filter_caseid = st.selectbox("🆔 Select Case ID", filter_log["caseid"].unique(), key="caseid_select", on_change=clear_cache)
+                filter_caseid_index = filter_log["caseid"].unique().tolist().index(filter_caseid)
+            else:
+                if flag != None:
+                    filter_caseid = st.selectbox("🆔 Select Case ID", filter_log["caseid"].unique()[index],key="caseid_select", on_change=clear_cache)
+                    filter_caseid_index = filter_log["caseid"].unique().tolist().index(filter_caseid)
+                    flag = None
             filter_caseid_attr_df = filter_log.loc[filter_log["caseid"].isin([filter_caseid])]
             filter_attr_display = filter_caseid_attr_df[display_columns]
-            return filter_attr_display, filter_caseid, filter_caseid_attr_df
+            return filter_attr_display, filter_caseid, filter_caseid_attr_df, filter_caseid_index
 
         def num_predictions(_df):
 
@@ -286,7 +329,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
                     elif _labelsel == "Discharged for other Reason":
                         parameters['label_activity'] = "Release A"
                     parameters['label_check_event'] = st.number_input("Check after number of events",
-                                                                      min_value=1, max_value=25, value=5,
+                                                                      min_value=1, max_value=25, value=5, #These are estimate numbers
                                                                       step=1, key="radio_number_label", on_change=clear_cache)
                 else:
                     st.error("Label Logic for dataset is not defined")
@@ -294,6 +337,10 @@ def main(argv, filter_parms=None, filter_parameter=None):
         if parameters['folder']  != "":
             if parameters['activity'] in ['predict_next', 'pred_sfx', 'pred_log']:
                 if parameters['mode'] in ['next']:
+                    #---batch default values
+                    parameters['batch_mode'] = ''
+                    parameters['batchprefixnum'] = ''
+                    parameters['batchpredchoice'] = ''
                     #   Saves the result in the URL in the Next mode
                     app_state = st.experimental_get_query_params()
                     if "my_saved_result" in app_state:
@@ -324,13 +371,13 @@ def main(argv, filter_parms=None, filter_parameter=None):
                                      'wait_norm', 'user', 'open_cases_norm', 'daytime_norm',
                                      'acc_cycle'] #Add the Columns here which you don't want to display
                     display_columns = list(set(filter_log_columns) - set(essential_columns+extra_columns ))
-                    filter_attr_display, filter_caseid, filter_caseid_attr_df = next_columns(filter_log, display_columns)
+                    filter_attr_display, filter_caseid, filter_caseid_attr_df, filter_caseid_index = next_columns(filter_log, display_columns)
                     parameters['nextcaseid'] = filter_caseid
 
                     # print("Display Attributes :", filter_attr_display.iloc[[2]])
 
                     st.subheader('🔦 State of the Process')
-                    statecols, buttoncols = st.columns([2, 0.25])
+                    statecols, _, buttoncols = st.columns([2,0.25, 0.2])
                     with statecols:
                         state_of_theprocess = st.empty()
                     with buttoncols:
@@ -354,6 +401,12 @@ def main(argv, filter_parms=None, filter_parameter=None):
 
                     # --- Evaluation Mode
                     if next_option == 'next_action':
+
+                        # with st.sidebar.expander('Choose Prefix Source'):
+                        #     st.info("Select **SME** for simulating the input to prediction using the log, "
+                        #             "**Prediction** to use the respective prediction as the input for subsequent prediction")
+                        #     parameters['nextactpredchoice'] = st.radio('', ['SME', 'Prediction'], key="radio_select_pred_next_act", on_change=clear_cache)
+
                         filter_caseid_attr_list = st.select_slider("Choose [Activity, User, Time]", options=filter_caseid_attr_df, key="caseid_attr_slider", on_change=clear_cache)
 
                         _idx = filter_caseid_attr_df.index(filter_caseid_attr_list)
@@ -421,6 +474,10 @@ def main(argv, filter_parms=None, filter_parameter=None):
                             if (nxt_button_idx) >= len(filter_caseid_attr_df)+1:
                                 #next_button.enabled = False
                                 st.experimental_set_query_params(my_saved_result=0)
+                                #---Adding logic to skip to next caseid (Not Working)
+                                # filter_caseid_index = filter_caseid_index + 1
+                                # next_case_id_flag = 1
+                                # filter_attr_display, filter_caseid, filter_caseid_attr_df, filter_caseid_index = next_columns(filter_log, display_columns, filter_caseid_index, next_case_id_flag)
                                 st.error('End of Current Case Id, Select the Next Case ID')
                         elif ((nxt_button_idx) >= len(filter_caseid_attr_df)+1):
                             st.experimental_set_query_params(my_saved_result=0)  # reset value
@@ -441,11 +498,12 @@ def main(argv, filter_parms=None, filter_parameter=None):
                         form.info("Choose the Prediction according to which System generates the next prediction, "
                                 "**SME** (Subject Matter Expert): decision solely based on users instinct and knowledge of business process about the process, "
                                 "**Prediction n** : decision solely based on the respective ranked confidence of the process")
-                        parameters['predchoice'] = form.radio('', choose_pred_lst, key="radio_select_whatif")
+                        wcols1, _, wcols2 = form.columns([2,0.25, 0.2]) #--To add prediction radio button and process button in a line
+                        parameters['predchoice'] = wcols1.radio('', choose_pred_lst, key="radio_select_whatif")
                         # # --------------------------------------------------------------------------
                         st.experimental_set_query_params(my_saved_caseid=filter_caseid)
                         st.sidebar.markdown("""---""")
-                        next_button = form.form_submit_button("Process")
+                        next_button = wcols2.form_submit_button("Process")
 
                         _filterdf = filter_attr_display.iloc[[nxt_button_idx]]
                         _filterdf.index = [""] * len(_filterdf)
@@ -485,45 +543,87 @@ def main(argv, filter_parms=None, filter_parameter=None):
 
                 elif parameters['mode'] in ['batch']:
 
-                    with st.sidebar.expander('Variant'):
-                        st.info("Select **Max Probability** for the most probable events,"
-                                " **Multiple Prediction** for the prediction of the multiple events, "
-                                "and **Random Prediction** for prediction of random recommendation of events")
-                        variant_opt = st.selectbox("", (
-                        'Max Probability', 'Multiple Prediction', 'Random Prediction', 'Multiple Random Prediction'),
-                                                           key='variant_opt', on_change=clear_cache)
-                    #st.sidebar.markdown("""---""")
+                    _log, _, _ = read_next_testlog()
+                    rolecount = min(_log.groupby('caseid')['role'].nunique())
+                    actcount = min(_log.groupby('caseid')['task'].nunique())
 
-                    if variant_opt == 'Max Probability':
-                        variant_opt = 'arg_max'
-                    elif variant_opt == 'Random Prediction':
-                        variant_opt = 'random_choice'
-                    elif variant_opt in ['Multiple Prediction', 'Multiple Random Prediction']:
-                        if variant_opt == 'Multiple Prediction':
-                            variant_opt = 'multi_pred'
-                        elif variant_opt == 'Multiple Random Prediction':
-                            variant_opt = 'multi_pred_rand'
-                        # variant_opt = 'multi_pred'
+                    #logic to count the max number of suffix which can be used for the eintire log
+                    _count = _log['caseid'].value_counts().to_frame()
+                    _count.reset_index(level=0, inplace=True)
+                    _count.sort_values(by=['caseid'], inplace=True)
+                    _count = (_count['caseid'].iloc[:1].values.tolist()[0])-1
 
-                        _log, _, _ = read_next_testlog()
-                        rolecount = min(_log.groupby('caseid')['role'].nunique())
-                        actcount = min(_log.groupby('caseid')['task'].nunique())
+                    with st.sidebar.expander('Type of Batch Event Processing'):
+                        st.info("Select **Execution Mode** for simulating the dashboard for the Users, **Evaluation Mode** to judge the trustworthiness of the ML model prediction")
+                        batch_option = st.radio('', ['Base Mode', 'Pre-Select Prefix Mode'], key="batch_event_processing", on_change=clear_cache)
 
-                        if actcount > rolecount:
-                            _maxmulti = rolecount
-                        elif rolecount > actcount:
-                            _maxmulti = actcount
-                        else:
-                            _maxmulti = actcount
+                    if batch_option == 'Base Mode':
+                        batch_option = 'base_batch'
 
-                        with st.sidebar.expander('Number of Predictions'):
-                            st.info("**Multiple Predictions : ** minimum 2 predictions and maximum value based on slider")
-                            slider = st.slider(
-                                label='', min_value=2,
-                                max_value=_maxmulti, key='my_number_prediction_slider_batch', on_change=clear_cache)
-                        parameters['multiprednum'] = slider  # 3  # Change here for batch mode Prediction
+                    elif batch_option == 'Pre-Select Prefix Mode':
+                        batch_option = 'pre_prefix'
 
+                    #----------------------
+
+                    if batch_option == 'base_batch':
+                        variant_opt, slider = common_batch_varient(actcount, rolecount)
+                        parameters['batchpredchoice'] = ''
+                        parameters['batchprefixnum'] = ''
+
+                    elif batch_option == 'pre_prefix':
+
+                        with st.sidebar.expander('Choose Prefix Source'):
+                            st.info("Select **SME** for simulating the input to prediction using the log, "
+                                    "**Prediction** to use the respective prediction as the input for subsequent prediction")
+                            parameters['batchpredchoice'] = st.radio('', ['SME', 'Prediction'], key="radio_select_pred_batch", on_change=clear_cache)
+
+                        with st.sidebar.expander('Select the Number of Prefix'):
+                            st.info("Prefix for each caseid in the batch mode")
+                            prefix_slider = st.slider(
+                                label='', min_value=0,
+                                max_value=_count, key='my_number_prefix_slider_batch', on_change=clear_cache)
+
+                        parameters['batchprefixnum'] = prefix_slider
+
+                        variant_opt, slider = common_batch_varient(actcount, rolecount)
+
+                    # with st.sidebar.expander('Variant'):
+                    #     st.info("Select **Max Probability** for the most probable events,"
+                    #             " **Multiple Prediction** for the prediction of the multiple events, "
+                    #             "and **Random Prediction** for prediction of random recommendation of events")
+                    #     variant_opt = st.selectbox("", (
+                    #     'Max Probability', 'Multiple Prediction', 'Random Prediction', 'Multiple Random Prediction'),
+                    #                                        key='variant_opt', on_change=clear_cache)
+                    # #st.sidebar.markdown("""---""")
+                    #
+                    # if variant_opt == 'Max Probability':
+                    #     variant_opt = 'arg_max'
+                    # elif variant_opt == 'Random Prediction':
+                    #     variant_opt = 'random_choice'
+                    # elif variant_opt in ['Multiple Prediction', 'Multiple Random Prediction']:
+                    #     if variant_opt == 'Multiple Prediction':
+                    #         variant_opt = 'multi_pred'
+                    #     elif variant_opt == 'Multiple Random Prediction':
+                    #         variant_opt = 'multi_pred_rand'
+                    #     # variant_opt = 'multi_pred'
+                    #
+                    #     if actcount > rolecount:
+                    #         _maxmulti = rolecount
+                    #     elif rolecount > actcount:
+                    #         _maxmulti = actcount
+                    #     else:
+                    #         _maxmulti = actcount
+                    #
+                    #     with st.sidebar.expander('Number of Predictions'):
+                    #         st.info("**Multiple Predictions : ** minimum 2 predictions and maximum value based on slider")
+                    #         slider = st.slider(
+                    #             label='', min_value=2,
+                    #             max_value=_maxmulti, key='my_number_prediction_slider_batch', on_change=clear_cache)
+                    #     parameters['multiprednum'] = slider  # 3  # Change here for batch mode Prediction
+
+                    parameters['multiprednum'] = slider  #
                     parameters['variant'] = variant_opt  # random_choice, arg_max for variants and repetitions to be tested
+                    parameters['batch_mode'] = batch_option
                     parameters['next_mode'] = ''
                     parameters['predchoice'] = ''
                     st.sidebar.markdown("""---""")

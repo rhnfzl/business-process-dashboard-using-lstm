@@ -106,18 +106,9 @@ class NextEventPredictor():
                     pos1 = np.argmax(preds[1][0])
                     pos1_prob = preds[1][0][pos1]
 
-
-                    #--Error here : IndexError: invalid index to scalar variable.
-                    # [preds[2][0][0]] * (parameters['multiprednum'] + 1)
-                    # predictions = [[pos[0]] + [pos], [pos1[0]] + [pos1], [preds[2][0][0]] * (parameters['multiprednum'] + 1), [pos_prob[0]] + [pos_prob], [pos1_prob[0]] + [pos1_prob]]
-
-                    # print("pos0", pos)
-                    #
-                    # print("pos", [pos])
-
-                    predictions = [[pos[0]] + [pos], [pos1[0]] + [pos1],
-                                   [preds[2][0][0]] * (parameters['multiprednum'] + 1), [pos_prob[0]] + [pos_prob],
-                                   [pos1_prob[0]] + [pos1_prob]]
+                    predictions = [[pos] + [pos], [pos1] + [pos1],
+                                   [preds[2][0][0]] * (parameters['multiprednum'] + 1), [pos_prob] + [pos_prob],
+                                   [pos1_prob] + [pos1_prob]]
 
                     # predictions = [[pos] + [pos], [pos1] + [pos1],
                     #                [preds[2][0][0]] * (parameters['multiprednum'] + 1), [pos_prob] + [pos_prob],
@@ -140,12 +131,6 @@ class NextEventPredictor():
                     for jx in range(len(pos1)):
                         # probability of role
                         pos1_prob.append(rlx[pos1[jx]])
-
-                    # predictions = [[pos[0]] + pos, [pos1[0]] + pos1, [preds[2][0][0]] * (parameters['multiprednum'] + 1), [pos_prob[0]] + pos_prob, [pos1_prob[0]] + pos1_prob]
-
-                    print("pos0", pos)
-
-                    print("pos", [pos])
 
                     predictions = [[pos[0]] + pos, [pos1[0]] + pos1,
                                    [preds[2][0][0]] * (parameters['multiprednum'] + 1), [pos_prob[0]] + pos_prob,
@@ -171,12 +156,12 @@ class NextEventPredictor():
                 _rl = self.spl['prefixes']['roles'][pred_fltr_idx:][i] #--Role
                 _tm = self.spl['prefixes']['times'][pred_fltr_idx:][i] #--Time
 
-                print("----For the prediction : ", i+1, "------")
+                # print("----For the prediction : ", i+1, "------")
                 # print("Modified Time : ", _tm, "vs the original : ", self.spl['prefixes']['times'][pred_fltr_idx:][i])
                 for lk in range(parameters['multiprednum']):
                     #removing the last element and append the previous value
-                    print("^ for the sub prediction : ", i+1,".", lk+1, "^")
-                    print("Time Input : ", _preds)
+                    # print("^ for the sub prediction : ", i+1,".", lk+1, "^")
+                    # print("Time Input : ", _preds)
 
                     if self.imp == 'multi_pred':
                         _ac = np.append(_ac[:-1], float(_pos[lk]))
@@ -190,7 +175,7 @@ class NextEventPredictor():
                         _rl = np.append(_rl[:-1], float(_pos1))
                         _tm = np.concatenate((_tm[:-1], np.array([[_preds]])), axis=0)
 
-                    print("Time Output : ", _tm)
+                    # print("Time Output : ", _tm)
 
                     # print("Modified Activity : ", _ac, "vs the original : ", self.spl['prefixes']['activities'][pred_fltr_idx:][i])
                     # print("Modified Role : ", _rl, "vs the original : ", self.spl['prefixes']['roles'][pred_fltr_idx:][i])
@@ -267,13 +252,13 @@ class NextEventPredictor():
                                                                                                                                self.spl['prefixes']['inter_attr'][pred_fltr_idx:][i])
 
 
-                print("Later Predicted Activity : ", i+1, " : ",_pos)
-                print("Later Predicted Role : ", i+1, " : ",_pos1)
-                print("Later Predicted Time : ", i+1, " : ",_preds)
-
-                print("SME Predicted Activity : ", i + 1, " : ", predsmeac)
-                print("SME Predicted Role : ", i + 1, " : ", predsmerl)
-                print("SME Predicted Time : ", i + 1, " : ", predsmetm)
+                # print("Later Predicted Activity : ", i+1, " : ",_pos)
+                # print("Later Predicted Role : ", i+1, " : ",_pos1)
+                # print("Later Predicted Time : ", i+1, " : ",_preds)
+                #
+                # print("SME Predicted Activity : ", i + 1, " : ", predsmeac)
+                # print("SME Predicted Role : ", i + 1, " : ", predsmerl)
+                # print("SME Predicted Time : ", i + 1, " : ", predsmetm)
 
                 if self.imp == 'multi_pred':
                     _acfinal = [predsmeac] + _pos
@@ -289,15 +274,15 @@ class NextEventPredictor():
                     _tmprobfinal = [predsmetm] + [_preds]
 
 
-                print("New Activity : ", _acfinal)
-                print("New Activity Probability: ", _acprobfinal)
-                print("New Role : ", _rlfinal)
-                print("New Role Probability : ", _rlprobfinal)
-                print("New Time : ", _tmprobfinal)
+                # print("New Activity : ", _acfinal)
+                # print("New Activity Probability: ", _acprobfinal)
+                # print("New Role : ", _rlfinal)
+                # print("New Role Probability : ", _rlprobfinal)
+                # print("New Time : ", _tmprobfinal)
 
 
                 predictions = [_acfinal, _rlfinal, _tmprobfinal, _acprobfinal, _rlprobfinal]
-                print("Later Prediction Structure : ", i+1, " : ",predictions)
+                # print("Later Prediction Structure : ", i+1, " : ",predictions)
                 #
                 if not parameters['one_timestamp']:
                     predictions.extend([preds[2][0][1]])
@@ -326,8 +311,8 @@ class NextEventPredictor():
             record['tm_expect'] = self.rescale(
                 spl['next_evt']['times'][_fltr_idx:][index][0],
                 parms, parms['scale_args'])
-            print("What is the index Value : ", index)
-            print("What Preds Looks like  : ", preds[2])
+            # print("What is the index Value : ", index)
+            # print("What Preds Looks like  : ", preds[2])
             # if index == 0:
             #     _pred_time = [preds[2]] * (parms['multiprednum']+1)
             # elif index > 0:
@@ -336,7 +321,7 @@ class NextEventPredictor():
             record['tm_pred'] = [self.rescale(x, parms, parms['scale_args'])
                                  for x in preds[2]]
 
-            print("How time looks like  : ", record['tm_pred'])
+            # print("How time looks like  : ", record['tm_pred'])
 
         else:
             # Duration

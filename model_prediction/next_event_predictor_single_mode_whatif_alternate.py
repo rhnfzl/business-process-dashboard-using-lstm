@@ -58,11 +58,11 @@ class NextEventPredictor():
         """
         # Generation of predictions
         pred_fltr_idx = parameters['nextcaseid_attr']["filter_index"] + 1
-
+        print("In the New What-if")
         print("Index Value :", pred_fltr_idx)
 
-        print("State of the Sate Space Initially: ", st.session_state)
-        print("-------------------------------------------------------")
+        # print("State of the Sate Space Initially: ", st.session_state)
+        # print("-------------------------------------------------------")
 
         if 'multi_pred_ss' not in st.session_state:
             st.session_state['multi_pred_ss'] = dict()
@@ -100,8 +100,8 @@ class NextEventPredictor():
             # i.e Prediction 1 to 1
             _selectpredidx = int(parameters['predchoice'][-1])
 
-        print("State of the Sate Space Second: ", st.session_state)
-        print("-------------------------------------------------------")
+        # print("State of the Sate Space Second: ", st.session_state)
+        # print("-------------------------------------------------------")
 
         if 'initial_prediction' in st.session_state:
 
@@ -109,29 +109,29 @@ class NextEventPredictor():
             st.session_state['prediction_choice_name'].extend([parameters['predchoice']])
 
             #-- Multiverse logic
-            for _ih in range(parameters['multiprednum']):
-
-                if "ss_initpredict"+str(_ih+1) in st.session_state['initial_prediction']:
-
-                    _serie_predict_ac = [st.session_state['initial_prediction']["ss_initpredict"+str(_ih+1)]["pos_ac_ss"][:idx]
-                                        for idx in range(1, pred_fltr_idx + 1)]  # range starts with 1 to avoid start
-                    _serie_predict_rl = [st.session_state['initial_prediction']["ss_initpredict"+str(_ih+1)]["pos_rl_ss"][:idx]
-                                        for idx in range(1, pred_fltr_idx + 1)]  # range starts with 1 to avoid start
-                    _serie_predict_tm = [np.array(st.session_state['initial_prediction']["ss_initpredict"+str(_ih+1)]['pos_tm_ss'][:idx])
-                                        for idx in range(1, pred_fltr_idx + 1)]  # range starts with 1 to avoid start
-
-                #----Check the Vector length is same or not
-                    if (len(self.spl['prefixes']['activities'][:pred_fltr_idx]) == len(_serie_predict_ac)) and (
-                            len(self.spl['prefixes']['roles'][:pred_fltr_idx]) == len(_serie_predict_rl)) and (
-                            len(self.spl['prefixes']['times'][:pred_fltr_idx]) == len(_serie_predict_tm)) and (
-                            'multi_pred_ss' in st.session_state):
-
-                        # print("--------------Input to Multiverse Prediction",(_ih+ 1), "--------------------")
-                        # print("Activity Prefixes :", _serie_predict_ac)
-                        # print("Role Prefixes :", _serie_predict_rl)
-                        # print("Time Prefixes :", _serie_predict_tm)
-
-                        self._predict_next_event_shared_cat_pred(parameters, vectorizer, _serie_predict_ac, _serie_predict_rl, _serie_predict_tm, _ih) #Control the future pred
+            # for _ih in range(parameters['multiprednum']):
+            #
+            #     if "ss_initpredict"+str(_ih+1) in st.session_state['initial_prediction']:
+            #
+            #         _serie_predict_ac = [st.session_state['initial_prediction']["ss_initpredict"+str(_ih+1)]["pos_ac_ss"][:idx]
+            #                             for idx in range(1, pred_fltr_idx + 1)]  # range starts with 1 to avoid start
+            #         _serie_predict_rl = [st.session_state['initial_prediction']["ss_initpredict"+str(_ih+1)]["pos_rl_ss"][:idx]
+            #                             for idx in range(1, pred_fltr_idx + 1)]  # range starts with 1 to avoid start
+            #         _serie_predict_tm = [np.array(st.session_state['initial_prediction']["ss_initpredict"+str(_ih+1)]['pos_tm_ss'][:idx])
+            #                             for idx in range(1, pred_fltr_idx + 1)]  # range starts with 1 to avoid start
+            #
+            #     #----Check the Vector length is same or not
+            #         if (len(self.spl['prefixes']['activities'][:pred_fltr_idx]) == len(_serie_predict_ac)) and (
+            #                 len(self.spl['prefixes']['roles'][:pred_fltr_idx]) == len(_serie_predict_rl)) and (
+            #                 len(self.spl['prefixes']['times'][:pred_fltr_idx]) == len(_serie_predict_tm)) and (
+            #                 'multi_pred_ss' in st.session_state):
+            #
+            #             # print("--------------Input to Multiverse Prediction",(_ih+ 1), "--------------------")
+            #             # print("Activity Prefixes :", _serie_predict_ac)
+            #             # print("Role Prefixes :", _serie_predict_rl)
+            #             # print("Time Prefixes :", _serie_predict_tm)
+            #
+            #             self._predict_next_event_shared_cat_pred(parameters, vectorizer, _serie_predict_ac, _serie_predict_rl, _serie_predict_tm, _ih) #Control the future pred
 
             if parameters['predchoice'] != 'SME':
 
@@ -205,9 +205,14 @@ class NextEventPredictor():
                                                                                             'pos_rl_ss': [0],
                                                                                             'pos_tm_ss': [[0]]}
 
+
         #print("Prediction Activity :", self.spl['prefixes']['activities'][pred_fltr_idx], type(self.spl['prefixes']['activities']))
         results = list()
         for i, _ in enumerate(self.spl['prefixes']['activities'][:pred_fltr_idx]):
+
+            print("First Activity Input : ", self.spl['prefixes']['activities'][:pred_fltr_idx])
+            print("First Role Input : ", self.spl['prefixes']['roles'][:pred_fltr_idx])
+            print("First Time Input : ", self.spl['prefixes']['times'][:pred_fltr_idx])
 
             x_ac_ngram = (np.append(
                     np.zeros(parameters['dim']['time_dim']),
@@ -314,6 +319,44 @@ class NextEventPredictor():
                     st.session_state['initial_prediction']['ss_initpredict' + str(_ik + 1)]['pos_tm_ss'].extend(
                         [[preds[2][0][0]]])
 
+                # #--Multiverse
+                # for _ih in range(parameters['multiprednum']):
+                #
+                #     if "ss_initpredict" + str(_ih + 1) in st.session_state['initial_prediction']:
+                #         print("Inital Prediction : ", st.session_state['initial_prediction'])
+                #         print("pred_fltr_idx : ", pred_fltr_idx)
+                #
+                #         _serie_predict_ac = [
+                #             st.session_state['initial_prediction']["ss_initpredict" + str(_ih + 1)]["pos_ac_ss"][:idx]
+                #             for idx in range(1, pred_fltr_idx + 2)]  # range starts with 1 to avoid start
+                #         _serie_predict_rl = [
+                #             st.session_state['initial_prediction']["ss_initpredict" + str(_ih + 1)]["pos_rl_ss"][:idx]
+                #             for idx in range(1, pred_fltr_idx + 2)] # range starts with 1 to avoid start
+                #         _serie_predict_tm = [np.array(
+                #             st.session_state['initial_prediction']["ss_initpredict" + str(_ih + 1)]['pos_tm_ss'][:idx])
+                #                              for idx in
+                #                              range(1, pred_fltr_idx + 2)] # range starts with 1 to avoid start
+                #
+                #         # _test_serie_predict_ac = [
+                #         #     st.session_state['initial_prediction']["ss_initpredict" + str(_ih + 1)]["pos_ac_ss"][:idx]
+                #         #     for idx in range(1, pred_fltr_idx + 2)]  # range starts with 1 to avoid start
+                #         #
+                #         # print("Test Series : ", _test_serie_predict_ac)
+                #         # ----Check the Vector length is same or not
+                #         # if (len(self.spl['prefixes']['activities'][:pred_fltr_idx]) == len(_serie_predict_ac)) and (
+                #         #         len(self.spl['prefixes']['roles'][:pred_fltr_idx]) == len(_serie_predict_rl)) and (
+                #         #         len(self.spl['prefixes']['times'][:pred_fltr_idx]) == len(_serie_predict_tm)) and (
+                #         #         'multi_pred_ss' in st.session_state):
+                #         if 'multi_pred_ss' in st.session_state:
+                #             # print("--------------Input to Multiverse Prediction",(_ih+ 1), "--------------------")
+                #             # print("Activity Prefixes :", _serie_predict_ac)
+                #             # print("Role Prefixes :", _serie_predict_rl)
+                #             # print("Time Prefixes :", _serie_predict_tm)
+                #
+                #             self._predict_next_event_shared_cat_pred(parameters, vectorizer, _serie_predict_ac,
+                #                                                      _serie_predict_rl, _serie_predict_tm,
+                #                                                      _ih)  # Control the future pred
+
             if not parameters['one_timestamp']:
                 predictions.extend([preds[2][0][1]])
             results.append(self._create_result_record_next(i, self.spl, predictions, parameters))
@@ -378,10 +421,16 @@ class NextEventPredictor():
             imp (str): method of next event selection.
         """
         print("Starting of Multi Dimention Prediction : ", index + 1)
+        print("Multi Activity Input : ", serie_predict_ac)
+        print("Multi Role Input : ", serie_predict_rl)
+        print("Multi Time Input : ", serie_predict_tm)
         # Generation of predictions
         pred_fltr_idx = parameters['nextcaseid_attr']["filter_index"] + 1
+        print("Index : ", pred_fltr_idx)
 
         for i, _ in enumerate(serie_predict_ac):
+
+            print("Inter Feature : ", self.spl['prefixes']['inter_attr'][:pred_fltr_idx])
 
             x_ac_ngram = (np.append(
                     np.zeros(parameters['dim']['time_dim']),
@@ -406,11 +455,11 @@ class NextEventPredictor():
                     .reshape((parameters['dim']['time_dim'], times_attr_num))])
             # add intercase features if necessary
             # ----------------------------------------------------------------------------------
-            inter_attr_num = (self.spl['prefixes']['inter_attr'][:pred_fltr_idx][i].shape[1])
+            inter_attr_num = (self.spl['prefixes']['inter_attr'][:pred_fltr_idx + i][i].shape[1])
             x_inter_ngram = np.array(
                 [np.append(np.zeros((
                     parameters['dim']['time_dim'], inter_attr_num)),
-                    self.spl['prefixes']['inter_attr'][:pred_fltr_idx][i], axis=0)
+                    self.spl['prefixes']['inter_attr'][:pred_fltr_idx + i][i], axis=0)
                     [-parameters['dim']['time_dim']:]
                     .reshape((parameters['dim']['time_dim'], inter_attr_num))])
             inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram, x_inter_ngram]
@@ -469,7 +518,7 @@ class NextEventPredictor():
                         st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['rl_prob'].extend([pos1_prob])
 
                         st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['tm_pred'].extend([[preds[2][0][0]]])
-                print("st.session_state['multi_pred_ss'] : ", st.session_state['multi_pred_ss'])
+                print("Multiverse Predict : ", st.session_state['multi_pred_ss'])
 
 
 

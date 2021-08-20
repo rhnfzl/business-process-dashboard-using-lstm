@@ -89,13 +89,21 @@ class NextEventSamplesCreator():
                 serie = [self.log[i][x][:idx]
                          for idx in range(1, len(self.log[i][x]))] #range starts with 1 to avoid blank state
                 y_serie = [x[-1] for x in serie] #selecting the last value from each list of list
+                # print("serie : ", serie)
+                # print("yserie :", y_serie)
                 # if x == 'ac_index':
                 #     print("log[i][x] :", self.log[i][x])
                 #     print("Length of log[i][x] :", len(self.log[i][x]))
                 #     print("Serie : ", serie)
                 #     print("y_serie : ", y_serie)
-                serie = serie[:-1] #to avoid end value that is max value
-                y_serie = y_serie[1:] #to avoid start value i.e 0
+                if parms['mode'] == 'batch' and parms['batch_mode'] == 'pre_prefix':
+                    serie = serie[parms['batchprefixnum']:-1]
+                    y_serie = y_serie[parms['batchprefixnum']+1:]  # to avoid start value i.e 0
+                    # print("serie : ", serie)
+                    # print("y_serie : ", y_serie)
+                else:
+                    serie = serie[:-1] #to avoid end value that is max value
+                    y_serie = y_serie[1:] #to avoid start value i.e 0
 
                 if x in list(equi.keys()): #lists out ['ac_index', 'rl_index']
                     vec['prefixes'][equi[x]] = (

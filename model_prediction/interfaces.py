@@ -7,11 +7,13 @@ Created on Tue Mar 17 16:24:38 2020
 from model_prediction import next_event_samples_creator as nesc
 
 
-from model_prediction import next_event_predictor_batch_mode as nep #Batch mode
+from model_prediction import next_event_predictor_batch_base_mode as nepb #Batch mode base
+from model_prediction import next_event_predictor_batch_evaluate_mode as nepe #Batch mode
 
 from model_prediction import next_event_predictor_single_mode_evaluation as nepsmeva #Evalaution
 from model_prediction import next_event_predictor_single_mode_execution as nepsmexe #Executuon
 from model_prediction import next_event_predictor_single_mode_whatif as nepsmwi #What-if
+from model_prediction import next_event_predictor_single_mode_whatif_alternate as nepsmwia #What-if
 
 
 class SamplesCreator:
@@ -27,11 +29,11 @@ class SamplesCreator:
 
 
 class PredictionTasksExecutioner:
-    def predict(self, predictor, activity, mode, next_mode):
-        executioner = self._get_predictor(activity, mode, next_mode)
+    def predict(self, predictor, activity, mode, next_mode, batch_option):
+        executioner = self._get_predictor(activity, mode, next_mode, batch_option)
         predictor.predict(executioner, mode)
 
-    def _get_predictor(self, activity, mode, next_mode):
+    def _get_predictor(self, activity, mode, next_mode, batch_option):
         if activity == 'predict_next':
             if mode == 'next':
                 if next_mode == 'history_with_next':
@@ -39,8 +41,11 @@ class PredictionTasksExecutioner:
                 elif next_mode == 'next_action':
                     return nepsmeva.NextEventPredictor()
                 elif next_mode == 'what_if':
-                    return nepsmwi.NextEventPredictor()
+                    return nepsmwia.NextEventPredictor()
             elif mode == 'batch':
-                return nep.NextEventPredictor()
+                if batch_option == 'base_batch':
+                    return nepb.NextEventPredictor()
+                elif batch_option == 'pre_prefix':
+                    return nepe.NextEventPredictor()
         else:
             raise ValueError(activity)
