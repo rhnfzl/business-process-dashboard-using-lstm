@@ -16,7 +16,7 @@ import configparser as cp
 from num2words import num2words as nw
 import matplotlib.pyplot as plt
 
-from st_aggrid import AgGrid
+from st_aggrid import AgGrid, DataReturnMode, GridUpdateMode, GridOptionsBuilder
 
 from tensorflow.keras.models import load_model
 
@@ -48,6 +48,7 @@ class ModelPredictor():
 
         self.samples = dict()
         self.predictions = None
+        self.confirmation_results = None
         self.sim_values = list()
         self.run_num = 0
 
@@ -97,12 +98,13 @@ class ModelPredictor():
         # assesment
         evaluator = EvaluateTask()
         results_copy = self.predictions.copy()
-        self.dashboard_prediction(results_copy, self.parms)
 
-        if self.parms['mode'] == 'next':
-            evaluator.evaluate(self.parms, self.predictions)
-        elif self.parms['mode'] == 'batch':
-            evaluator.evaluate(self.parms, self.predictions)
+        self.dashboard_prediction(results_copy, self.parms, self.confirmation_results)
+
+        # if self.parms['mode'] == 'next':
+        #     evaluator.evaluate(self.parms, self.predictions)
+        # elif self.parms['mode'] == 'batch':
+        evaluator.evaluate(self.parms, self.predictions)
 
     def predict_values(self):
         # Predict values
@@ -158,22 +160,35 @@ class ModelPredictor():
             self.parms, self.log, self.ac_index, self.rl_index, self.model_def['additional_columns'])
     #
     def predict(self, executioner, mode):
-        if mode == 'next':
-            results = executioner.predict(self.parms,
-                                          self.model,
-                                          self.samples,
-                                          self.imp,
-                                          self.model_def['vectorizer'])
-        elif mode == 'batch':
-            results = executioner.predict(self.parms,
-                                          self.model,
-                                          self.samples,
-                                          self.imp,
-                                          self.model_def['vectorizer'])
+        # if mode == 'next':
+        #     results = executioner.predict(self.parms,
+        #                                   self.model,
+        #                                   self.samples,
+        #                                   self.imp,
+        #                                   self.model_def['vectorizer'])
+        # elif mode == 'batch':
+        if self.parms['next_mode'] == 'next_action':
+                results, conf_results = executioner.predict(self.parms,
+                                              self.model,
+                                              self.samples,
+                                              self.imp,
+                                              self.model_def['vectorizer'])
+                conf_results = pd.DataFrame(conf_results)
+
+                if self.confirmation_results is None:
+                    self.confirmation_results = conf_results
+                else:
+                    self.confirmation_results = self.confirmation_results.append(results,
+                                                               ignore_index=True)
+
+        else:
+                results = executioner.predict(self.parms,
+                                                self.model,
+                                                self.samples,
+                                                self.imp,
+                                                self.model_def['vectorizer'])
 
         results = pd.DataFrame(results)
-        # print("Output of the predictions before :", results)
-        # print("Output of the predictions after :", results)
         results['run_num'] = self.run_num
         results['implementation'] = self.imp
         if self.predictions is None:
@@ -247,7 +262,7 @@ class ModelPredictor():
     #                   Dashboard Code
     # -------------------------------------------------------------------------------------------------------------------
     @staticmethod
-    def dashboard_prediction(pred_results_df, parms):
+    def dashboard_prediction(pred_results_df, parms, confirmation_results):
 
         # state_of_theprocess = st.empty()
         # if parms['next_mode'] == 'next_action':
@@ -283,7 +298,7 @@ class ModelPredictor():
         elif parms['mode'] in ['next']:
             # ModelPredictor.dashboard_prediction_next(results_dash, parms, result_dash_hist_execution)
             # ModelPredictor.dashboard_prediction_next(pred_results_df, parms)
-            ModelPredictor.dashboard_nextprediction_write(pred_results_df, parms)
+            ModelPredictor.dashboard_nextprediction_write(pred_results_df, parms, confirmation_results)
 
     @staticmethod
     def dashboard_prediction_intial_manuplation(pred_results_df, parms):
@@ -468,7 +483,7 @@ class ModelPredictor():
 
     @staticmethod
     # def dashboard_nextprediction_write(results_dash, parms, result_dash_hist_execution):
-    def dashboard_nextprediction_write(pred_results_df, parms):
+    def dashboard_nextprediction_write(pred_results_df, parms, confirmation_results):
 
         if parms['next_mode'] in ['history_with_next', 'what_if']:
 
@@ -514,7 +529,7 @@ class ModelPredictor():
 
             results_dash = ModelPredictor.dashboard_prediction_next(results_dash, parms)
 
-            ModelPredictor.dashboard_nextprediction_evaluate_write(results_dash, parms, result_dash_hist_execution)
+            ModelPredictor.dashboard_nextprediction_evaluate_write(results_dash, parms, result_dash_hist_execution, confirmation_results)
 
         # elif parms['next_mode'] == 'what_if':
         #
@@ -638,7 +653,7 @@ class ModelPredictor():
                 ModelPredictor.dashboard_label_decider(_lbkey, parms)
 
     @staticmethod
-    def dashboard_nextprediction_evaluate_write(results_dash, parms, result_dash_hist_execution):
+    def dashboard_nextprediction_evaluate_write(results_dash, parms, result_dash_hist_execution, confirmation_results):
 
         # process_history_behaviour, label_status = ModelPredictor.dashboard_history_label()
         # with st.container():
@@ -652,7 +667,7 @@ class ModelPredictor():
         st.dataframe(_temp_result_dash_hist_execution)
         st.markdown("""---""")
 
-        print("Prediction Dataframe  : ", results_dash.columns)
+        # print("Prediction Dataframe  : ", results_dash.columns)
 
         # print("Parameter : ", parms)
         results_dash.index = results_dash.index + (parms['nextcaseid_attr']["filter_index"] + 1)
@@ -700,6 +715,93 @@ class ModelPredictor():
                     ModelPredictor.dashboard_label_decider(sum(results_dash[["ac_expect"]].values.tolist(), []), parms)
 
                     st.markdown("""---""")
+
+        confirmation_results = confirmation_results.drop(columns=['conf_ac_prefix', 'conf_rl_prefix', 'conf_tm_prefix'])
+
+        confirmation_results['conf_ac_expect'] = confirmation_results.conf_ac_expect.replace(parms['index_ac'])
+        confirmation_results['conf_rl_expect'] = confirmation_results.conf_rl_expect.replace(parms['index_rl'])
+
+        #------Multipreditict
+        conf_ac_pred_lst = []
+        conf_ac_prob_lst = []
+        conf_rl_pred_lst = []
+        conf_rl_prob_lst = []
+        conf_tm_pred_lst = []
+
+        multipreddict = {}
+
+        for zx in range(parms['multiprednum']):
+            zx += 1
+            conf_ac_pred_lst.append("conf_ac_pred" + str(zx))
+            conf_ac_prob_lst.append("conf_ac_prob" + str(zx))
+            conf_rl_pred_lst.append("conf_rl_pred" + str(zx))
+            conf_rl_prob_lst.append("conf_rl_prob" + str(zx))
+        conf_tm_pred_lst.append("conf_tm_pred")
+
+        multipreddict["conf_ac_pred"] = conf_ac_pred_lst
+        multipreddict["conf_ac_prob"] = conf_ac_prob_lst
+        multipreddict["conf_rl_pred"] = conf_rl_pred_lst
+        multipreddict["conf_rl_prob"] = conf_rl_prob_lst
+        multipreddict["conf_tm_pred"] = conf_tm_pred_lst
+
+        for ix in range(len(confirmation_results['conf_ac_pred'])):
+            for jx in range(len(confirmation_results['conf_ac_pred'][ix])):
+                confirmation_results['conf_ac_pred'][ix].append(parms['index_ac'][confirmation_results.conf_ac_pred[ix][jx]])
+                confirmation_results['conf_ac_prob'][ix][jx] = (confirmation_results['conf_ac_prob'][ix][jx] * 100)
+            ln = int(len(confirmation_results['conf_ac_pred'][ix]) / 2)
+            del confirmation_results['conf_ac_pred'][ix][:ln]
+            confirmation_results[multipreddict["conf_ac_pred"]] = pd.DataFrame(confirmation_results.conf_ac_pred.tolist(),
+                                                                                index=confirmation_results.index)
+            confirmation_results[multipreddict["conf_ac_prob"]] = pd.DataFrame(confirmation_results.conf_ac_prob.tolist(),
+                                                                                index=confirmation_results.index)
+        for ix in range(len(confirmation_results['conf_rl_pred'])):
+            for jx in range(len(confirmation_results['conf_rl_pred'][ix])):
+                confirmation_results['conf_rl_pred'][ix].append(parms['index_rl'][confirmation_results.conf_rl_pred[ix][jx]])
+                confirmation_results['conf_rl_prob'][ix][jx] = (confirmation_results['conf_rl_prob'][ix][jx] * 100)
+            ln = int(len(confirmation_results['conf_rl_pred'][ix]) / 2)
+            del confirmation_results['conf_rl_pred'][ix][:ln]
+            confirmation_results[multipreddict["conf_rl_pred"]] = pd.DataFrame(confirmation_results.conf_rl_pred.tolist(),
+                                                                                index=confirmation_results.index)
+            confirmation_results[multipreddict["conf_rl_prob"]] = pd.DataFrame(confirmation_results.conf_rl_prob.tolist(),
+                                                                                index=confirmation_results.index)
+        for ix in range(len(confirmation_results['conf_tm_pred'])):
+            confirmation_results[multipreddict["conf_tm_pred"]] = pd.DataFrame(confirmation_results.conf_tm_pred.tolist(),
+                                                                                index=confirmation_results.index)
+
+        _lst = [['conf_ac_expect'] + multipreddict["conf_ac_pred"] + multipreddict["conf_ac_prob"] +
+                ['conf_rl_expect'] + multipreddict["conf_rl_pred"] + multipreddict["conf_rl_prob"] +
+                ['conf_tm_expect'] + multipreddict['conf_tm_pred']]
+
+        confirmation_results = confirmation_results[_lst[0]]
+
+        # --rename dynamically
+        for _iz in range(parms['multiprednum']):
+            for _, _jz in enumerate(confirmation_results.columns):
+                if _jz[:7] == 'conf_ac':
+                    if _jz[8:13] == 'pred' + str(_iz + 1):
+                        confirmation_results.rename(
+                            columns={_jz: nw(_iz + 1, lang="en", to="ordinal_num") + " AC Prediction"}, inplace=True)
+                    elif _jz[8:13] == 'prob' + str(_iz + 1):
+                        confirmation_results.rename(
+                            columns={_jz: nw(_iz + 1, lang="en", to="ordinal_num") + " AC Confidence"}, inplace=True)
+                elif _jz[:7] == 'conf_rl':
+                    if _jz[8:13] == 'pred' + str(_iz + 1):
+                        confirmation_results.rename(
+                            columns={_jz: nw(_iz + 1, lang="en", to="ordinal_num") + " RL Prediction"}, inplace=True)
+                    elif _jz[8:13] == 'prob' + str(_iz + 1):
+                        confirmation_results.rename(
+                            columns={_jz: nw(_iz + 1, lang="en", to="ordinal_num") + " RL Confidence"}, inplace=True)
+
+        confirmation_results.rename(
+            columns={'conf_ac_expect': 'AC Expected', 'conf_rl_expect': 'RL Expected', 'conf_tm_expect': 'TM Expected (Seconds)', 'conf_tm_pred': 'TM Predicted (Seconds)'}, inplace=True)
+
+
+        confirmation_results = confirmation_results.round(2)
+        st.subheader("🤝 Conformance Check")
+        # AgGrid(confirmation_results)
+        st.write(confirmation_results)
+
+
 
             #st.markdown("""---""")
             # with st.container():
