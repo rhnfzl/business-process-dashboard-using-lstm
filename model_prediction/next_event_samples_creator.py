@@ -157,6 +157,7 @@ class NextEventSamplesCreator():
             new_row = new_row.reshape((new_row.shape[2]))
             vec['next_evt']['times'].append(new_row)
 
+        #-----------------------------------------------------------------------
         vec['prefixes']['inter_attr'] = list()
         x_inter_dict = pd.DataFrame(x_inter_dict)
         for row in x_inter_dict.values:
@@ -175,7 +176,19 @@ class NextEventSamplesCreator():
             new_row = np.dstack(new_row)
             new_row = new_row.reshape((new_row.shape[2]))
             vec['next_evt']['inter_attr'].append(new_row)
-        # print("----------------End-----------------")
+        # -----------------------------------------------------------------------
+
+        # vec['next_evt']['inter_attr'] = np.dstack(list(y_inter_dict.values()))[0]
+        # if 'weekday' in columns:
+        #     print("Input x Weekly : ", x_weekday)
+        #     print("Input Y Weekly : ", y_weekday)
+        #     x_weekday = ku.to_categorical(x_weekday, num_classes=7)
+        #     y_weekday = ku.to_categorical(y_weekday, num_classes=7)
+        #     vec['prefixes']['inter_attr'] = np.concatenate(
+        #         [vec['prefixes']['inter_attr'], x_weekday], axis=2)
+        #     vec['next_evt']['inter_attr'] = np.concatenate(
+        #         [vec['next_evt']['inter_attr'], y_weekday], axis=1)
+
         return vec
 
     def reformat_events(self, columns, one_timestamp):

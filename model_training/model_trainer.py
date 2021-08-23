@@ -64,6 +64,7 @@ class ModelTrainer():
 
         m_loader.register_model(params['model_type'],
                                 self.model_def['trainer'])
+
         m_loader.train(params['model_type'],
                        self.examples,
                        self.ac_weights,

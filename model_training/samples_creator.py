@@ -47,7 +47,7 @@ class SequencesCreator():
     @staticmethod
     def define_columns(add_cols, one_timestamp):
         columns = ['ac_index', 'rl_index', 'dur_norm']
-        # add_cols = [x + '_norm' if x != 'weekday' else x for x in add_cols]
+        # add_cols = [x + '_norm' if x != 'weekday' else x for x in add_cols] #prevents weekday to be cheked as weekday_norm
         add_cols = [x+'_norm' for x in add_cols]
         columns.extend(add_cols)
         if not one_timestamp:
@@ -135,9 +135,10 @@ class SequencesCreator():
         # Reshape y intercase attributes (suffixes, number of attributes)
         vec['next_evt']['inter_attr'] = np.dstack(list(y_inter_dict.values()))[0]
         # if 'weekday' in columns:
-        #     # Onehot encode weekday
+        #
         #     x_weekday = ku.to_categorical(x_weekday, num_classes=7)
         #     y_weekday = ku.to_categorical(y_weekday, num_classes=7)
+        #
         #     vec['prefixes']['inter_attr'] = np.concatenate(
         #         [vec['prefixes']['inter_attr'], x_weekday], axis=2)
         #     vec['next_evt']['inter_attr'] = np.concatenate(

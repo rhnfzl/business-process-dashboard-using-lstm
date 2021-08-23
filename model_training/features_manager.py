@@ -22,6 +22,7 @@ class FeaturesMannager():
         self.one_timestamp = params['one_timestamp']
         self.resources = pd.DataFrame
         self.norm_method = params['norm_method']
+        self.filename = params['file_name']
         self._scalers = dict()
         # self.scale_dispatcher = {'basic': self._scale_base,
         #                          'inter': self._scale_inter}
@@ -126,6 +127,7 @@ class FeaturesMannager():
         return scaler
 
     def _scale_base(self, log, add_cols):
+        add_cat = {}
         if self.one_timestamp:
             log, scale_args = self.scale_feature(log, 'dur', self.norm_method)
         else:
@@ -136,9 +138,24 @@ class FeaturesMannager():
             if col == 'daytime':
                 log, _ = self.scale_feature(log, 'daytime', 'day_secs', True)
             elif col == 'open_cases':
-                log, _ = self.scale_feature(log, 'open_cases', 'normal')
+                log, _ = self.scale_feature(log, 'open_cases', self.norm_method)
             elif col == 'weekday':
-                continue
+                # continue
+                log, _ = self.scale_feature(log, 'weekday', None)
+            elif 'sepsis' in self.filename:
+                if col == 'Diagnose_ord':
+                    log = self.ordinal_encoder(log, 'Diagnose')
+                    log, _ = self.scale_feature(log, 'Diagnose_ord', None)
+                elif col == 'CRP':
+                    log, _ = self.scale_feature(log, 'CRP', self.norm_method)
+                elif col == 'LacticAcid':
+                    log, _ = self.scale_feature(log, 'LacticAcid', self.norm_method)
+                elif col == 'Leucocytes':
+                    log, _ = self.scale_feature(log, 'Leucocytes', self.norm_method)
+                elif col == 'Diagnose':
+                    log, _ = self.scale_feature(log, 'Diagnose', self.norm_method)
+                elif col == 'Age':
+                    log, _ = self.scale_feature(log, 'Age', self.norm_method)
             else:
                 log, _ = self.scale_feature(log, col, self.norm_method, True)
         return log, scale_args
@@ -211,3 +228,28 @@ class FeaturesMannager():
         if replace:
             log = log.drop(feature, axis=1)
         return log, scale_args
+
+    @staticmethod
+    def ordinal_encoder(log, feature, replace=False):
+        for i in range(len([feature])):
+
+            cat_label = feature
+
+            temp_list = log[[cat_label]].values.tolist()
+
+            subsec_set = {(x[0]) for x in temp_list}
+
+            subsec_set = sorted(list(subsec_set))
+
+            _index = dict()
+
+            for ix, _ in enumerate(subsec_set):
+                _index[subsec_set[ix]] = ix + 1
+
+            _idx = lambda x: _index[x[cat_label]]
+
+            log[cat_label + '_ord'] = log.apply(_idx, axis=1)
+
+            if replace:
+                log = log.drop(feature, axis=1)
+        return log

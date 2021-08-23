@@ -366,11 +366,14 @@ def main(argv, filter_parms=None, filter_parameter=None):
                     # Read the Test Log
                     filter_log, filter_log_columns, file_name = read_next_testlog()
                     essential_columns = ['task', 'role', 'end_timestamp']
-                    extra_columns = ['caseid', 'label', 'dur', 'acc_cycle', 'daytime',
-                                     'dur_norm', 'ac_index', 'rl_index', 'label_index',
-                                     'wait_norm', 'user', 'open_cases_norm', 'daytime_norm',
+                    norm_cols = [col for col in filter_log.columns if '_norm' in col]
+                    index_cols = [col for col in filter_log.columns if '_index' in col]
+                    ord_cols = [col for col in filter_log.columns if '_ord' in col]
+                    extra_columns = ['caseid', 'label', 'dur', 'acc_cycle', 'daytime', 'user',
+                                     #'dur_norm', 'ac_index', 'rl_index', 'label_index',
+                                     #'wait_norm', 'open_cases_norm', 'daytime_norm',
                                      'acc_cycle'] #Add the Columns here which you don't want to display
-                    display_columns = list(set(filter_log_columns) - set(essential_columns+extra_columns ))
+                    display_columns = list(set(filter_log_columns) - set(essential_columns+extra_columns+norm_cols+index_cols+ord_cols))
                     filter_attr_display, filter_caseid, filter_caseid_attr_df, filter_caseid_index = next_columns(filter_log, display_columns)
                     parameters['nextcaseid'] = filter_caseid
 
