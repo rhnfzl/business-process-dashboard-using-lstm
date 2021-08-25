@@ -5,22 +5,17 @@ Created on Thu Feb 28 10:15:12 2019
 @author: Manuel Camargo
 """
 import os
-import pandas as pd
-import numpy as np
 import streamlit as st
 import matplotlib.pyplot as plt
 
 from tensorflow.keras.models import Model
-from keras.layers import Input, Embedding, Dot, Reshape, Multiply, Concatenate
+from keras.layers import Input, Embedding, Concatenate
 from tensorflow.keras.layers import Dense, LSTM, BatchNormalization
 from tensorflow.keras.optimizers import Nadam, Adam, SGD, Adagrad
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, CSVLogger
-from tensorflow.python.keras.layers import Reshape
 
 from support_modules.callbacks import time_callback as tc
 from support_modules.callbacks import clean_models_callback as cm
-
-# st.set_option('deprecation.showPyplotGlobalUse', False)
 
 def _training_model(vec, ac_weights, rl_weights, output_folder, args):
     """Example function with types documented in the docstring.
@@ -31,20 +26,9 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
         bool: The return value. True for success, False otherwise.
     """
 
-    # print('Build model - concatenated')
-    # print("args in Concat :", args)
-    # print("Vec in Concat :", vec)
 # =============================================================================
 #     Input layer
 # =============================================================================
-#     print("***ac_input Inputs vec*** :", vec['prefixes']['activities'])
-#     print("***rl_input Inputs vec*** :",vec['prefixes']['roles'])
-#     print("***time_input Inputs vec*** :", vec['prefixes']['times'], "&", vec['prefixes']['times'].shape[1], "&", vec['prefixes']['times'].shape[2])
-
-    # print("---", "prefixes", "---")
-    # print(pd.DataFrame.from_dict(vec['prefixes']).head(5))
-    # print("---", "next_evt", "---")
-    # print(pd.DataFrame.from_dict(vec['next_evt']).head(5))
 
     ac_input = Input(shape=(vec['prefixes']['activities'].shape[1], ), name='ac_input')
     rl_input = Input(shape=(vec['prefixes']['roles'].shape[1], ), name='rl_input')
@@ -53,17 +37,9 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
     inter_input = Input(shape=(vec['prefixes']['inter_attr'].shape[1],
                             vec['prefixes']['inter_attr'].shape[2]), name='inter_input')
 
-    # print("***ac_input Inputs*** :", ac_input)
-    # print("***rl_input Inputs*** :", rl_input)
-    # print("***t_input Inputs*** :", t_input)
-
 #=============================================================================
 #    Embedding layer for categorical attributes
 # =============================================================================
-#     print("AC Weight Value", ac_weights)
-#     print("AC Weight", ac_weights.shape[0],"&", ac_weights.shape[1])
-#     print("RL Weight Value", rl_weights)
-#     print("RL Weight", rl_weights.shape[0],"&", rl_weights.shape[1])
 
     ac_embedding = Embedding(ac_weights.shape[0],
                              ac_weights.shape[1],
@@ -162,7 +138,7 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
     if args['optim'] == 'Nadam':
         opt = Nadam(learning_rate=0.002, beta_1=0.9, beta_2=0.999)
     elif args['optim'] == 'Adam':
-        opt = Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=True) #Hyperparameter Opt with amsgrad=True/False
+        opt = Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False) #Hyperparameter Opt with amsgrad=True/False
                                                                 #   AMSGrad is an extension to the Adam version of
                                                                 #   gradient descent that attempts to improve the
                                                                 #   convergence properties of the algorithm, avoiding
@@ -208,11 +184,7 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
         batch_size = vec['prefixes']['activities'].shape[1]
     else:
         batch_size = args['batch_size']
-    # print("Batch Size : ", batch_size)
-    #print("Input Activities :", vec['prefixes']['activities'])
-    #print("Input Roles :", vec['prefixes']['roles'])
-    #print("Input Prefixes Times :", vec['prefixes']['times'])
-    #print("Input Next Event Times :", vec['next_evt']['times'])
+
     history = model.fit({'ac_input': vec['prefixes']['activities'],
                         'rl_input': vec['prefixes']['roles'],
                        't_input': vec['prefixes']['times'],
@@ -227,18 +199,9 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
                       batch_size=batch_size,
                       epochs=args['epochs'])
 
-    #
-    # plt.title('Accuracy')
-    # plt.plot(history.history['acc'], label='train')
-    # plt.plot(history.history['val_acc'], label='test')
-    # plt.legend()
-    # plt.show();
-    # st.plotly_chart(fig)
-
-    # print("Model History : ", history)
-    # print("Model History Keys : ", history.history.keys())
-
     with st.container():
+
+        st.subheader("Fully Shared Model Performance")
 
         fcol1, fcol2, fcol3 = st.columns([2, 2, 2])
 

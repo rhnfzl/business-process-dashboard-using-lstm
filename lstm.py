@@ -92,6 +92,12 @@ def main(argv):
             parameters['file_name'] = train_file_name #'sepsis_cases_1.csv' #Change Here
             # Specific model training parameters
             if parameters['activity'] == 'training':
+                train_model = formt.selectbox("Training Model", ['Fully Shared', 'Shared Categorical'], index=0)
+                if train_model == 'Fully Shared':
+                    parameters['model_type'] = 'concatenated'
+                elif train_model == 'Shared Categorical':
+                    parameters['model_type'] = 'shared_cat'
+
                 type_of_execution = formt.selectbox("Execute On", ["CPU", "GPU"], index=1)
                 if type_of_execution == "CPU":
                     parameters['imp'] = 1
@@ -106,11 +112,11 @@ def main(argv):
                                                             # used at output layer for time opt: linear or sigmoid
                 optimization_func = formt.selectbox("Optimization Function", ['Nadam', 'Adam', 'SGD', 'Adagrad'], index=0)
                 parameters['optim'] = optimization_func #'Nadam'  # optimization function Keras
-                norm_method_opt = formt.selectbox("Normalization Method", ['lognorm', 'max', 'standard', 'normal'], index=1)
+                norm_method_opt = formt.selectbox("Normalization Method", ['lognorm', 'max', 'standard', 'normal'], index=0)
                 parameters['norm_method'] = norm_method_opt #'lognorm' # max, lognorm
                 # Model types --> shared_cat, specialized, concatenated,
                 #                 shared_cat_gru, specialized_gru, concatenated_gru
-                parameters['model_type'] = 'concatenated'
+
                 n_gram_value = formt.number_input("N-Gram Size", min_value=5, max_value=30, value=10,
                                                     step=5)
                 lstm_layer_size = formt.number_input("LSTM Layer Size", min_value=50, max_value=300, value=50,

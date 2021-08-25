@@ -7,13 +7,14 @@ Created on Thu Feb 28 10:15:12 2019
 # import keras.backend as K
 
 import os
-# import numpy as np
+import streamlit as st
+import matplotlib.pyplot as plt
 
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Embedding, Concatenate
 from tensorflow.keras.layers import Dense, LSTM, BatchNormalization
 from tensorflow.keras.optimizers import Nadam, Adam, SGD, Adagrad
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, CSVLogger
 
 from support_modules.callbacks import time_callback as tc
 from support_modules.callbacks import clean_models_callback as cm
@@ -36,6 +37,8 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
     rl_input = Input(shape=(vec['prefixes']['roles'].shape[1], ), name='rl_input')
     t_input = Input(shape=(vec['prefixes']['times'].shape[1],
                            vec['prefixes']['times'].shape[2]), name='t_input')
+    inter_input = Input(shape=(vec['prefixes']['inter_attr'].shape[1],
+                                vec['prefixes']['inter_attr'].shape[2]), name='inter_input')
 
 # =============================================================================
 #    Embedding layer for categorical attributes
@@ -51,11 +54,20 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
                              weights=[rl_weights],
                              input_length=vec['prefixes']['roles'].shape[1],
                              trainable=False, name='rl_embedding')(rl_input)
+
+# =============================================================================
+#    Concatenation layer
+# =============================================================================
+
+    # merged1 = Concatenate(name='conc_categorical', axis=2)([ac_embedding, rl_embedding])
+
+    # merged2 = Concatenate(name='conc_continuous', axis=2)([t_input, inter_input])
+
+    merged = Concatenate(name='concatenated', axis=2)([ac_embedding, rl_embedding, inter_input])
+
 # =============================================================================
 #    Layer 1
 # =============================================================================
-
-    merged = Concatenate(name='concatenated', axis=2)([ac_embedding, rl_embedding])
 
     l1_c1 = LSTM(args['l_size'],
                  kernel_initializer='glorot_uniform',
@@ -123,7 +135,7 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
                             kernel_initializer='glorot_uniform',
                             name='time_output')(l2_3)
 
-    model = Model(inputs=[ac_input, rl_input, t_input],
+    model = Model(inputs=[ac_input, rl_input, t_input, inter_input],
                   outputs=[act_output, role_output, time_output])
 
     if args['optim'] == 'Nadam':
@@ -137,11 +149,12 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
 
     model.compile(loss={'act_output': 'categorical_crossentropy',
                         'role_output': 'categorical_crossentropy',
-                        'time_output': 'mae'}, optimizer=opt)
+                        'time_output': 'mae'}, optimizer=opt, metrics=['accuracy'])
 
     model.summary()
-
-    early_stopping = EarlyStopping(monitor='val_loss', patience=50)
+    model_history_file_path = os.path.join(output_folder, "parameters", "model_history_log.csv")
+    csv_logger = CSVLogger(model_history_file_path, append=True)
+    early_stopping = EarlyStopping(monitor='val_loss', patience=20)
     cb = tc.TimingCallback(output_folder)
     clean_models = cm.CleanSavedModelsCallback(output_folder, 2)
 
@@ -172,16 +185,71 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
         batch_size = args['batch_size']
     print("Batch Size : ", batch_size)
 
-    model.fit({'ac_input': vec['prefixes']['activities'],
+    history = model.fit({'ac_input': vec['prefixes']['activities'],
                 'rl_input': vec['prefixes']['roles'],
-                't_input': vec['prefixes']['times']},
+                't_input': vec['prefixes']['times'],
+                'inter_input': vec['prefixes']['inter_attr']},
               {'act_output': vec['next_evt']['activities'],
                 'role_output': vec['next_evt']['roles'],
                 'time_output': vec['next_evt']['times']},
               validation_split=0.2,
               verbose=2,
               callbacks=[early_stopping, model_checkpoint,
-                          lr_reducer, cb, clean_models],
+                          lr_reducer, cb, clean_models, csv_logger],
               batch_size=batch_size,
               epochs=args['epochs'])
+
+
+    with st.container():
+
+        st.subheader("Shared Categorical Model Performance")
+
+        fcol1, fcol2, fcol3 = st.columns([2, 2, 2])
+
+        with fcol1:
+            fig1 = plt.figure()
+            plt.plot(history.history['act_output_loss'], label='train')
+            plt.plot(history.history['val_act_output_loss'], label='test')
+            plt.plot(history.history['act_output_accuracy'], label='acc')
+            plt.title('Activity Loss')
+            plt.ylabel('loss/accuracy')
+            plt.xlabel('epoch')
+            plt.legend(['train', 'test', 'acc'], loc='upper left')
+            # plt.show()
+            st.write(fig1);
+
+        with fcol2:
+            fig2 = plt.figure()
+            plt.plot(history.history['role_output_loss'], label='train')
+            plt.plot(history.history['val_role_output_loss'], label='test')
+            plt.plot(history.history['act_output_accuracy'], label='acc')
+            plt.title('Role Loss')
+            plt.ylabel('loss/accuracy')
+            plt.xlabel('epoch')
+            plt.legend(['train', 'test', 'acc'], loc='upper left')
+            st.write(fig2);
+
+        with fcol3:
+            fig3 = plt.figure()
+            plt.plot(history.history['time_output_loss'], label='train')
+            plt.plot(history.history['val_time_output_loss'], label='test')
+            plt.plot(history.history['act_output_accuracy'], label='acc')
+            plt.title('Time Loss')
+            plt.ylabel('loss/accuracy')
+            plt.xlabel('epoch')
+            plt.legend(['train', 'test', 'acc'], loc='upper left')
+            st.write(fig3);
+
+
+    # with st.container():
+    # fcol4 = st.columns(1)
+    # with fcol4:
+    fig4 = plt.figure()
+    plt.plot(history.history['loss'], label='train')
+    plt.plot(history.history['val_loss'], label='test')
+    plt.title('Model Loss')
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'test'], loc='upper left')
+    st.write(fig4);
 

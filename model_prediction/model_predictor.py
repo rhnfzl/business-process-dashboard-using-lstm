@@ -122,6 +122,17 @@ class ModelPredictor():
         elif parms['mode'] == 'batch':
             df_test = pd.DataFrame(df_test.data)
             df_test = df_test[~df_test.task.isin(['Start', 'End'])]
+            df_test = df_test.groupby("caseid").filter(
+                lambda x: len(x) >= min(parms['batchlogrange']) and len(x) <= max(parms['batchlogrange']))
+
+            if df_test.empty is True:
+                st.error("The Range of Event Number doesn't have any Case Id's")
+                raise ValueError(output_route)
+            _count = df_test['caseid'].value_counts().to_frame()
+            _count.reset_index(level=0, inplace=True)
+            _count.sort_values(by=['caseid'], inplace=True)
+            print("Count of respective Case Id")
+            print(_count)
         return df_test
 
     def load_parameters(self):
@@ -291,6 +302,8 @@ class ModelPredictor():
         # # Replacing from Dictionary Values to it's original name
         # results_dash['ac_expect'] = results_dash.ac_expect.replace(parms['index_ac'])
         # results_dash['rl_expect'] = results_dash.rl_expect.replace(parms['index_rl'])
+        print("Final Dataframe Before Display")
+        print(pred_results_df)
         if parms['mode'] in ['batch']:
             results_dash = ModelPredictor.dashboard_prediction_intial_manuplation(pred_results_df, parms)
             #as the static function is calling static function class has to be mentioned
@@ -306,7 +319,6 @@ class ModelPredictor():
         #     results_dash = pred_results_df[['ac_prefix', 'rl_prefix', 'tm_prefix', 'pref_size', 'run_num', 'implementation']].copy()
         #     results_dash = pred_results_df.drop(['ac_prefix', 'rl_prefix', 'tm_prefix', 'pref_size', 'run_num', 'implementation'], axis=1)
         # elif parms['mode'] == 'batch':
-        # print(pred_results_df)
         results_dash = pred_results_df[['ac_prefix', 'rl_prefix', 'tm_prefix', 'run_num', 'implementation']].copy()
         results_dash = pred_results_df.drop(['ac_prefix', 'rl_prefix', 'tm_prefix', 'run_num', 'implementation'], axis=1)
         # Replacing from Dictionary Values to it's original name
@@ -1529,9 +1541,9 @@ class EvaluateTask():
             final_similarity_measure_tm.rename(columns={'Time': 'MAE'}, inplace=True)
 
             st.subheader("Activity : Predictions vs Event Number")
-            st.area_chart(final_similarity_measure_ac)
+            st.bar_chart(final_similarity_measure_ac)
             st.subheader("Role : Predictions vs Event Number")
-            st.area_chart(final_similarity_measure_rl)
+            st.bar_chart(final_similarity_measure_rl)
             st.subheader("Time : Predictions vs Event Number")
             st.area_chart(final_similarity_measure_tm)
 

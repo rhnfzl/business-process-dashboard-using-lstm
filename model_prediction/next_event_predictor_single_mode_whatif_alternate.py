@@ -319,43 +319,43 @@ class NextEventPredictor():
                     st.session_state['initial_prediction']['ss_initpredict' + str(_ik + 1)]['pos_tm_ss'].extend(
                         [[preds[2][0][0]]])
 
-                # #--Multiverse
-                # for _ih in range(parameters['multiprednum']):
-                #
-                #     if "ss_initpredict" + str(_ih + 1) in st.session_state['initial_prediction']:
-                #         print("Inital Prediction : ", st.session_state['initial_prediction'])
-                #         print("pred_fltr_idx : ", pred_fltr_idx)
-                #
-                #         _serie_predict_ac = [
-                #             st.session_state['initial_prediction']["ss_initpredict" + str(_ih + 1)]["pos_ac_ss"][:idx]
-                #             for idx in range(1, pred_fltr_idx + 2)]  # range starts with 1 to avoid start
-                #         _serie_predict_rl = [
-                #             st.session_state['initial_prediction']["ss_initpredict" + str(_ih + 1)]["pos_rl_ss"][:idx]
-                #             for idx in range(1, pred_fltr_idx + 2)] # range starts with 1 to avoid start
-                #         _serie_predict_tm = [np.array(
-                #             st.session_state['initial_prediction']["ss_initpredict" + str(_ih + 1)]['pos_tm_ss'][:idx])
-                #                              for idx in
-                #                              range(1, pred_fltr_idx + 2)] # range starts with 1 to avoid start
-                #
-                #         # _test_serie_predict_ac = [
-                #         #     st.session_state['initial_prediction']["ss_initpredict" + str(_ih + 1)]["pos_ac_ss"][:idx]
-                #         #     for idx in range(1, pred_fltr_idx + 2)]  # range starts with 1 to avoid start
-                #         #
-                #         # print("Test Series : ", _test_serie_predict_ac)
-                #         # ----Check the Vector length is same or not
-                #         # if (len(self.spl['prefixes']['activities'][:pred_fltr_idx]) == len(_serie_predict_ac)) and (
-                #         #         len(self.spl['prefixes']['roles'][:pred_fltr_idx]) == len(_serie_predict_rl)) and (
-                #         #         len(self.spl['prefixes']['times'][:pred_fltr_idx]) == len(_serie_predict_tm)) and (
-                #         #         'multi_pred_ss' in st.session_state):
-                #         if 'multi_pred_ss' in st.session_state:
-                #             # print("--------------Input to Multiverse Prediction",(_ih+ 1), "--------------------")
-                #             # print("Activity Prefixes :", _serie_predict_ac)
-                #             # print("Role Prefixes :", _serie_predict_rl)
-                #             # print("Time Prefixes :", _serie_predict_tm)
-                #
-                #             self._predict_next_event_shared_cat_pred(parameters, vectorizer, _serie_predict_ac,
-                #                                                      _serie_predict_rl, _serie_predict_tm,
-                #                                                      _ih)  # Control the future pred
+                #--Multiverse
+                for _ih in range(parameters['multiprednum']):
+
+                    if "ss_initpredict" + str(_ih + 1) in st.session_state['initial_prediction']:
+                        print("Inital Prediction : ", st.session_state['initial_prediction'])
+                        print("pred_fltr_idx : ", pred_fltr_idx)
+
+                        _serie_predict_ac = [
+                            st.session_state['initial_prediction']["ss_initpredict" + str(_ih + 1)]["pos_ac_ss"][:idx]
+                            for idx in range(1, pred_fltr_idx + 2)]  # range starts with 1 to avoid start
+                        _serie_predict_rl = [
+                            st.session_state['initial_prediction']["ss_initpredict" + str(_ih + 1)]["pos_rl_ss"][:idx]
+                            for idx in range(1, pred_fltr_idx + 2)] # range starts with 1 to avoid start
+                        _serie_predict_tm = [np.array(
+                            st.session_state['initial_prediction']["ss_initpredict" + str(_ih + 1)]['pos_tm_ss'][:idx])
+                                             for idx in
+                                             range(1, pred_fltr_idx + 2)] # range starts with 1 to avoid start
+
+                        # _test_serie_predict_ac = [
+                        #     st.session_state['initial_prediction']["ss_initpredict" + str(_ih + 1)]["pos_ac_ss"][:idx]
+                        #     for idx in range(1, pred_fltr_idx + 2)]  # range starts with 1 to avoid start
+                        #
+                        # print("Test Series : ", _test_serie_predict_ac)
+                        # ----Check the Vector length is same or not
+                        # if (len(self.spl['prefixes']['activities'][:pred_fltr_idx]) == len(_serie_predict_ac)) and (
+                        #         len(self.spl['prefixes']['roles'][:pred_fltr_idx]) == len(_serie_predict_rl)) and (
+                        #         len(self.spl['prefixes']['times'][:pred_fltr_idx]) == len(_serie_predict_tm)) and (
+                        #         'multi_pred_ss' in st.session_state):
+                        if 'multi_pred_ss' in st.session_state:
+                            # print("--------------Input to Multiverse Prediction",(_ih+ 1), "--------------------")
+                            # print("Activity Prefixes :", _serie_predict_ac)
+                            # print("Role Prefixes :", _serie_predict_rl)
+                            # print("Time Prefixes :", _serie_predict_tm)
+
+                            self._predict_next_event_shared_cat_pred(parameters, vectorizer, _serie_predict_ac,
+                                                                     _serie_predict_rl, _serie_predict_tm,
+                                                                     _ih)  # Control the future pred
 
             if not parameters['one_timestamp']:
                 predictions.extend([preds[2][0][1]])

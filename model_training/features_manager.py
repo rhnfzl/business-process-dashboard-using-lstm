@@ -23,6 +23,7 @@ class FeaturesMannager():
         self.resources = pd.DataFrame
         self.norm_method = params['norm_method']
         self.filename = params['file_name']
+        self.activity = params['activity']
         self._scalers = dict()
         # self.scale_dispatcher = {'basic': self._scale_base,
         #                          'inter': self._scale_inter}
@@ -127,37 +128,46 @@ class FeaturesMannager():
         return scaler
 
     def _scale_base(self, log, add_cols):
-        add_cat = {}
-        if self.one_timestamp:
-            log, scale_args = self.scale_feature(log, 'dur', self.norm_method)
+        # add_cat = {}
+        if self.activity != 'training':
+            norm_cols = [col for col in log.columns if '_norm' in col]
+            scale_args = dict()
         else:
-            log, dur_scale = self.scale_feature(log, 'dur', self.norm_method)
-            log, wait_scale = self.scale_feature(log, 'wait', self.norm_method)
+            norm_cols = list()
+
+        if self.one_timestamp:
+            if not [wcol for wcol in norm_cols if 'dur' in wcol]:
+                log, scale_args = self.scale_feature(log, 'dur', self.norm_method)
+        else:
+            if not [wcol for wcol in norm_cols if 'dur' in wcol]:
+                log, dur_scale = self.scale_feature(log, 'dur', self.norm_method)
+            if not [wcol for wcol in norm_cols if 'wait' in wcol]:
+                log, wait_scale = self.scale_feature(log, 'wait', self.norm_method)
             scale_args = {'dur': dur_scale, 'wait': wait_scale}
         for col in add_cols:
-            if col == 'daytime':
-                log, _ = self.scale_feature(log, 'daytime', 'day_secs', True)
-            elif col == 'open_cases':
-                log, _ = self.scale_feature(log, 'open_cases', self.norm_method)
-            elif col == 'weekday':
-                # continue
-                log, _ = self.scale_feature(log, 'weekday', None)
-            elif 'sepsis' in self.filename:
-                if col == 'Diagnose_ord':
-                    log = self.ordinal_encoder(log, 'Diagnose')
-                    log, _ = self.scale_feature(log, 'Diagnose_ord', None)
-                elif col == 'CRP':
-                    log, _ = self.scale_feature(log, 'CRP', self.norm_method)
-                elif col == 'LacticAcid':
-                    log, _ = self.scale_feature(log, 'LacticAcid', self.norm_method)
-                elif col == 'Leucocytes':
-                    log, _ = self.scale_feature(log, 'Leucocytes', self.norm_method)
-                elif col == 'Diagnose':
-                    log, _ = self.scale_feature(log, 'Diagnose', self.norm_method)
-                elif col == 'Age':
-                    log, _ = self.scale_feature(log, 'Age', self.norm_method)
-            else:
-                log, _ = self.scale_feature(log, col, self.norm_method, True)
+            if not [wcol for wcol in norm_cols if col in wcol]:
+                if col == 'daytime':
+                        log, _ = self.scale_feature(log, 'daytime', 'day_secs', True)
+                elif col == 'open_cases':
+                        log, _ = self.scale_feature(log, 'open_cases', 'standard')
+                elif col == 'weekday':
+                        log, _ = self.scale_feature(log, 'weekday', None)
+                elif 'sepsis' in self.filename: #Log specific Logic
+                    if col == 'Diagnose_ord':
+                            log = self.ordinal_encoder(log, 'Diagnose')
+                            log, _ = self.scale_feature(log, 'Diagnose_ord', None)
+                    elif col == 'CRP':
+                            log, _ = self.scale_feature(log, 'CRP', 'standard')
+                    elif col == 'LacticAcid':
+                            log, _ = self.scale_feature(log, 'LacticAcid', 'standard')
+                    elif col == 'Leucocytes':
+                            log, _ = self.scale_feature(log, 'Leucocytes', 'standard')
+                    elif col == 'Diagnose':
+                            log, _ = self.scale_feature(log, 'Diagnose', 'standard')
+                    elif col == 'Age':
+                            log, _ = self.scale_feature(log, 'Age', 'standard')
+                else:
+                        log, _ = self.scale_feature(log, col, self.norm_method, True)
         return log, scale_args
 
     # def _scale_inter(self, log, add_cols):
@@ -178,6 +188,7 @@ class FeaturesMannager():
     # =========================================================================
     # Scale features to create dur_norm
     # =========================================================================
+
     @staticmethod
     def scale_feature(log, feature, method, replace=False):
         """Scales a number given a technique.

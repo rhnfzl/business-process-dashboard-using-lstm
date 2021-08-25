@@ -341,6 +341,7 @@ def main(argv, filter_parms=None, filter_parameter=None):
                     parameters['batch_mode'] = ''
                     parameters['batchprefixnum'] = ''
                     parameters['batchpredchoice'] = ''
+                    parameters['batchlogrange'] = ''
                     #   Saves the result in the URL in the Next mode
                     app_state = st.experimental_get_query_params()
                     if "my_saved_result" in app_state:
@@ -554,94 +555,112 @@ def main(argv, filter_parms=None, filter_parameter=None):
                     _count = _log['caseid'].value_counts().to_frame()
                     _count.reset_index(level=0, inplace=True)
                     _count.sort_values(by=['caseid'], inplace=True)
+                    _log_event_select = list(set(_count['caseid'].values.tolist()))
                     _count = (_count['caseid'].iloc[:1].values.tolist()[0])-1
 
-                    with st.sidebar.expander('Type of Batch Event Processing'):
-                        st.info("Select **Execution Mode** for simulating the dashboard for the Users, **Evaluation Mode** to judge the trustworthiness of the ML model prediction")
-                        batch_option = st.radio('', ['Base Mode', 'Pre-Select Prefix Mode'], key="batch_event_processing", on_change=clear_cache)
+                    with st.sidebar.expander('Select Range of Number of Events'):
+                        st.info("Select the range of Number of events need to be evaluated")
+                        range_event_number = st.slider('', int(min(_log_event_select)), int(max(_log_event_select)),
+                                                       (int(min(_log_event_select)), int(max(_log_event_select))),
+                                                       key="range_of_event_number", on_change=clear_cache)
+                        # range_event_number = st.select_slider('', min(_log_event_select), max(_log_event_select),
+                        #                                _log_event_select, key="range_of_event_number", on_change=clear_cache)
 
-                    if batch_option == 'Base Mode':
-                        batch_option = 'base_batch'
+                    _log_check = _log.groupby("caseid").filter(
+                        lambda x: len(x) >= min(range_event_number) and len(x) <= max(range_event_number))
 
-                    elif batch_option == 'Pre-Select Prefix Mode':
-                        batch_option = 'pre_prefix'
+                    if _log_check.empty is True:
+                        st.error("The Range of Event Number doesn't have any Case Id's")
+                        raise ValueError(range_event_number)
+                    else:
+                        parameters['batchlogrange'] = range_event_number
 
-                    #----------------------
+                        with st.sidebar.expander('Type of Batch Event Processing'):
+                            st.info("Select **Execution Mode** for simulating the dashboard for the Users, **Evaluation Mode** to judge the trustworthiness of the ML model prediction")
+                            batch_option = st.radio('', ['Base Mode', 'Pre-Select Prefix Mode'], key="batch_event_processing", on_change=clear_cache)
 
-                    if batch_option == 'base_batch':
-                        variant_opt, slider = common_batch_varient(actcount, rolecount)
-                        parameters['batchpredchoice'] = ''
-                        parameters['batchprefixnum'] = ''
+                        if batch_option == 'Base Mode':
+                            batch_option = 'base_batch'
 
-                    elif batch_option == 'pre_prefix':
+                        elif batch_option == 'Pre-Select Prefix Mode':
+                            batch_option = 'pre_prefix'
 
-                        with st.sidebar.expander('Choose Prefix Source'):
-                            st.info("Select **SME** for simulating the input to prediction using the log, "
-                                    "**Prediction** to use the respective prediction as the input for subsequent prediction")
-                            parameters['batchpredchoice'] = st.radio('', ['SME', 'Prediction'], key="radio_select_pred_batch", on_change=clear_cache)
+                        #----------------------
 
-                        with st.sidebar.expander('Select the Number of Prefix'):
-                            st.info("Prefix for each caseid in the batch mode")
-                            prefix_slider = st.slider(
-                                label='', min_value=0,
-                                max_value=_count, key='my_number_prefix_slider_batch', on_change=clear_cache)
+                        if batch_option == 'base_batch':
+                            variant_opt, slider = common_batch_varient(actcount, rolecount)
+                            parameters['batchpredchoice'] = ''
+                            parameters['batchprefixnum'] = ''
 
-                        parameters['batchprefixnum'] = prefix_slider
+                        elif batch_option == 'pre_prefix':
 
-                        variant_opt, slider = common_batch_varient(actcount, rolecount)
+                            with st.sidebar.expander('Choose Prefix Source'):
+                                st.info("Select **SME** for simulating the input to prediction using the log, "
+                                        "**Prediction** to use the respective prediction as the input for subsequent prediction")
+                                parameters['batchpredchoice'] = st.radio('', ['SME', 'Prediction'], key="radio_select_pred_batch", on_change=clear_cache)
 
-                    # with st.sidebar.expander('Variant'):
-                    #     st.info("Select **Max Probability** for the most probable events,"
-                    #             " **Multiple Prediction** for the prediction of the multiple events, "
-                    #             "and **Random Prediction** for prediction of random recommendation of events")
-                    #     variant_opt = st.selectbox("", (
-                    #     'Max Probability', 'Multiple Prediction', 'Random Prediction', 'Multiple Random Prediction'),
-                    #                                        key='variant_opt', on_change=clear_cache)
-                    # #st.sidebar.markdown("""---""")
-                    #
-                    # if variant_opt == 'Max Probability':
-                    #     variant_opt = 'arg_max'
-                    # elif variant_opt == 'Random Prediction':
-                    #     variant_opt = 'random_choice'
-                    # elif variant_opt in ['Multiple Prediction', 'Multiple Random Prediction']:
-                    #     if variant_opt == 'Multiple Prediction':
-                    #         variant_opt = 'multi_pred'
-                    #     elif variant_opt == 'Multiple Random Prediction':
-                    #         variant_opt = 'multi_pred_rand'
-                    #     # variant_opt = 'multi_pred'
-                    #
-                    #     if actcount > rolecount:
-                    #         _maxmulti = rolecount
-                    #     elif rolecount > actcount:
-                    #         _maxmulti = actcount
-                    #     else:
-                    #         _maxmulti = actcount
-                    #
-                    #     with st.sidebar.expander('Number of Predictions'):
-                    #         st.info("**Multiple Predictions : ** minimum 2 predictions and maximum value based on slider")
-                    #         slider = st.slider(
-                    #             label='', min_value=2,
-                    #             max_value=_maxmulti, key='my_number_prediction_slider_batch', on_change=clear_cache)
-                    #     parameters['multiprednum'] = slider  # 3  # Change here for batch mode Prediction
+                            with st.sidebar.expander('Select the Number of Prefix'):
+                                st.info("Prefix for each caseid in the batch mode")
+                                prefix_slider = st.slider(
+                                    label='', min_value=0,
+                                    max_value=_count, key='my_number_prefix_slider_batch', on_change=clear_cache)
 
-                    parameters['multiprednum'] = slider  #
-                    parameters['variant'] = variant_opt  # random_choice, arg_max for variants and repetitions to be tested
-                    parameters['batch_mode'] = batch_option
-                    parameters['next_mode'] = ''
-                    parameters['predchoice'] = ''
-                    st.sidebar.markdown("""---""")
-                    if st.sidebar.button("Process", key='batch_process'):
-                        # print(parameters)
-                        # print(parameters['folder'])
-                        # print(parameters['model_file'])
-                        start = time.time()
+                            parameters['batchprefixnum'] = prefix_slider
 
-                        with st.spinner(text='In progress'):
-                            predictor = pr.ModelPredictor(parameters)
-                        end = time.time()
-                        st.sidebar.write("Elapsed Time (in minutes) : ", (end - start) / 60)
-                        st.success('Done')
-                        # print("Elapsed Time : ", end - start)
+                            variant_opt, slider = common_batch_varient(actcount, rolecount)
+
+                        # with st.sidebar.expander('Variant'):
+                        #     st.info("Select **Max Probability** for the most probable events,"
+                        #             " **Multiple Prediction** for the prediction of the multiple events, "
+                        #             "and **Random Prediction** for prediction of random recommendation of events")
+                        #     variant_opt = st.selectbox("", (
+                        #     'Max Probability', 'Multiple Prediction', 'Random Prediction', 'Multiple Random Prediction'),
+                        #                                        key='variant_opt', on_change=clear_cache)
+                        # #st.sidebar.markdown("""---""")
+                        #
+                        # if variant_opt == 'Max Probability':
+                        #     variant_opt = 'arg_max'
+                        # elif variant_opt == 'Random Prediction':
+                        #     variant_opt = 'random_choice'
+                        # elif variant_opt in ['Multiple Prediction', 'Multiple Random Prediction']:
+                        #     if variant_opt == 'Multiple Prediction':
+                        #         variant_opt = 'multi_pred'
+                        #     elif variant_opt == 'Multiple Random Prediction':
+                        #         variant_opt = 'multi_pred_rand'
+                        #     # variant_opt = 'multi_pred'
+                        #
+                        #     if actcount > rolecount:
+                        #         _maxmulti = rolecount
+                        #     elif rolecount > actcount:
+                        #         _maxmulti = actcount
+                        #     else:
+                        #         _maxmulti = actcount
+                        #
+                        #     with st.sidebar.expander('Number of Predictions'):
+                        #         st.info("**Multiple Predictions : ** minimum 2 predictions and maximum value based on slider")
+                        #         slider = st.slider(
+                        #             label='', min_value=2,
+                        #             max_value=_maxmulti, key='my_number_prediction_slider_batch', on_change=clear_cache)
+                        #     parameters['multiprednum'] = slider  # 3  # Change here for batch mode Prediction
+
+                        parameters['multiprednum'] = slider  #
+                        parameters['variant'] = variant_opt  # random_choice, arg_max for variants and repetitions to be tested
+                        parameters['batch_mode'] = batch_option
+                        parameters['next_mode'] = ''
+                        parameters['predchoice'] = ''
+                        st.sidebar.markdown("""---""")
+                        if st.sidebar.button("Process", key='batch_process'):
+                            # print(parameters)
+                            # print(parameters['folder'])
+                            # print(parameters['model_file'])
+                            start = time.time()
+
+                            with st.spinner(text='In progress'):
+                                predictor = pr.ModelPredictor(parameters)
+                            end = time.time()
+                            st.sidebar.write("Elapsed Time (in minutes) : ", (end - start) / 60)
+                            st.success('Done')
+                            # print("Elapsed Time : ", end - start)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

@@ -68,6 +68,8 @@ class NextEventSamplesCreator():
             list: list of prefixes and expected sufixes.
         """
         print(self.log.dtypes)
+
+        # print(self.log)
         times = ['dur_norm'] if parms['one_timestamp'] else ['dur_norm', 'wait_norm']
         equi = {'ac_index': 'activities', 'rl_index': 'roles'}
         vec = {'prefixes': dict(),
@@ -82,20 +84,14 @@ class NextEventSamplesCreator():
         x_inter_dict, y_inter_dict = dict(), dict()
         self.log = self.reformat_events(columns, parms['one_timestamp'])
         # n-gram definition
+        # print("Log")
+        # print(self.log)
         for i, _ in enumerate(self.log):
             #print("Enumerate Log (i) :", i)
             for x in columns:
-                #print("Columns (x) :", x)
                 serie = [self.log[i][x][:idx]
                          for idx in range(1, len(self.log[i][x]))] #range starts with 1 to avoid blank state
                 y_serie = [x[-1] for x in serie] #selecting the last value from each list of list
-                # print("serie : ", serie)
-                # print("yserie :", y_serie)
-                # if x == 'ac_index':
-                #     print("log[i][x] :", self.log[i][x])
-                #     print("Length of log[i][x] :", len(self.log[i][x]))
-                #     print("Serie : ", serie)
-                #     print("y_serie : ", y_serie)
                 if parms['mode'] == 'batch' and parms['batch_mode'] == 'pre_prefix':
                     serie = serie[parms['batchprefixnum']:-1]
                     y_serie = y_serie[parms['batchprefixnum']+1:]  # to avoid start value i.e 0
@@ -113,13 +109,10 @@ class NextEventSamplesCreator():
                         vec['next_evt'][equi[x]] + y_serie
                         if i > 0 else y_serie)
                 elif x in times:
-                    # print("Times (x) : ", x)
                     x_times_dict[x] = (
                         x_times_dict[x] + serie if i > 0 else serie)
                     y_times_dict[x] = (
                         y_times_dict[x] + y_serie if i > 0 else y_serie)
-                    # print("x_times_dict[x] : ", x_times_dict[x])
-                    # print("y_times_dict[x] : ", y_times_dict[x])
                 # elif x == 'weekday':
                 #     x_weekday = (
                 #         x_weekday + serie if i > 0 else serie)
