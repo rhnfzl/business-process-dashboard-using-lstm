@@ -302,8 +302,8 @@ class ModelPredictor():
         # # Replacing from Dictionary Values to it's original name
         # results_dash['ac_expect'] = results_dash.ac_expect.replace(parms['index_ac'])
         # results_dash['rl_expect'] = results_dash.rl_expect.replace(parms['index_rl'])
-        print("Final Dataframe Before Display")
-        print(pred_results_df)
+        # print("Final Dataframe Before Display")
+        # print(pred_results_df)
         if parms['mode'] in ['batch']:
             results_dash = ModelPredictor.dashboard_prediction_intial_manuplation(pred_results_df, parms)
             #as the static function is calling static function class has to be mentioned

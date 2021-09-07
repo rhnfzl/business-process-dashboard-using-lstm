@@ -68,6 +68,7 @@ class NextEventSamplesCreator():
             list: list of prefixes and expected sufixes.
         """
         print(self.log.dtypes)
+        print("Columns : ", columns)
 
         # print(self.log)
         times = ['dur_norm'] if parms['one_timestamp'] else ['dur_norm', 'wait_norm']
@@ -89,6 +90,7 @@ class NextEventSamplesCreator():
         for i, _ in enumerate(self.log):
             #print("Enumerate Log (i) :", i)
             for x in columns:
+                print(x)
                 serie = [self.log[i][x][:idx]
                          for idx in range(1, len(self.log[i][x]))] #range starts with 1 to avoid blank state
                 y_serie = [x[-1] for x in serie] #selecting the last value from each list of list
