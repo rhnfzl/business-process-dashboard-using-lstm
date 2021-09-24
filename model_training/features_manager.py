@@ -264,3 +264,8 @@ class FeaturesMannager():
             if replace:
                 log = log.drop(feature, axis=1)
         return log
+
+    # @staticmethod
+    # def embedding_encoder(log, feature, replace=False):
+    #
+    #     return log

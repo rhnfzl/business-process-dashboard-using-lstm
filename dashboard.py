@@ -38,6 +38,20 @@ st.markdown(
 	unsafe_allow_html=True
 )
 
+# hide_menu_style = """
+#         <style>
+#         #MainMenu {visibility: hidden; }
+#         footer {visibility: hidden;}
+#         </style>
+#         """
+
+hide_menu_style = """
+        <style>
+        footer {visibility: hidden;}
+        </style>
+        """
+st.markdown(hide_menu_style, unsafe_allow_html=True)
+
 #Condense the layout
 padding = 1
 st.markdown(f""" <style>
