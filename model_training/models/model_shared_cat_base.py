@@ -4,12 +4,14 @@ Created on Thu Feb 28 10:15:12 2019
 
 @author: Manuel Camargo
 """
+# import keras.backend as K
+
 import os
 import streamlit as st
 import matplotlib.pyplot as plt
 
 from tensorflow.keras.models import Model
-from keras.layers import Input, Embedding, Concatenate
+from tensorflow.keras.layers import Input, Embedding, Concatenate
 from tensorflow.keras.layers import Dense, LSTM, BatchNormalization
 from tensorflow.keras.optimizers import Nadam, Adam, SGD, Adagrad
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, CSVLogger
@@ -26,21 +28,18 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
         bool: The return value. True for success, False otherwise.
     """
 
+    print("----------------# Shared Base Model")
 # =============================================================================
 #     Input layer
 # =============================================================================
-
     ac_input = Input(shape=(vec['prefixes']['activities'].shape[1], ), name='ac_input')
     rl_input = Input(shape=(vec['prefixes']['roles'].shape[1], ), name='rl_input')
     t_input = Input(shape=(vec['prefixes']['times'].shape[1],
                            vec['prefixes']['times'].shape[2]), name='t_input')
-    inter_input = Input(shape=(vec['prefixes']['inter_attr'].shape[1],
-                            vec['prefixes']['inter_attr'].shape[2]), name='inter_input')
 
-#=============================================================================
+# =============================================================================
 #    Embedding layer for categorical attributes
 # =============================================================================
-
     ac_embedding = Embedding(ac_weights.shape[0],
                              ac_weights.shape[1],
                              weights=[ac_weights],
@@ -54,31 +53,33 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
                              trainable=False, name='rl_embedding')(rl_input)
 
 # =============================================================================
+#    Concatenation layer
+# =============================================================================
+
+    merged = Concatenate(name='concatenated', axis=2)([ac_embedding, rl_embedding])
+
+# =============================================================================
 #    Layer 1
 # =============================================================================
-    concatenate = Concatenate(name='concatenated', axis=2)([ac_embedding, rl_embedding, t_input, inter_input])
 
-    # merged = Dot(name = 'dot_ac_rl', normalize = True, axes = 2)([ac_embedding, rl_embedding])
+    l1_c1 = LSTM(args['l_size'],
+                 kernel_initializer='glorot_uniform',
+                 return_sequences=True,
+                 dropout=0.2,
+                 implementation=args['imp'])(merged)
 
-
-    if args['lstm_act'] is not None:
-        l1_c1 = LSTM(args['l_size'],
-                     activation=args['lstm_act'],
-                     kernel_initializer='glorot_uniform',
-                     return_sequences=True,
-                     dropout=0.2,
-                     implementation=args['imp'])(concatenate)
-    else:
-        l1_c1 = LSTM(args['l_size'],
-                     kernel_initializer='glorot_uniform',
-                     return_sequences=True,
-                     dropout=0.2,
-                     implementation=args['imp'])(concatenate)
+    l1_c3 = LSTM(args['l_size'],
+                 activation=args['lstm_act'],
+                 kernel_initializer='glorot_uniform',
+                 return_sequences=True,
+                 dropout=0.2,
+                 implementation=args['imp'])(t_input)
 
 # =============================================================================
 #    Batch Normalization Layer
 # =============================================================================
     batch1 = BatchNormalization()(l1_c1)
+    batch3 = BatchNormalization()(l1_c3)
 
 # =============================================================================
 # The layer specialized in prediction
@@ -96,19 +97,13 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
                  dropout=0.2,
                  implementation=args['imp'])(batch1)
 
-    if args['lstm_act'] is not None:
-        l2_3 = LSTM(args['l_size'],
-                    activation=args['lstm_act'],
-                    kernel_initializer='glorot_uniform',
-                    return_sequences=False,
-                    dropout=0.2,
-                    implementation=args['imp'])(batch1)
-    else:
-        l2_3 = LSTM(args['l_size'],
-                    kernel_initializer='glorot_uniform',
-                    return_sequences=False,
-                    dropout=0.2,
-                    implementation=args['imp'])(batch1)
+#   The layer specialized in role prediction
+    l2_3 = LSTM(args['l_size'],
+                activation=args['lstm_act'],
+                kernel_initializer='glorot_uniform',
+                return_sequences=False,
+                dropout=0.2,
+                implementation=args['imp'])(batch3)
 
 # =============================================================================
 # Output Layer
@@ -132,17 +127,14 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
         time_output = Dense(vec['next_evt']['times'].shape[1],
                             kernel_initializer='glorot_uniform',
                             name='time_output')(l2_3)
-    model = Model(inputs=[ac_input, rl_input, t_input, inter_input],
+
+    model = Model(inputs=[ac_input, rl_input, t_input],
                   outputs=[act_output, role_output, time_output])
 
     if args['optim'] == 'Nadam':
         opt = Nadam(learning_rate=0.002, beta_1=0.9, beta_2=0.999)
     elif args['optim'] == 'Adam':
-        opt = Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False) #Hyperparameter Opt with amsgrad=True/False
-                                                                #   AMSGrad is an extension to the Adam version of
-                                                                #   gradient descent that attempts to improve the
-                                                                #   convergence properties of the algorithm, avoiding
-                                                                #   large abrupt changes in the learning rate for each input variable
+        opt = Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False)
     elif args['optim'] == 'SGD':
         opt = SGD(learning_rate=0.01, momentum=0.0, nesterov=False)
     elif args['optim'] == 'Adagrad':
@@ -168,7 +160,7 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
     model_checkpoint = ModelCheckpoint(output_file_path,
                                        monitor='val_loss',
                                        verbose=0,
-                                       save_best_only=True, #saves when the model is considered the "best" and the latest best model according to the quantity monitored will not be overwritten.
+                                       save_best_only=True,
                                        save_weights_only=False,
                                        mode='auto')
     lr_reducer = ReduceLROnPlateau(monitor='val_loss',
@@ -184,24 +176,24 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
         batch_size = vec['prefixes']['activities'].shape[1]
     else:
         batch_size = args['batch_size']
+    print("Batch Size : ", batch_size)
 
     history = model.fit({'ac_input': vec['prefixes']['activities'],
-                        'rl_input': vec['prefixes']['roles'],
-                       't_input': vec['prefixes']['times'],
-                       'inter_input': vec['prefixes']['inter_attr']},
-                      {'act_output': vec['next_evt']['activities'],
-                       'role_output': vec['next_evt']['roles'],
-                       'time_output': vec['next_evt']['times']},
-                      validation_split=0.2,
-                      verbose=2,
-                      callbacks=[early_stopping, model_checkpoint,
-                                 lr_reducer, cb, clean_models, csv_logger],
-                      batch_size=batch_size,
-                      epochs=args['epochs'])
+                   'rl_input': vec['prefixes']['roles'],
+                   't_input': vec['prefixes']['times']},
+                {'act_output': vec['next_evt']['activities'],
+                 'role_output': vec['next_evt']['roles'],
+                 'time_output': vec['next_evt']['times']},
+                  validation_split=0.2,
+                  verbose=2,
+                  callbacks=[early_stopping, model_checkpoint, lr_reducer, cb, clean_models, csv_logger],
+                  batch_size=batch_size,
+                  epochs=args['epochs'])
+
 
     with st.container():
 
-        st.subheader("Fully Shared Model Performance")
+        st.subheader("Shared Categorical Model Performance")
 
         fcol1, fcol2, fcol3 = st.columns([2, 2, 2])
 
@@ -251,3 +243,4 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
     plt.xlabel('epoch')
     plt.legend(['train', 'test'], loc='upper left')
     st.write(fig4);
+

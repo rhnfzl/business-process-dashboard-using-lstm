@@ -92,11 +92,15 @@ def main(argv):
             parameters['file_name'] = train_file_name #'sepsis_cases_1.csv' #Change Here
             # Specific model training parameters
             if parameters['activity'] == 'training':
-                train_model = formt.selectbox("Training Model", ['Fully Shared', 'Shared Categorical'], index=0)
+                train_model = formt.selectbox("Training Model", ['Fully Shared', 'Shared Categorical', 'Intercase Fully Shared', 'Intercase Shared Categorical'], index=0)
                 if train_model == 'Fully Shared':
-                    parameters['model_type'] = 'concatenated'
+                    parameters['model_type'] = 'concatenated_base'
                 elif train_model == 'Shared Categorical':
-                    parameters['model_type'] = 'shared_cat'
+                    parameters['model_type'] = 'shared_cat_base'
+                elif train_model == 'Intercase Fully Shared':
+                    parameters['model_type'] = 'concatenated_inter'
+                elif train_model == 'Intercase Shared Categorical':
+                    parameters['model_type'] = 'shared_cat_inter'
 
                 type_of_execution = formt.selectbox("Execute On", ["CPU", "GPU"], index=1)
                 if type_of_execution == "CPU":

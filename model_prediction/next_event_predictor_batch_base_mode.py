@@ -40,6 +40,7 @@ class NextEventPredictor():
         #     st.subheader("Next Event")
         #     st.table(spl_df_next)
             #print("spl :", spl_df)
+        print("Vectorizer : ", vectorizer)
         if params['variant'] in ['multi_pred', 'multi_pred_rand']:
             self.nx = params['multiprednum']
         predictor = self._get_predictor(params['model_type'], params['mode'], params['next_mode'])
@@ -87,21 +88,19 @@ class NextEventPredictor():
                     .reshape((parameters['dim']['time_dim'], times_attr_num))]
                 )
 
-            # add intercase features if necessary
-            # if vectorizer in ['basic']:
-            #     inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram]
-            #
-            # elif vectorizer in ['inter']:
-                # times input shape(1,5,1)
-            inter_attr_num = (self.spl['prefixes']['inter_attr'][i].shape[1])
-            x_inter_ngram = np.array(
-                [np.append(np.zeros((
-                    parameters['dim']['time_dim'], inter_attr_num)),
-                    self.spl['prefixes']['inter_attr'][i], axis=0)
-                    [-parameters['dim']['time_dim']:]
-                    .reshape((parameters['dim']['time_dim'], inter_attr_num))]
-                )
-            inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram, x_inter_ngram]
+            # intercase features if necessary
+            if vectorizer in ['basic']:
+                inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram]
+            elif vectorizer in ['inter']:
+                inter_attr_num = (self.spl['prefixes']['inter_attr'][i].shape[1])
+                x_inter_ngram = np.array(
+                    [np.append(np.zeros((
+                        parameters['dim']['time_dim'], inter_attr_num)),
+                        self.spl['prefixes']['inter_attr'][i], axis=0)
+                        [-parameters['dim']['time_dim']:]
+                        .reshape((parameters['dim']['time_dim'], inter_attr_num))]
+                    )
+                inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram, x_inter_ngram]
 
             pref_size = len(self.spl['prefixes']['activities'][i])
             #print("input_time : ", x_t_ngram)

@@ -25,9 +25,9 @@ class FeaturesMannager():
         self.filename = params['file_name']
         self.activity = params['activity']
         self._scalers = dict()
-        # self.scale_dispatcher = {'basic': self._scale_base,
-        #                          'inter': self._scale_inter}
-        self.scale_dispatcher = {'basic': self._scale_base} #since only inter case feature models are being trained the configuration file is renamed in such a way
+        self.scale_dispatcher = {'basic': self._scale_base,
+                                 'inter': self._scale_inter}
+        # self.scale_dispatcher = {'basic': self._scale_base} #since only inter case feature models are being trained the configuration file is renamed in such a way
 
     def calculate(self, log, add_cols, type_call):
         if type_call == 'train':
@@ -128,6 +128,15 @@ class FeaturesMannager():
         return scaler
 
     def _scale_base(self, log, add_cols):
+        if self.one_timestamp:
+            log, scale_args = self.scale_feature(log, 'dur', self.norm_method)
+        else:
+            log, dur_scale = self.scale_feature(log, 'dur', self.norm_method)
+            log, wait_scale = self.scale_feature(log, 'wait', self.norm_method)
+            scale_args = {'dur': dur_scale, 'wait': wait_scale}
+        return log, scale_args
+
+    def _scale_inter(self, log, add_cols):
         # add_cat = {}
         if self.activity != 'training':
             norm_cols = [col for col in log.columns if '_norm' in col]
@@ -153,37 +162,22 @@ class FeaturesMannager():
                 elif col == 'weekday':
                         log, _ = self.scale_feature(log, 'weekday', None)
                 elif 'sepsis' in self.filename: #Log specific Logic
-                    if col == 'Diagnose_ord':
+                    if col == 'Diagnose_ord': #because of large number of catagorical variable
                             log = self.ordinal_encoder(log, 'Diagnose')
-                            log, _ = self.scale_feature(log, 'Diagnose_ord', None)
+                            log, _ = self.scale_feature(log, 'Diagnose_ord', 'max')
                     elif col == 'CRP':
-                            log, _ = self.scale_feature(log, 'CRP', 'standard')
+                            log, _ = self.scale_feature(log, 'CRP', self.norm_method)
                     elif col == 'LacticAcid':
-                            log, _ = self.scale_feature(log, 'LacticAcid', 'standard')
+                            log, _ = self.scale_feature(log, 'LacticAcid', self.norm_method)
                     elif col == 'Leucocytes':
-                            log, _ = self.scale_feature(log, 'Leucocytes', 'standard')
+                            log, _ = self.scale_feature(log, 'Leucocytes', self.norm_method)
                     elif col == 'Diagnose':
-                            log, _ = self.scale_feature(log, 'Diagnose', 'standard')
+                            log, _ = self.scale_feature(log, 'Diagnose', self.norm_method)
                     elif col == 'Age':
-                            log, _ = self.scale_feature(log, 'Age', 'standard')
+                            log, _ = self.scale_feature(log, 'Age', self.norm_method)
                 else:
                         log, _ = self.scale_feature(log, col, self.norm_method, True)
         return log, scale_args
-
-    # def _scale_inter(self, log, add_cols):
-    #     # log, scale_args = self.scale_feature(log, 'dur', self.norm_method)
-    #     if self.one_timestamp:
-    #         log, scale_args = self.scale_feature(log, 'dur', self.norm_method)
-    #     else:
-    #         log, dur_scale = self.scale_feature(log, 'dur', self.norm_method)
-    #         log, wait_scale = self.scale_feature(log, 'wait', self.norm_method)
-    #         scale_args = {'dur': dur_scale, 'wait': wait_scale}
-    #     for col in add_cols:
-    #         if col == 'daytime':
-    #             log, _ = self.scale_feature(log, 'daytime', 'day_secs', True)
-    #         else:
-    #             log, _ = self.scale_feature(log, col, self.norm_method, True)
-    #     return log, scale_args
 
     # =========================================================================
     # Scale features to create dur_norm

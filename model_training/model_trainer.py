@@ -53,7 +53,7 @@ class ModelTrainer():
         # Model definition
         self.model_def = dict()
         self.read_model_definition(params['model_type'])
-        # print(self.model_def)
+        print(self.model_def)
         # Preprocess the event-log
         self.preprocess(params)
         # Train model

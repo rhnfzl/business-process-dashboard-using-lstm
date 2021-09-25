@@ -88,21 +88,19 @@ class NextEventPredictor():
                         .reshape((parameters['dim']['time_dim'], times_attr_num))]
                     )
 
-                # add intercase features if necessary
-                # if vectorizer in ['basic']:
-                #     inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram]
-                #
-                # elif vectorizer in ['inter']:
-                    # times input shape(1,5,1)
-                inter_attr_num = (self.spl['prefixes']['inter_attr'][i].shape[1])
-                x_inter_ngram = np.array(
-                    [np.append(np.zeros((
-                        parameters['dim']['time_dim'], inter_attr_num)),
-                        self.spl['prefixes']['inter_attr'][i], axis=0)
-                        [-parameters['dim']['time_dim']:]
-                        .reshape((parameters['dim']['time_dim'], inter_attr_num))]
-                    )
-                inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram, x_inter_ngram]
+                # intercase features if necessary
+                if vectorizer in ['basic']:
+                    inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram]
+                elif vectorizer in ['inter']:
+                    inter_attr_num = (self.spl['prefixes']['inter_attr'][i].shape[1])
+                    x_inter_ngram = np.array(
+                        [np.append(np.zeros((
+                            parameters['dim']['time_dim'], inter_attr_num)),
+                            self.spl['prefixes']['inter_attr'][i], axis=0)
+                            [-parameters['dim']['time_dim']:]
+                            .reshape((parameters['dim']['time_dim'], inter_attr_num))]
+                        )
+                    inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram, x_inter_ngram]
 
                 pref_size = len(self.spl['prefixes']['activities'][i])
                 #print("input_time : ", x_t_ngram)
@@ -184,11 +182,19 @@ class NextEventPredictor():
 
             # self._predict_next_event_shared_cat_batch_prediction(self, parameters, results,  self.spl['prefixes']['activities'], self.spl['prefixes']['roles'], self.spl['prefixes']['times'], self.spl['prefixes']['inter_attr'])
 
-            results = self._predict_next_event_shared_cat_batch_prediction(parameters, results,
-                                                                 self.spl['prefixes']['activities'],
-                                                                 self.spl['prefixes']['roles'],
-                                                                 self.spl['prefixes']['times'],
-                                                                 self.spl['prefixes']['inter_attr'])
+            if vectorizer in ['basic']:
+                inter_case_vector = []
+                results = self._predict_next_event_shared_cat_batch_prediction(parameters, results,
+                                                                               self.spl['prefixes']['activities'],
+                                                                               self.spl['prefixes']['roles'],
+                                                                               self.spl['prefixes']['times'],
+                                                                               inter_case_vector, vectorizer)
+            elif vectorizer in ['inter']:
+                results = self._predict_next_event_shared_cat_batch_prediction(parameters, results,
+                                                                     self.spl['prefixes']['activities'],
+                                                                     self.spl['prefixes']['roles'],
+                                                                     self.spl['prefixes']['times'],
+                                                                     self.spl['prefixes']['inter_attr'], vectorizer)
 
         return results
 
@@ -291,7 +297,7 @@ class NextEventPredictor():
             raise ValueError(parms['norm_method'])
         return value
 
-    def _predict_next_event_shared_cat_batch_prediction(self, parameters, results,  _preac, _prerl, _pretm, _inter):
+    def _predict_next_event_shared_cat_batch_prediction(self, parameters, results,  _preac, _prerl, _pretm, _inter, vectorizer):
         for i, _ in enumerate(self.spl['prefixes']['activities']):
             if i == 0:
 
@@ -322,15 +328,18 @@ class NextEventPredictor():
                          .reshape((parameters['dim']['time_dim'], times_attr_num))]
                 )
 
-                inter_attr_num = (_inter[i].shape[1])
-                x_inter_ngram = np.array(
-                    [np.append(np.zeros((
-                        parameters['dim']['time_dim'], inter_attr_num)),
-                        _inter[i], axis=0)
-                     [-parameters['dim']['time_dim']:]
-                         .reshape((parameters['dim']['time_dim'], inter_attr_num))]
-                )
-                inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram, x_inter_ngram]
+                if vectorizer in ['basic']:
+                    inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram]
+                elif vectorizer in ['inter']:
+                    inter_attr_num = (_inter[i].shape[1])
+                    x_inter_ngram = np.array(
+                        [np.append(np.zeros((
+                            parameters['dim']['time_dim'], inter_attr_num)),
+                            _inter[i], axis=0)
+                         [-parameters['dim']['time_dim']:]
+                             .reshape((parameters['dim']['time_dim'], inter_attr_num))]
+                    )
+                    inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram, x_inter_ngram]
 
                 pref_size = len(self.spl['prefixes']['activities'][i])
 
@@ -466,15 +475,18 @@ class NextEventPredictor():
                              .reshape((parameters['dim']['time_dim'], times_attr_num))]
                     )
 
-                    inter_attr_num = (_inter[i].shape[1])
-                    x_inter_ngram = np.array(
-                        [np.append(np.zeros((
-                            parameters['dim']['time_dim'], inter_attr_num)),
-                            _inter[i], axis=0)
-                         [-parameters['dim']['time_dim']:]
-                             .reshape((parameters['dim']['time_dim'], inter_attr_num))]
-                    )
-                    inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram, x_inter_ngram]
+                    if vectorizer in ['basic']:
+                        inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram]
+                    elif vectorizer in ['inter']:
+                        inter_attr_num = (_inter[i].shape[1])
+                        x_inter_ngram = np.array(
+                            [np.append(np.zeros((
+                                parameters['dim']['time_dim'], inter_attr_num)),
+                                _inter[i], axis=0)
+                             [-parameters['dim']['time_dim']:]
+                                 .reshape((parameters['dim']['time_dim'], inter_attr_num))]
+                        )
+                        inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram, x_inter_ngram]
 
                     pref_size = len(self.spl['prefixes']['activities'][i])
 

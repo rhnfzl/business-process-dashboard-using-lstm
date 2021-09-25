@@ -6,16 +6,22 @@ Created on Mon Mar 16 09:53:54 2020
 """
 import tensorflow as tf
 
-from model_training.models import model_concatenated as mcatnlb
-from model_training.models import model_shared_cat as mshcat
+
+from model_training.models import model_concatenated_base as mcatnlbbs
+from model_training.models import model_shared_cat_base as mshcatbs
+
+from model_training.models import model_concatenated_inter as mcatnlb
+from model_training.models import model_shared_cat_inter as mshcat
 
 class ModelLoader():
 
     def __init__(self, parms):
         self.parms = parms
         self._trainers = dict()
-        self.trainer_dispatcher = {'concatenated': mcatnlb._training_model,
-                                   'shared_cat': mshcat._training_model}
+        self.trainer_dispatcher = {'concatenated_base': mcatnlbbs._training_model,
+                                   'shared_cat_base': mshcatbs._training_model,
+                                   'concatenated_inter': mcatnlb._training_model,
+                                   'shared_cat_inter': mshcat._training_model}
 
     def train(self, model_type, examples, ac_weights, rl_weights, output_folder):
         loader = self._get_trainer(model_type)
