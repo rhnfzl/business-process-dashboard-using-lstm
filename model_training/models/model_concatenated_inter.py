@@ -37,9 +37,6 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
     inter_input = Input(shape=(vec['prefixes']['inter_attr'].shape[1],
                             vec['prefixes']['inter_attr'].shape[2]), name='inter_input')
 
-
-    print("Intercase Values : ", vec['prefixes']['inter_attr'])
-
 #=============================================================================
 #    Embedding layer for categorical attributes
 # =============================================================================
