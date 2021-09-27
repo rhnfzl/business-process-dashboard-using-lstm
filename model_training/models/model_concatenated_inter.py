@@ -7,6 +7,7 @@ Created on Thu Feb 28 10:15:12 2019
 import os
 import streamlit as st
 import matplotlib.pyplot as plt
+# import shap
 
 from tensorflow.keras.models import Model
 from keras.layers import Input, Embedding, Concatenate, Dot
@@ -16,6 +17,7 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLRO
 
 from support_modules.callbacks import time_callback as tc
 from support_modules.callbacks import clean_models_callback as cm
+
 
 def _training_model(vec, ac_weights, rl_weights, output_folder, args):
     """Example function with types documented in the docstring.
@@ -212,19 +214,6 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
                       batch_size=batch_size,
                       epochs=args['epochs'])
 
-    #--- Without Intercase Features
-
-    # history = model.fit({'ac_input': vec['prefixes']['activities'],
-    #                'rl_input': vec['prefixes']['roles'],
-    #                't_input': vec['prefixes']['times']},
-    #             {'act_output': vec['next_evt']['activities'],
-    #              'role_output': vec['next_evt']['roles'],
-    #              'time_output': vec['next_evt']['times']},
-    #               validation_split=0.2,
-    #               verbose=2,
-    #               callbacks=[early_stopping, model_checkpoint, lr_reducer, cb, clean_models, csv_logger],
-    #               batch_size=batch_size,
-    #               epochs=args['epochs'])
 
     with st.container():
 
@@ -278,3 +267,12 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
     plt.xlabel('epoch')
     plt.legend(['train', 'test'], loc='upper left')
     st.write(fig4);
+
+    # explainer = shap.DeepExplainer(model, {'ac_input': vec['prefixes']['activities'],
+    #                     'rl_input': vec['prefixes']['roles'],
+    #                    't_input': vec['prefixes']['times'],
+    #                    'inter_input': vec['prefixes']['inter_attr']})
+    # # init the JS visualization code
+    # shap.initjs()
+    # #
+    # st.write(shap.force_plot(explainer.expected_value[:5]))

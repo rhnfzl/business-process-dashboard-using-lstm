@@ -92,7 +92,7 @@ def main(argv):
             parameters['file_name'] = train_file_name #'sepsis_cases_1.csv' #Change Here
             # Specific model training parameters
             if parameters['activity'] == 'training':
-                train_model = formt.selectbox("Training Model", ['Fully Shared', 'Shared Categorical', 'Intercase Fully Shared', 'Intercase Shared Categorical'], index=0)
+                train_model = formt.selectbox("Training Model", ['Fully Shared', 'Shared Categorical', 'Intercase Fully Shared', 'Intercase Shared Categorical'], index=2)
                 if train_model == 'Fully Shared':
                     parameters['model_type'] = 'concatenated_base'
                 elif train_model == 'Shared Categorical':

@@ -7,7 +7,6 @@ Created on Tue Mar 17 10:49:28 2020
 """
 import os
 import json
-import copy
 
 import streamlit as st
 import pandas as pd
@@ -438,7 +437,6 @@ class ModelPredictor():
         AgGrid(results_dash)
 
     @staticmethod
-    @st.cache(persist=True, allow_output_mutation=True)
     def dashboard_multiprediction_acrl(results_dash, parms):
 
         multipreddict = ModelPredictor.dashboard_multiprediction_columns(parms)
@@ -1547,7 +1545,6 @@ class EvaluateTask():
             st.subheader("Time : Predictions vs Event Number")
             st.area_chart(final_similarity_measure_tm)
 
-    @st.cache(persist=True)
     def _evaluate_predict_batch_subprocess(self, data, parms):
         evaluator = ev.Evaluator(parms['one_timestamp'], parms['variant'], parms['next_mode'], parms['mode'])
         #--Accuracy Measurement

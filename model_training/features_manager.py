@@ -158,10 +158,12 @@ class FeaturesMannager():
                 if col == 'daytime':
                         log, _ = self.scale_feature(log, 'daytime', 'day_secs', True)
                 elif col == 'open_cases':
-                        log, _ = self.scale_feature(log, 'open_cases', 'standard')
+                        log, _ = self.scale_feature(log, 'open_cases', 'max')
                 elif col == 'weekday':
                         log, _ = self.scale_feature(log, 'weekday', None)
                 elif 'sepsis' in self.filename: #Log specific Logic
+                    #-- Variables which change during the case use lognorm
+                    #-- Variables which don't change during the case use max
                     if col == 'Diagnose_ord': #because of large number of catagorical variable
                             log = self.ordinal_encoder(log, 'Diagnose')
                             log, _ = self.scale_feature(log, 'Diagnose_ord', 'max')
@@ -174,7 +176,7 @@ class FeaturesMannager():
                     elif col == 'Diagnose':
                             log, _ = self.scale_feature(log, 'Diagnose', self.norm_method)
                     elif col == 'Age':
-                            log, _ = self.scale_feature(log, 'Age', self.norm_method)
+                            log, _ = self.scale_feature(log, 'Age', 'max')
                 else:
                         log, _ = self.scale_feature(log, col, self.norm_method, True)
         return log, scale_args
