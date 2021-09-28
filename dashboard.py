@@ -4,15 +4,13 @@ import sys
 import getopt
 import streamlit as st
 import json
-#import SessionState
-# import tkinter as tk
-# from tkinter import filedialog
 import time
 
 import pandas as pd
 
 from model_prediction import model_predictor as pr
-import lstm as training
+from model_training import model_trainer as tr
+import training as training
 
 #---Workaround for "tensorflow.python.framework.errors_impl.UnknownError: Fail to find the dnn implementation."
 from tensorflow.compat.v1 import ConfigProto
@@ -25,7 +23,6 @@ session = InteractiveSession(config=config)
 #-----
 
 st.set_page_config(layout="wide", initial_sidebar_state="auto", page_title='NxEventPred', page_icon="🌌")
-# st.set_page_config(initial_sidebar_state="auto", page_title='NxEventPred', page_icon="🌌")
 
 #Page Customization
 max_width_str = f"max-width: 1500px;"
@@ -37,6 +34,15 @@ st.markdown(
 	""",
 	unsafe_allow_html=True
 )
+
+padding = 0
+st.markdown(f""" <style>
+    .reportview-container .main .block-container{{
+        padding-top: {padding}rem;
+        padding-right: {padding}rem;
+        padding-left: {padding}rem;
+        padding-bottom: {padding}rem;
+    }} </style> """, unsafe_allow_html=True)
 
 # hide_menu_style = """
 #         <style>
@@ -88,11 +94,9 @@ def clear_cache():
     session_state_key_list = ['multi_pred_ss', 'pos_tm_ss', 'initial_prediction',
                               'prediction_choice_idx', 'prediction_choice_name', 'history_of_choice']
     _temp_sessionstate_keys = [*st.session_state]
-    # print("Keys Before : ", [*st.session_state])
     for key in _temp_sessionstate_keys:
         if key in session_state_key_list:
             del st.session_state[key]
-    # print("Keys After : ", [*st.session_state])
 
 
 def main(argv, filter_parms=None, filter_parameter=None):
@@ -111,8 +115,8 @@ def main(argv, filter_parms=None, filter_parameter=None):
         </div><br>"""
         st.markdown(html_temp, unsafe_allow_html=True)
         # st.title("⏭️Next Event Prediction Dashboard") #Adding title bar
-        st.sidebar.title("🎛️ App Control Menu")  #Adding the header to the sidebar as well as the sidebar
-        #st.sidebar.markdown("""---""")
+        st.sidebar.title("🎛️ App Control Menu") #Adding the header to the sidebar as well as the sidebar
+        #st.sidebar.markdown("""----""")
         #st.markdown("This dashboard is used to *predict* and *recommend* next event for the provided eventlog")
 
         parameters = dict()
@@ -613,11 +617,23 @@ def main(argv, filter_parms=None, filter_parameter=None):
                                         "**Prediction** to use the respective prediction as the input for subsequent prediction")
                                 parameters['batchpredchoice'] = st.radio('', ['SME', 'Prediction'], key="radio_select_pred_batch", on_change=clear_cache)
 
+                            # def _select_slider(range_event_number):
+                            #     st.session_state['my_number_prefix_select_slider_batch'] = (min(range_event_number) - 1)
+                            #
+                            # if 'my_number_prefix_select_slider_batch' not in st.session_state:
+                            #     st.session_state['my_number_prefix_select_slider_batch'] = 0
+
+
                             with st.sidebar.expander('Select the Number of Prefix'):
                                 st.info("Prefix for each caseid in the batch mode")
-                                prefix_slider = st.slider(
-                                    label='', min_value=0,
-                                    max_value=_count, key='my_number_prefix_slider_batch', on_change=clear_cache)
+                                # prefix_slider = st.slider(
+                                #     label='', min_value=0,
+                                #     max_value = (min(range_event_number) - 1), value = 0, step = 1, key = 'my_number_prefix_slider_batch', on_change = clear_cache)
+                                    # max_value=_count, key='my_number_prefix_slider_batch', on_change=clear_cache)
+
+                                prefix_slider = st.select_slider(
+                                    label='', options=list(range(min(range_event_number))), value=min(list(range(min(range_event_number)))),
+                                    key='my_number_prefix_select_slider_batch', on_change=clear_cache)
 
                             parameters['batchprefixnum'] = prefix_slider
 

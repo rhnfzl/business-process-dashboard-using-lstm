@@ -6,7 +6,6 @@
 #---Workaround for Not creating XLA devices, tf_xla_enable_xla_devices not set
 import os
 os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices'
-# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 #---
 
 import sys
