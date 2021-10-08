@@ -6,7 +6,6 @@ Created on Sat Mar 14 19:13:15 2020
 """
 import itertools
 import numpy as np
-import random
 
 from nltk.util import ngrams
 import keras.utils as ku
@@ -24,7 +23,6 @@ class SequencesCreator():
         #this is defined in model_spec.ini
         self._vec_dispatcher = {'basic': self._vectorize_seq_base,
                                 'inter': self._vectorize_seq_inter}
-        # self._vec_dispatcher = {'basic': self._vectorize_seq}
 
     def vectorize(self, model_type, params, add_cols):
         columns = self.define_columns(add_cols, self.one_timestamp)

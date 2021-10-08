@@ -11,7 +11,6 @@ import itertools
 from operator import itemgetter
 
 from support_modules import role_discovery as rl
-
 class FeaturesMannager():
 
 
