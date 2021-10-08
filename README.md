@@ -1,3 +1,6 @@
+# Developing a Dashboard for EmulatingLSTM Models over Business Processes andits Qualitative Evaluation
+
+<!---
 # DeepGenerator: Learning Accurate Generative Models of Business Processes with LSTM Neural Networks
 
 The code here presented is able to execute different pre- and post-processing methods and architectures for building and using generative models from event logs in XES format using LSTM anf GRU neural networks. This code can perform the next tasks:
@@ -53,3 +56,5 @@ Models examples and experimental results can be found at <a href="http://kodu.ut
 * **Manuel Camargo**
 * **Marlon Dumas**
 * **Oscar Gonzalez-Rojas**
+
+-->
