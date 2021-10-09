@@ -6,7 +6,7 @@ Created on Tue Mar 17 20:35:53 2020
 """
 import numpy as np
 import pandas as pd
-from numpy.core._multiarray_umath import ndarray
+# from numpy.core._multiarray_umath import ndarray
 
 from support_modules import support as sup
 
@@ -575,94 +575,94 @@ class NextEventPredictor():
 
         return results
 
-    def _predict_next_event_confermance_checking(self, parameters, serie_predict_ac, serie_predict_rl, serie_predict_tm, serie_predict_intr, vectorizer, y_serie_predict_ac, y_serie_predict_rl, y_serie_predict_tm, y_serie_predict_intr):
-
-        results = list()
-
-        # print("Length of AC : ", len(serie_predict_ac))
-        # print("Length of RL ", len(serie_predict_rl))
-        # print("Length of TM ", len(serie_predict_tm))
-        # print("Length of ITR ", len(serie_predict_intr))
-
-        for i, _ in enumerate(serie_predict_ac):
-
-                # print("Index : ", i)
-                # print("AC Serie : ", serie_predict_ac[i])
-                # print("RL Serie : ", serie_predict_rl[i])
-
-                # Activities and roles input shape(1,5)
-                x_ac_ngram = (np.append(
-                    np.zeros(parameters['dim']['time_dim']),
-                    np.array(serie_predict_ac[i]),
-                    axis=0)[-parameters['dim']['time_dim']:]
-                              .reshape((1, parameters['dim']['time_dim'])))
-                x_rl_ngram = (np.append(
-                    np.zeros(parameters['dim']['time_dim']),
-                    np.array(serie_predict_rl[i]),
-                    axis=0)[-parameters['dim']['time_dim']:]
-                              .reshape((1, parameters['dim']['time_dim'])))
-                # times input shape(1,5,1)
-                times_attr_num = (serie_predict_tm[i].shape[1])
-                x_t_ngram = np.array(
-                    [np.append(np.zeros(
-                        (parameters['dim']['time_dim'], times_attr_num)),
-                        serie_predict_tm[i], axis=0)
-                     [-parameters['dim']['time_dim']:]
-                         .reshape((parameters['dim']['time_dim'], times_attr_num))]
-                )
-                if vectorizer in ['basic']:
-                    inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram]
-                elif vectorizer in ['inter']:
-                    inter_attr_num = (serie_predict_intr[i].shape[1])
-                    x_inter_ngram = np.array(
-                        [np.append(np.zeros((
-                            parameters['dim']['time_dim'], inter_attr_num)),
-                            serie_predict_intr[i], axis=0)
-                         [-parameters['dim']['time_dim']:]
-                             .reshape((parameters['dim']['time_dim'], inter_attr_num))]
-                    )
-                    inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram, x_inter_ngram]
-                # predict
-                preds = self.model.predict(inputs)
-
-                if self.imp == 'arg_max':
-
-                    pos = np.argmax(preds[0][0])
-                    pos_prob = preds[0][0][pos]
-
-                    pos1 = np.argmax(preds[1][0])
-                    pos1_prob = preds[1][0][pos1]
-
-                    predictions = [[pos], [pos1], [preds[2][0][0]], [pos_prob], [pos1_prob]]
-
-                elif self.imp == 'multi_pred':
-
-                    acx = np.array(preds[0][0])
-                    rlx = np.array(preds[1][0])
-
-                    pos = (-acx).argsort()[:self.nx].tolist()
-                    pos1 = (-rlx).argsort()[:self.nx].tolist()
-
-                    pos_prob = []
-                    pos1_prob = []
-
-                    for ix in range(len(pos)):
-                        # probability of activity
-                        pos_prob.append(acx[pos[ix]])
-                    for jx in range(len(pos1)):
-                        # probability of role
-                        pos1_prob.append(rlx[pos1[jx]])
-
-                    predictions = [pos, pos1, [preds[2][0][0]], pos_prob, pos1_prob]
-
-                if not parameters['one_timestamp']:
-                    predictions.extend([preds[2][0][1]])
-                results.append(
-                    self._conf_create_result_record_next(i, serie_predict_ac, serie_predict_rl, serie_predict_tm,
-                                                         predictions, parameters, y_serie_predict_ac,
-                                                         y_serie_predict_rl, y_serie_predict_tm))
-
-        return results
+    # def _predict_next_event_confermance_checking(self, parameters, serie_predict_ac, serie_predict_rl, serie_predict_tm, serie_predict_intr, vectorizer, y_serie_predict_ac, y_serie_predict_rl, y_serie_predict_tm, y_serie_predict_intr):
+    #
+    #     results = list()
+    #
+    #     # print("Length of AC : ", len(serie_predict_ac))
+    #     # print("Length of RL ", len(serie_predict_rl))
+    #     # print("Length of TM ", len(serie_predict_tm))
+    #     # print("Length of ITR ", len(serie_predict_intr))
+    #
+    #     for i, _ in enumerate(serie_predict_ac):
+    #
+    #             # print("Index : ", i)
+    #             # print("AC Serie : ", serie_predict_ac[i])
+    #             # print("RL Serie : ", serie_predict_rl[i])
+    #
+    #             # Activities and roles input shape(1,5)
+    #             x_ac_ngram = (np.append(
+    #                 np.zeros(parameters['dim']['time_dim']),
+    #                 np.array(serie_predict_ac[i]),
+    #                 axis=0)[-parameters['dim']['time_dim']:]
+    #                           .reshape((1, parameters['dim']['time_dim'])))
+    #             x_rl_ngram = (np.append(
+    #                 np.zeros(parameters['dim']['time_dim']),
+    #                 np.array(serie_predict_rl[i]),
+    #                 axis=0)[-parameters['dim']['time_dim']:]
+    #                           .reshape((1, parameters['dim']['time_dim'])))
+    #             # times input shape(1,5,1)
+    #             times_attr_num = (serie_predict_tm[i].shape[1])
+    #             x_t_ngram = np.array(
+    #                 [np.append(np.zeros(
+    #                     (parameters['dim']['time_dim'], times_attr_num)),
+    #                     serie_predict_tm[i], axis=0)
+    #                  [-parameters['dim']['time_dim']:]
+    #                      .reshape((parameters['dim']['time_dim'], times_attr_num))]
+    #             )
+    #             if vectorizer in ['basic']:
+    #                 inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram]
+    #             elif vectorizer in ['inter']:
+    #                 inter_attr_num = (serie_predict_intr[i].shape[1])
+    #                 x_inter_ngram = np.array(
+    #                     [np.append(np.zeros((
+    #                         parameters['dim']['time_dim'], inter_attr_num)),
+    #                         serie_predict_intr[i], axis=0)
+    #                      [-parameters['dim']['time_dim']:]
+    #                          .reshape((parameters['dim']['time_dim'], inter_attr_num))]
+    #                 )
+    #                 inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram, x_inter_ngram]
+    #             # predict
+    #             preds = self.model.predict(inputs)
+    #
+    #             if self.imp == 'arg_max':
+    #
+    #                 pos = np.argmax(preds[0][0])
+    #                 pos_prob = preds[0][0][pos]
+    #
+    #                 pos1 = np.argmax(preds[1][0])
+    #                 pos1_prob = preds[1][0][pos1]
+    #
+    #                 predictions = [[pos], [pos1], [preds[2][0][0]], [pos_prob], [pos1_prob]]
+    #
+    #             elif self.imp == 'multi_pred':
+    #
+    #                 acx = np.array(preds[0][0])
+    #                 rlx = np.array(preds[1][0])
+    #
+    #                 pos = (-acx).argsort()[:self.nx].tolist()
+    #                 pos1 = (-rlx).argsort()[:self.nx].tolist()
+    #
+    #                 pos_prob = []
+    #                 pos1_prob = []
+    #
+    #                 for ix in range(len(pos)):
+    #                     # probability of activity
+    #                     pos_prob.append(acx[pos[ix]])
+    #                 for jx in range(len(pos1)):
+    #                     # probability of role
+    #                     pos1_prob.append(rlx[pos1[jx]])
+    #
+    #                 predictions = [pos, pos1, [preds[2][0][0]], pos_prob, pos1_prob]
+    #
+    #             if not parameters['one_timestamp']:
+    #                 predictions.extend([preds[2][0][1]])
+    #             results.append(
+    #                 self._conf_create_result_record_next(i, serie_predict_ac, serie_predict_rl, serie_predict_tm,
+    #                                                      predictions, parameters, y_serie_predict_ac,
+    #                                                      y_serie_predict_rl, y_serie_predict_tm))
+    #
+    #     return results
 
 
     def _conf_create_result_record_next(self, index, serie_predict_ac, serie_predict_rl, serie_predict_tm, preds, parms, y_serie_predict_ac, y_serie_predict_rl, y_serie_predict_tm):

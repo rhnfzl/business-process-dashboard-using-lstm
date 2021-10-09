@@ -15,7 +15,7 @@ import configparser as cp
 from num2words import num2words as nw
 import matplotlib.pyplot as plt
 
-from st_aggrid import AgGrid, DataReturnMode, GridUpdateMode, GridOptionsBuilder
+from st_aggrid import AgGrid
 
 from tensorflow.keras.models import load_model
 

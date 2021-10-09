@@ -3,20 +3,20 @@ Created on Fri Jan 10 11:40:46 2020
 
 @author: Manuel Camargo
 """
-from sys import stdout
-import shutil
-import time
+# from sys import stdout
+# import shutil
+# import time
 import os
 
-import warnings
+# import warnings
 import random
 import itertools
 from operator import itemgetter
 
 import jellyfish as jf
-import swifter
+# import swifter
 from scipy.optimize import linear_sum_assignment
-from scipy.stats import wasserstein_distance
+# from scipy.stats import wasserstein_distance
 
 from model_prediction.analyzers import alpha_oracle as ao
 from model_prediction.analyzers.alpha_oracle import Rel

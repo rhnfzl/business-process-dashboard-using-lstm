@@ -9,14 +9,14 @@ import pandas as pd
 import streamlit as st
 
 # ---Workaround for "tensorflow.python.framework.errors_impl.UnknownError: Fail to find the dnn implementation."
-from tensorflow.compat.v1 import ConfigProto
-from tensorflow.compat.v1 import InteractiveSession
-
-config = ConfigProto()
-config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
-# config.inter_op_parallelism_threads = 4
-config.intra_op_parallelism_threads = 4
-session = InteractiveSession(config=config)
+# from tensorflow.compat.v1 import ConfigProto
+# from tensorflow.compat.v1 import InteractiveSession
+#
+# config = ConfigProto()
+# config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
+# # config.inter_op_parallelism_threads = 4
+# config.intra_op_parallelism_threads = 4
+# session = InteractiveSession(config=config)
 # --------------------------------------------------------------------------------------------------------------
 
 from model_prediction import model_predictor as pr
