@@ -5,7 +5,7 @@ Created on Fri Jan 10 11:40:46 2020
 """
 # from sys import stdout
 # import shutil
-# import time
+import time
 import os
 
 # import warnings
@@ -14,7 +14,7 @@ import itertools
 from operator import itemgetter
 
 import jellyfish as jf
-# import swifter
+import swifter
 from scipy.optimize import linear_sum_assignment
 # from scipy.stats import wasserstein_distance
 
