@@ -6,7 +6,7 @@ Created on Tue Mar 17 16:24:38 2020
 """
 from model_prediction import next_event_samples_creator as nesc
 
-from model_prediction.next_modes import next_event_predictor_batch_evaluate_mode as nepe, \
+from model_prediction.next_modes import next_event_predictor_batch_prefix_mode as nepe, \
     next_event_predictor_single_mode_execution as nepsmexe, next_event_predictor_batch_base_mode as nepb, \
     next_event_predictor_single_mode_evaluation as nepsmeva, next_event_predictor_single_mode_whatif as nepsmwia
 
