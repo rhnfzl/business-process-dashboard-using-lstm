@@ -1,5 +1,25 @@
 # Developing a Dashboard for EmulatingLSTM Models over Business Processes andits Qualitative Evaluation
 
+
+## Getting Started
+
+These instructions will help you set up a development and testing copy of the project on your local machine.
+
+### Prerequisites
+
+- To run this code, first install Anaconda on your machine.
+- Change the directory to desired location where you would like to clone the repo, and then clone it
+- Create Conda virtual Environment using ```conda create -n <env name>```
+- Activate the Virtual Env : ```conda activate <env name>```
+- Then install Pythpn 3.7 using ```conda install python=3.7```
+- Install from the requirement.txt file using ```pip install -r requirements.txt```
+
+
+## Running the script
+
+Once you've established the environment, you may spin the dashboard using the ```streamlit run dashboard.py```
+
+
 <!---
 # DeepGenerator: Learning Accurate Generative Models of Business Processes with LSTM Neural Networks
 
