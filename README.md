@@ -1,4 +1,4 @@
-# Dashboard for EmulatingLSTM Models over Business Processes and its Qualitative Evaluation
+# Dashboard for Emulating LSTM Models over Business Processes and its Qualitative Evaluation
 
 The project is developed as the part of Master Thesis Project at [Eindhoven University of Technology](https://www.tue.nl/en/), under the guidance of [Dr. Dirk Fahland](https://www.tue.nl/en/research/researchers/dirk-fahland/). 
 
