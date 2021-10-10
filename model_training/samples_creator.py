@@ -9,6 +9,7 @@ import numpy as np
 
 from nltk.util import ngrams
 import keras.utils as ku
+from keras.utils import to_categorical
 
 
 class SequencesCreator():
