@@ -2,9 +2,9 @@
 
 The project is developed as the part of Master Thesis Project at [Eindhoven University of Technology](https://www.tue.nl/en/), under the guidance of [Dr. Dirk Fahland](https://www.tue.nl/en/research/researchers/dirk-fahland/). 
 
-The base code of this project is taken from [GenerativeLSTM v1.1.0](https://github.com/AdaptiveBProcess/GenerativeLSTM/releases/tag/v1.1.0). 
+The base code of this project is taken from [GenerativeLSTM v1.1.0](https://github.com/AdaptiveBProcess/GenerativeLSTM/releases/tag/v1.1.0) which is based on Camargo et al. paper [Learning Accurate LSTM Models of Business Processes](https://link.springer.com/chapter/10.1007/978-3-030-26619-6_19).
 
-[Streamlit](https://docs.streamlit.io/) has been used to create the dashboard.
+[Streamlit](https://docs.streamlit.io/) has been used to create the dashboard, and a trimmed down version of this project is kept in [Streamlit based Predictive Process Monitoring powered by LSTM](https://github.com/rhnfzl/streamlit-predictive-process-monitoring-dashboard-using-lstm) for hosting it on servers.
 
 ## Getting Started
 
@@ -12,17 +12,17 @@ These instructions will help you set up a development and testing copy of the pr
 
 ### Prerequisites
 
-- To run this code, first install [Anaconda](https://www.anaconda.com/products/individual) on your system.
-- Change the directory to desired location where you would like to clone the repo, and then clone it
+- To run this code, first install [Anaconda](https://www.anaconda.com/products/individual) on your system, don't foget to check the PATH while installation.
+- Change the directory to desired location where you would like to clone the repository, and then clone it.
 - Create Conda virtual Environment using ```conda create -n <env name>```
 - Activate the Virtual Env : ```conda activate <env name>```
-- Then install Python 3.7 using ```conda install python=3.7```
-- Install from the requirement.txt file using ```pip install -r requirements.txt```
+- Install Python 3.7 using ```conda install python=3.7```
+- Then install the packages required from the [requirement.txt](https://github.com/rhnfzl/business-process-dashboard-for-lstm/blob/master/requirements.txt) file using ```pip install -r requirements.txt```
 
 
 ## Running the script
 
-Once you've established the environment, you may spin the dashboard using the ```streamlit run dashboard.py```
+Once you've established the environment, you may run the dashboard using the ```streamlit run dashboard.py``` from the root directory.
 
 
 <!---
