@@ -1,5 +1,10 @@
-# Developing a Dashboard for EmulatingLSTM Models over Business Processes andits Qualitative Evaluation
+# Dashboard for EmulatingLSTM Models over Business Processes and its Qualitative Evaluation
 
+The project is developed as the part of Master Thesis Project at [Eindhoven University of Technology](https://www.tue.nl/en/), under the guidance of [Dr. Dirk Fahland](https://www.tue.nl/en/research/researchers/dirk-fahland/). 
+
+The base code of this project is taken from [GenerativeLSTM v1.1.0](https://github.com/AdaptiveBProcess/GenerativeLSTM/releases/tag/v1.1.0). 
+
+[Streamlit](https://docs.streamlit.io/) has been used to create the dashboard.
 
 ## Getting Started
 
@@ -7,11 +12,11 @@ These instructions will help you set up a development and testing copy of the pr
 
 ### Prerequisites
 
-- To run this code, first install Anaconda on your machine.
+- To run this code, first install [Anaconda](https://www.anaconda.com/products/individual) on your system.
 - Change the directory to desired location where you would like to clone the repo, and then clone it
 - Create Conda virtual Environment using ```conda create -n <env name>```
 - Activate the Virtual Env : ```conda activate <env name>```
-- Then install Pythpn 3.7 using ```conda install python=3.7```
+- Then install Python 3.7 using ```conda install python=3.7```
 - Install from the requirement.txt file using ```pip install -r requirements.txt```
 
 
