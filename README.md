@@ -4,7 +4,7 @@ The project is developed as the part of Master Thesis Project at [Eindhoven Univ
 
 The base code of this project is taken from [GenerativeLSTM v1.1.0](https://github.com/AdaptiveBProcess/GenerativeLSTM/releases/tag/v1.1.0) which is based on Camargo et al. paper [Learning Accurate LSTM Models of Business Processes](https://link.springer.com/chapter/10.1007/978-3-030-26619-6_19).
 
-[Streamlit](https://docs.streamlit.io/) has been used to create the dashboard, and a trimmed down version of this project is kept in [Streamlit based Predictive Process Monitoring powered by LSTM](https://github.com/rhnfzl/streamlit-predictive-process-monitoring-dashboard-using-lstm) for hosting it on servers.
+[Streamlit](https://docs.streamlit.io/) has been used to create the dashboard, and a trimmed down version of this project is kept in [Streamlit based Predictive Process Monitoring powered by LSTM](https://github.com/rhnfzl/streamlit-predictive-process-monitoring-dashboard-using-lstm) for hosting it on freeware servers.
 
 ## Getting Started
 
