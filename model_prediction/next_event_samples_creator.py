@@ -36,7 +36,7 @@ class NextEventSamplesCreator():
     @staticmethod
     def define_columns(add_cols, one_timestamp):
         columns = ['ac_index', 'rl_index', 'dur_norm']
-        add_cols = [x + '_norm' if x != 'weekday' else x for x in add_cols]
+        add_cols = [x + '_norm' if x not in ['weekday', 'Diagnose_ohe'] else x for x in add_cols]
         # add_cols = [x+'_norm' for x in add_cols]
         columns.extend(add_cols)
         if not one_timestamp:
@@ -56,7 +56,6 @@ class NextEventSamplesCreator():
         return sampler
 
     def _sample_next_event_base(self, columns, parms):
-    # def _sample_next_event_inter(self, columns, parms):
         """
         Extraction of prefixes and expected suffixes from event log.
         Args:
@@ -75,18 +74,10 @@ class NextEventSamplesCreator():
         equi = {'ac_index': 'activities', 'rl_index': 'roles'}
         vec = {'prefixes': dict(),
                'next_evt': dict()}
-        #week
-        # x_weekday = list()
-        # y_weekday = list()
         #times
         x_times_dict = dict()
         y_times_dict = dict()
-        # intercases
-        # x_inter_dict, y_inter_dict = dict(), dict()
         self.log = self.reformat_events(columns, parms['one_timestamp'])
-        # n-gram definition
-        # print("Log")
-        # print(self.log)
         for i, _ in enumerate(self.log):
             #print("Enumerate Log (i) :", i)
             for x in columns:
@@ -96,8 +87,6 @@ class NextEventSamplesCreator():
                 if parms['mode'] == 'batch' and parms['batch_mode'] == 'pre_prefix':
                     serie = serie[parms['batchprefixnum']:-1]
                     y_serie = y_serie[parms['batchprefixnum']+1:]  # to avoid start value i.e 0
-                    # print("serie : ", serie)
-                    # print("y_serie : ", y_serie)
                 else:
                     serie = serie[:-1] #to avoid end value that is max value
                     y_serie = y_serie[1:] #to avoid start value i.e 0
@@ -114,34 +103,13 @@ class NextEventSamplesCreator():
                         x_times_dict[x] + serie if i > 0 else serie)
                     y_times_dict[x] = (
                         y_times_dict[x] + y_serie if i > 0 else y_serie)
-                # elif x == 'weekday':
-                #     x_weekday = (
-                #         x_weekday + serie if i > 0 else serie)
-                #     y_weekday = (
-                #         y_weekday + y_serie if i > 0 else y_serie)
-                #Intercase Features
-                # else:
-                #     x_inter_dict[x] = (x_inter_dict[x] + serie
-                #                         if i > 0 else serie)
-                #     y_inter_dict[x] = (y_inter_dict[x] + y_serie
-                #                         if i > 0 else y_serie)
         vec['prefixes']['times'] = list()
-        # print("----------Time Debug-----------")
-        # print("Time Before :", x_times_dict)
         x_times_dict = pd.DataFrame(x_times_dict)
-        # print("Time After PD :", x_times_dict)
-        # print("Time Dictionary Values:", x_times_dict.values)
         for row in x_times_dict.values:
-            # print("Row :", row, type(row))
             new_row = [np.array(x) for x in row]
-            # print("new_row 1:", new_row, type(new_row))
             new_row = np.dstack(new_row)
-            # print("new_row 2:", new_row, type(new_row))
             new_row = new_row.reshape((new_row.shape[1], new_row.shape[2]))
-            # print("new_row 3:", new_row, type(new_row))
             vec['prefixes']['times'].append(new_row)
-            # print("Times Prefix : ", vec['prefixes']['times'], type(vec['prefixes']['times']))
-            # print("----------End of ", len(row), " Debug-----------")
         # Reshape intercase expected attributes (prefixes, # attributes)
         vec['next_evt']['times'] = list()
         y_times_dict = pd.DataFrame(y_times_dict)
@@ -150,38 +118,6 @@ class NextEventSamplesCreator():
             new_row = np.dstack(new_row)
             new_row = new_row.reshape((new_row.shape[2]))
             vec['next_evt']['times'].append(new_row)
-
-        #-----------------------------------------------------------------------
-        # vec['prefixes']['inter_attr'] = list()
-        # x_inter_dict = pd.DataFrame(x_inter_dict)
-        # for row in x_inter_dict.values:
-        # # for row, wd in zip(x_inter_dict.values, x_weekday):
-        #     new_row = [np.array(x) for x in row]
-        #     new_row = np.dstack(new_row)
-        #     new_row = new_row.reshape((new_row.shape[1], new_row.shape[2]))
-        #     # x_weekday = ku.to_categorical(x_weekday, num_classes=7)
-        #     # y_weekday = ku.to_categorical(y_weekday, num_classes=7)
-        #     vec['prefixes']['inter_attr'].append(new_row)
-        # # Reshape intercase expected attributes (prefixes, # attributes)
-        # vec['next_evt']['inter_attr'] = list()
-        # y_inter_dict = pd.DataFrame(y_inter_dict)
-        # for row in y_inter_dict.values:
-        #     new_row = [np.array(x) for x in row]
-        #     new_row = np.dstack(new_row)
-        #     new_row = new_row.reshape((new_row.shape[2]))
-        #     vec['next_evt']['inter_attr'].append(new_row)
-        # -----------------------------------------------------------------------
-
-        # vec['next_evt']['inter_attr'] = np.dstack(list(y_inter_dict.values()))[0]
-        # if 'weekday' in columns:
-        #     print("Input x Weekly : ", x_weekday)
-        #     print("Input Y Weekly : ", y_weekday)
-        #     x_weekday = ku.to_categorical(x_weekday, num_classes=7)
-        #     y_weekday = ku.to_categorical(y_weekday, num_classes=7)
-        #     vec['prefixes']['inter_attr'] = np.concatenate(
-        #         [vec['prefixes']['inter_attr'], x_weekday], axis=2)
-        #     vec['next_evt']['inter_attr'] = np.concatenate(
-        #         [vec['next_evt']['inter_attr'], y_weekday], axis=1)
 
         return vec
 
@@ -208,9 +144,9 @@ class NextEventSamplesCreator():
         #week
         x_weekday = list()
         y_weekday = list()
-        # week
-        # x_cat = list()
-        # y_cat = list()
+        #diagonose
+        x_diagnose = list()
+        y_diagnose = list()
         #times
         x_times_dict = dict()
         y_times_dict = dict()
@@ -253,6 +189,11 @@ class NextEventSamplesCreator():
                         x_weekday + serie if i > 0 else serie)
                     y_weekday = (
                         y_weekday + y_serie if i > 0 else y_serie)
+                elif x == 'Diagnose_ohe':
+                    x_diagnose = (
+                        x_diagnose + serie if i > 0 else serie)
+                    y_diagnose = (
+                        y_diagnose + y_serie if i > 0 else y_serie)
                 #Intercase Features
                 else:
                     x_inter_dict[x] = (x_inter_dict[x] + serie
@@ -260,41 +201,31 @@ class NextEventSamplesCreator():
                     y_inter_dict[x] = (y_inter_dict[x] + y_serie
                                         if i > 0 else y_serie)
 
-        # vec['prefixes']['times'] = list()
-        # # print("----------Time Debug-----------")
-        # # print("Time Before :", x_times_dict)
-        # x_times_dict = pd.DataFrame(x_times_dict)
-        # # print("Time After PD :", x_times_dict)
-        # # print("Time Dictionary Values:", x_times_dict.values)
-        # for row in x_times_dict.values:
-        #     # print("Row :", row, type(row))
-        #     new_row = [np.array(x) for x in row]
-        #     # print("new_row 1:", new_row, type(new_row))
-        #     new_row = np.dstack(new_row)
-        #     # print("new_row 2:", new_row, type(new_row))
-        #     new_row = new_row.reshape((new_row.shape[1], new_row.shape[2]))
-        #     # print("new_row 3:", new_row, type(new_row))
-        #     vec['prefixes']['times'].append(new_row)
-        #     # print("Times Prefix : ", vec['prefixes']['times'], type(vec['prefixes']['times']))
-        #     # print("----------End of ", len(row), " Debug-----------")
-        # # Reshape intercase expected attributes (prefixes, # attributes)
-        # vec['next_evt']['times'] = list()
-        # y_times_dict = pd.DataFrame(y_times_dict)
-        # for row in y_times_dict.values:
-        #     new_row = [np.array(x) for x in row]
-        #     new_row = np.dstack(new_row)
-        #     new_row = new_row.reshape((new_row.shape[2]))
-        #     vec['next_evt']['times'].append(new_row)
-        #
+        vec['prefixes']['times'] = list()
+        x_times_dict = pd.DataFrame(x_times_dict)
+        for row in x_times_dict.values:
+            new_row = [np.array(x) for x in row]
+            new_row = np.dstack(new_row)
+            new_row = new_row.reshape((new_row.shape[1], new_row.shape[2]))
+            vec['prefixes']['times'].append(new_row)
+
+        # Reshape intercase expected attributes (prefixes, # attributes)
+        vec['next_evt']['times'] = list()
+        y_times_dict = pd.DataFrame(y_times_dict)
+        for row in y_times_dict.values:
+            new_row = [np.array(x) for x in row]
+            new_row = np.dstack(new_row)
+            new_row = new_row.reshape((new_row.shape[2]))
+            vec['next_evt']['times'].append(new_row)
+        # -----------------------------------------------------------------------
+        # --without incorporating omehot encoding
+
         # vec['prefixes']['inter_attr'] = list()
         # x_inter_dict = pd.DataFrame(x_inter_dict)
         # for row in x_inter_dict.values:
-        # # for row, wd in zip(x_inter_dict.values, x_weekday):
         #     new_row = [np.array(x) for x in row]
         #     new_row = np.dstack(new_row)
         #     new_row = new_row.reshape((new_row.shape[1], new_row.shape[2]))
-        #     # x_weekday = ku.to_categorical(x_weekday, num_classes=7)
-        #     # y_weekday = ku.to_categorical(y_weekday, num_classes=7)
         #     vec['prefixes']['inter_attr'].append(new_row)
         # # Reshape intercase expected attributes (prefixes, # attributes)
         # vec['next_evt']['inter_attr'] = list()
@@ -304,43 +235,34 @@ class NextEventSamplesCreator():
         #     new_row = np.dstack(new_row)
         #     new_row = new_row.reshape((new_row.shape[2]))
         #     vec['next_evt']['inter_attr'].append(new_row)
+
         # -----------------------------------------------------------------------
-        #-----------------------------------------------------------------------
+        # --for incorporating omehot encoding
 
         vec['prefixes']['inter_attr'] = list()
         x_inter_dict = pd.DataFrame(x_inter_dict)
         # _duumy_x_weekday = np.zeros([len(x_weekday), len(max(x_weekday, key=lambda x: len(x)))])
         # for i, j in enumerate(x_weekday): _duumy_x_weekday[i][-len(j):] = j
         # x_weekday = _duumy_x_weekday
-        for row, wd in zip(x_inter_dict.values, x_weekday):
+        for row, wd, dg in zip(x_inter_dict.values, x_weekday, x_diagnose):
             new_row = [np.array(x) for x in row]
             new_row = np.dstack(new_row)
             new_row = new_row.reshape((new_row.shape[1], new_row.shape[2]))
             new_wd = ku.to_categorical(wd, num_classes=7)
-            # new_wd = new_wd.reshape((new_wd.shape[1], new_wd.shape[2]))
-            new_row = np.concatenate([new_row, new_wd], axis=1).tolist()
-            # vec['prefixes']['inter_attr'].append(new_row)
+            new_dg = ku.to_categorical(dg, num_classes=135)
+            new_row = np.concatenate([new_row, new_wd, new_dg], axis=1)
             vec['prefixes']['inter_attr'].append(new_row)
-        # Reshape intercase expected attributes (prefixes, # attributes)
+
         vec['next_evt']['inter_attr'] = list()
         y_inter_dict = pd.DataFrame(y_inter_dict)
-        for row, wd in zip(y_inter_dict.values, y_weekday):
-        # for row in y_inter_dict.values:
+        for row, wd, dg in zip(y_inter_dict.values, y_weekday, y_diagnose):
             new_row = [np.array(x) for x in row]
             new_row = np.dstack(new_row)
             new_row = new_row.reshape((new_row.shape[2]))
-            print("new row :", new_row)
             new_wd = ku.to_categorical(wd, num_classes=7)
-            print("new_wd : ", new_wd)
-            # vec['next_evt']['inter_attr'].append(new_row)
-            new_row = np.concatenate([new_row, new_wd], axis=0).tolist()
-            print("new row 2 :", new_row)
+            new_dg = ku.to_categorical(dg, num_classes=135)
+            new_row = np.concatenate([new_row, new_wd, new_dg], axis=0)
             vec['next_evt']['inter_attr'].append(new_row)
-        print("----Inter case Sequence---")
-        print(vec['prefixes']['inter_attr'])
-        print("--------Inter Case Next Case------")
-        print(vec['next_evt']['inter_attr'])
-        return vec
 
         return vec
         #============================================================

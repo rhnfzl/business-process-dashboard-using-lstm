@@ -47,7 +47,7 @@ class SequencesCreator():
         columns = ['ac_index', 'rl_index', 'dur_norm']
         print("add_cols")
         print(add_cols)
-        add_cols = [x + '_norm' if x != 'weekday' else x for x in add_cols] #prevents weekday to be cheked as weekday_norm
+        add_cols = [x + '_norm' if x not in ['weekday', 'Diagnose_ohe'] else x for x in add_cols] #prevents weekday to be cheked as weekday_norm
         # add_cols = [x+'_norm' for x in add_cols]
         columns.extend(add_cols)
         if not one_timestamp:
@@ -126,6 +126,9 @@ class SequencesCreator():
                'next_evt': dict()}
         x_weekday = list()
         y_weekday = list()
+        #diagonose
+        x_diagnose = list()
+        y_diagnose = list()
         # times
         x_times_dict = dict()
         y_times_dict = dict()
@@ -156,6 +159,11 @@ class SequencesCreator():
                         x_weekday + serie if i > 0 else serie)
                     y_weekday = (
                         y_weekday + y_serie if i > 0 else y_serie)
+                elif x == 'Diagnose_ohe':
+                    x_diagnose = (
+                        x_diagnose + serie if i > 0 else serie)
+                    y_diagnose = (
+                        y_diagnose + y_serie if i > 0 else y_serie)
                 #Intercase Features
                 else:
                     x_inter_dict[x] = (
@@ -188,32 +196,23 @@ class SequencesCreator():
         vec['prefixes']['inter_attr'] = np.dstack(list(x_inter_dict.values()))
         # Reshape y intercase attributes (suffixes, number of attributes)
         vec['next_evt']['inter_attr'] = np.dstack(list(y_inter_dict.values()))[0]
-        # if 'weekday' in columns:
-        #
-        #     x_weekday = ku.to_categorical(x_weekday, num_classes=7)
-        #     y_weekday = ku.to_categorical(y_weekday, num_classes=7)
-        #
-        #     vec['prefixes']['inter_attr'] = np.concatenate(
-        #         [vec['prefixes']['inter_attr'], x_weekday], axis=2)
-        #     vec['next_evt']['inter_attr'] = np.concatenate(
-        #         [vec['next_evt']['inter_attr'], y_weekday], axis=1)
+
+        #--for incorporating omehot encoding
         if 'weekday' in columns:
-            # Onehot encode weekday
-            # print("X Weekday Before: ", x_weekday)
-            # print("Y Weekday Before : ", y_weekday)
             x_weekday = ku.to_categorical(x_weekday, num_classes=7)
             y_weekday = ku.to_categorical(y_weekday, num_classes=7)
-            # print("X Weekday After : ", x_weekday)
-            # print("Y Weekday After : ", y_weekday)
-            # print("Vec Inter Before : ", vec['prefixes']['inter_attr'])
-            # print("Vec Next Act Before: ", vec['next_evt']['inter_attr'])
             vec['prefixes']['inter_attr'] = np.concatenate(
                 [vec['prefixes']['inter_attr'], x_weekday], axis=2)
-            # print("Vec Inter after : ", vec['prefixes']['inter_attr'])
             vec['next_evt']['inter_attr'] = np.concatenate(
                 [vec['next_evt']['inter_attr'], y_weekday], axis=1)
-            print("--------Inter Case Next Case------")
-            print(vec['next_evt']['inter_attr'])
+        if 'Diagnose_ohe' in columns:
+            print(x_diagnose)
+            x_diagnose = ku.to_categorical(x_diagnose, num_classes=135)
+            y_diagnose = ku.to_categorical(y_diagnose, num_classes=135)
+            vec['prefixes']['inter_attr'] = np.concatenate(
+                [vec['prefixes']['inter_attr'], x_diagnose], axis=2)
+            vec['next_evt']['inter_attr'] = np.concatenate(
+                [vec['next_evt']['inter_attr'], y_diagnose], axis=1)
         return vec
 
     # =============================================================================

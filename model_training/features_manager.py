@@ -169,8 +169,6 @@ class FeaturesMannager():
                 elif col == 'weekday':
                         log, _ = self.scale_feature(log, 'weekday', None)
                 elif 'sepsis' in self.filename: #Log specific Logic
-                    #-- Variables which change during the case use lognorm
-                    #-- Variables which don't change during the case use max
                     if col == 'Diagnose_ord': #because of large number of catagorical variable
                         #---CatBoost Encoding----
                         # target = log[['task']]
@@ -187,11 +185,11 @@ class FeaturesMannager():
                         # log.loc[:, 'Diagnose_ord'] = log['Diagnose'].map(fe)
                         # log, _ = self.scale_feature(log, 'Diagnose_ord', None)
 
-                        #--Ordinal Encoding
-                        log = self.ordinal_encoder(log, 'Diagnose') #ordinal encoding
+                        # --Ordinal Encoding
+                        log = self.ordinal_encoder(log, 'Diagnose', 'ord') #ordinal encoding
                         log, _ = self.scale_feature(log, 'Diagnose_ord', 'max')
 
-                    elif col == 'CRP':
+                    if col == 'CRP':
                         log, _ = self.scale_feature(log, 'CRP', self.norm_method)
                     elif col == 'LacticAcid':
                         log, _ = self.scale_feature(log, 'LacticAcid', self.norm_method)
@@ -205,10 +203,12 @@ class FeaturesMannager():
                         # log, _ = self.scale_feature(log, 'Age_frq', None)
                         # log = log.rename(columns={'Age_frq_norm': 'Age_norm'})
                         # log = log.drop('Age_frq', 1)
-                    # elif col == 'Diagnose':
-                    #     log, _ = self.scale_feature(log, 'Diagnose', self.norm_method)
+                    elif col == 'Diagnose_ohe': #to use it as one hot encoding
+                        log = self.ordinal_encoder(log, 'Diagnose', 'ohe')  # one hot encoding
+                        log, _ = self.scale_feature(log, 'Diagnose_ohe', None)
                 else:
                         log, _ = self.scale_feature(log, col, self.norm_method, True)
+        print(log)
         return log, scale_args
 
     # =========================================================================
@@ -267,7 +267,7 @@ class FeaturesMannager():
         return log, scale_args
 
     @staticmethod
-    def ordinal_encoder(log, feature, replace=False):
+    def ordinal_encoder(log, feature, encoding, replace=False):
         for i in range(len([feature])):
 
             cat_label = feature
@@ -285,7 +285,10 @@ class FeaturesMannager():
 
             _idx = lambda x: _index[x[cat_label]]
 
-            log[cat_label + '_ord'] = log.apply(_idx, axis=1)
+            if encoding == 'ord':
+                log[cat_label + '_ord'] = log.apply(_idx, axis=1)
+            elif encoding == 'ohe':
+                log[cat_label + '_ohe'] = log.apply(_idx, axis=1)
 
             if replace:
                 log = log.drop(feature, axis=1)
