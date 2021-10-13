@@ -69,7 +69,7 @@ class ModelPredictor():
             self.log, self.parms['additional_columns'], 'predict')
         # ---
         sampler = it.SamplesCreator()
-        sampler.create(self, self.parms['activity'], self.parms['file_name'])
+        sampler.create(self, self.parms['activity'])
 
         # create examples for next event and suffix
         if self.parms['mode'] == 'batch':
