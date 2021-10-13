@@ -10,6 +10,8 @@ import numpy as np
 import itertools
 from operator import itemgetter
 
+import category_encoders as ce
+
 from support_modules import role_discovery as rl
 class FeaturesMannager():
 
@@ -157,25 +159,54 @@ class FeaturesMannager():
                 if col == 'daytime':
                         log, _ = self.scale_feature(log, 'daytime', 'day_secs', True)
                 elif col == 'open_cases':
-                        log, _ = self.scale_feature(log, 'open_cases', 'max')
+                        log, _ = self.scale_feature(log, 'open_cases', self.norm_method) #max
+                        #--Frequency Encoding
+                        # fe = log.groupby('open_cases').size() / len(log)
+                        # log.loc[:, 'open_cases_frq'] = log['open_cases'].map(fe)
+                        # log, _ = self.scale_feature(log, 'open_cases_frq', None)
+                        # log = log.rename(columns={'open_cases_frq_norm': 'open_cases_norm'})
+                        # log = log.drop('open_cases_frq', 1)
                 elif col == 'weekday':
                         log, _ = self.scale_feature(log, 'weekday', None)
                 elif 'sepsis' in self.filename: #Log specific Logic
                     #-- Variables which change during the case use lognorm
                     #-- Variables which don't change during the case use max
                     if col == 'Diagnose_ord': #because of large number of catagorical variable
-                            log = self.ordinal_encoder(log, 'Diagnose')
-                            log, _ = self.scale_feature(log, 'Diagnose_ord', 'max')
+                        #---CatBoost Encoding----
+                        # target = log[['task']]
+                        # target = self.ordinal_encoder(target, 'task')  # ordinal encoding of target
+                        # target = target.drop('task', 1)
+                        # train = log[['Diagnose']]
+                        # cbe_encoder = ce.cat_boost.CatBoostEncoder()
+                        # train_cbe = cbe_encoder.fit_transform(train, target)
+                        # log['Diagnose_ord'] = train_cbe[['Diagnose']]
+                        # log, _ = self.scale_feature(log, 'Diagnose_ord', 'max')
+
+                        #--Frequency Encoding
+                        # fe = log.groupby('Diagnose').size() / len(log)
+                        # log.loc[:, 'Diagnose_ord'] = log['Diagnose'].map(fe)
+                        # log, _ = self.scale_feature(log, 'Diagnose_ord', None)
+
+                        #--Ordinal Encoding
+                        log = self.ordinal_encoder(log, 'Diagnose') #ordinal encoding
+                        log, _ = self.scale_feature(log, 'Diagnose_ord', 'max')
+
                     elif col == 'CRP':
-                            log, _ = self.scale_feature(log, 'CRP', self.norm_method)
+                        log, _ = self.scale_feature(log, 'CRP', self.norm_method)
                     elif col == 'LacticAcid':
-                            log, _ = self.scale_feature(log, 'LacticAcid', self.norm_method)
+                        log, _ = self.scale_feature(log, 'LacticAcid', self.norm_method)
                     elif col == 'Leucocytes':
-                            log, _ = self.scale_feature(log, 'Leucocytes', self.norm_method)
-                    elif col == 'Diagnose':
-                            log, _ = self.scale_feature(log, 'Diagnose', self.norm_method)
+                        log, _ = self.scale_feature(log, 'Leucocytes', self.norm_method)
                     elif col == 'Age':
-                            log, _ = self.scale_feature(log, 'Age', 'max')
+                        log, _ = self.scale_feature(log, 'Age', 'max')
+                        #--Frequency Encoding
+                        # fe = log.groupby('Age').size() / len(log)
+                        # log.loc[:, 'Age_frq'] = log['Age'].map(fe)
+                        # log, _ = self.scale_feature(log, 'Age_frq', None)
+                        # log = log.rename(columns={'Age_frq_norm': 'Age_norm'})
+                        # log = log.drop('Age_frq', 1)
+                    # elif col == 'Diagnose':
+                    #     log, _ = self.scale_feature(log, 'Diagnose', self.norm_method)
                 else:
                         log, _ = self.scale_feature(log, col, self.norm_method, True)
         return log, scale_args
@@ -264,3 +295,5 @@ class FeaturesMannager():
     # def embedding_encoder(log, feature, replace=False):
     #
     #     return log
+
+    #https://maxhalford.github.io/blog/target-encoding/

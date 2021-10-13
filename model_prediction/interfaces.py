@@ -12,11 +12,11 @@ from model_prediction.next_modes import next_event_predictor_batch_prefix_mode a
 
 
 class SamplesCreator:
-    def create(self, predictor, activity):
-        sampler = self._get_samples_creator(activity)
+    def create(self, predictor, activity, filename):
+        sampler = self._get_samples_creator(activity, filename)
         predictor.sampling(sampler)
 
-    def _get_samples_creator(self, activity):
+    def _get_samples_creator(self, activity, filename):
         if activity == 'predict_next':
             return nesc.NextEventSamplesCreator()
         else:

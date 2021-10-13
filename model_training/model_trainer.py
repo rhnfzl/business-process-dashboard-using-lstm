@@ -79,6 +79,7 @@ class ModelTrainer():
         # Features treatement
         # Selects the features from the log, filters ou the required features
         # Also calculates the addditional columns like dur, acc_cycle, daytime, dur_norm
+
         inp = feat.FeaturesMannager(params)
         # Register scaler
         inp.register_scaler(params['model_type'], self.model_def['scaler'])
