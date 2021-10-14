@@ -218,14 +218,6 @@ class SequencesCreator():
     # Reformat events
     # =============================================================================
     def reformat_events(self, columns, one_timestamp):
-        """Creates series of activities, roles and relative times per trace.
-        parms:
-            self.log: dataframe.
-            ac_index (dict): index of activities.
-            rl_index (dict): index of roles.
-        Returns:
-            list: lists of activities, roles and relative times.
-        """
         temp_data = list()
         log_df = self.log.to_dict('records')
         key = 'end_timestamp' if one_timestamp else 'start_timestamp'
