@@ -9,8 +9,6 @@ import numpy as np
 
 from nltk.util import ngrams
 import keras.utils as ku
-from keras.utils import to_categorical
-
 
 class SequencesCreator():
 
@@ -227,7 +225,6 @@ class SequencesCreator():
             temp_dict = dict()
             for x in columns:
                 serie = [y[x] for y in trace]
-                #print(" serie :", serie)
                 if x == 'ac_index':
                     serie.insert(0, self.ac_index[('start')])
                     serie.append(self.ac_index[('end')])
@@ -237,9 +234,7 @@ class SequencesCreator():
                 else:
                     serie.insert(0, 0)
                     serie.append(0)
-                # print("after serie :", serie)
                 temp_dict = {**{x: serie}, **temp_dict}
             temp_dict = {**{'caseid': key}, **temp_dict}
             temp_data.append(temp_dict)
-        #print("Verify Temp Data :", temp_data[0])
         return temp_data

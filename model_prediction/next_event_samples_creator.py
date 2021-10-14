@@ -239,33 +239,93 @@ class NextEventSamplesCreator():
         # -----------------------------------------------------------------------
         # --for incorporating omehot encoding
 
-        vec['prefixes']['inter_attr'] = list()
         x_inter_dict = pd.DataFrame(x_inter_dict)
+        #*
+        y_inter_dict = pd.DataFrame(y_inter_dict)
+
+        # vec['prefixes']['inter_attr'], vec['next_evt']['inter_attr'] = self.intercasesequence(columns, x_inter_dict, x_weekday, x_diagnose, y_inter_dict, y_weekday, y_diagnose)
+
+        vec['prefixes']['inter_attr'], vec['next_evt']['inter_attr'] = self.intercasesequence(columns, x_inter_dict,
+                                                                                              x_weekday, x_diagnose,
+                                                                                              y_inter_dict, y_weekday,
+                                                                                              y_diagnose)
+
+        # vec['prefixes']['inter_attr'] = list()
+        # vec['next_evt']['inter_attr'] = list()
+
         # _duumy_x_weekday = np.zeros([len(x_weekday), len(max(x_weekday, key=lambda x: len(x)))])
         # for i, j in enumerate(x_weekday): _duumy_x_weekday[i][-len(j):] = j
         # x_weekday = _duumy_x_weekday
-        for row, wd, dg in zip(x_inter_dict.values, x_weekday, x_diagnose):
-            new_row = [np.array(x) for x in row]
-            new_row = np.dstack(new_row)
-            new_row = new_row.reshape((new_row.shape[1], new_row.shape[2]))
-            new_wd = ku.to_categorical(wd, num_classes=7)
-            new_dg = ku.to_categorical(dg, num_classes=135)
-            new_row = np.concatenate([new_row, new_wd, new_dg], axis=1)
-            vec['prefixes']['inter_attr'].append(new_row)
 
-        vec['next_evt']['inter_attr'] = list()
-        y_inter_dict = pd.DataFrame(y_inter_dict)
-        for row, wd, dg in zip(y_inter_dict.values, y_weekday, y_diagnose):
-            new_row = [np.array(x) for x in row]
-            new_row = np.dstack(new_row)
-            new_row = new_row.reshape((new_row.shape[2]))
-            new_wd = ku.to_categorical(wd, num_classes=7)
-            new_dg = ku.to_categorical(dg, num_classes=135)
-            new_row = np.concatenate([new_row, new_wd, new_dg], axis=0)
-            vec['next_evt']['inter_attr'].append(new_row)
+        # if 'weekday' in columns and 'Diagnose_ohe' in columns:
+        #     for row, wd, dg in zip(x_inter_dict.values, x_weekday, x_diagnose):
+        #         new_row = [np.array(x) for x in row]
+        #         new_row = np.dstack(new_row)
+        #         new_row = new_row.reshape((new_row.shape[1], new_row.shape[2]))
+        #         new_wd = ku.to_categorical(wd, num_classes=7)
+        #         new_dg = ku.to_categorical(dg, num_classes=135)
+        #         new_row = np.concatenate([new_row, new_wd, new_dg], axis=1)
+        #         vec['prefixes']['inter_attr'].append(new_row)
+        #
+        #     for row, wd, dg in zip(y_inter_dict.values, y_weekday, y_diagnose):
+        #         new_row = [np.array(x) for x in row]
+        #         new_row = np.dstack(new_row)
+        #         new_row = new_row.reshape((new_row.shape[2]))
+        #         new_wd = ku.to_categorical(wd, num_classes=7)
+        #         new_dg = ku.to_categorical(dg, num_classes=135)
+        #         new_row = np.concatenate([new_row, new_wd, new_dg], axis=0)
+        #         vec['next_evt']['inter_attr'].append(new_row)
+        #
+        # elif 'weekday' in columns and 'Diagnose_ohe' not in columns:
+        #     for row, wd in zip(x_inter_dict.values, x_weekday):
+        #         new_row = [np.array(x) for x in row]
+        #         new_row = np.dstack(new_row)
+        #         new_row = new_row.reshape((new_row.shape[1], new_row.shape[2]))
+        #         new_wd = ku.to_categorical(wd, num_classes=7)
+        #         new_row = np.concatenate([new_row, new_wd], axis=1)
+        #         vec['prefixes']['inter_attr'].append(new_row)
+        #
+        #     for row, wd in zip(y_inter_dict.values, y_weekday):
+        #         new_row = [np.array(x) for x in row]
+        #         new_row = np.dstack(new_row)
+        #         new_row = new_row.reshape((new_row.shape[2]))
+        #         new_wd = ku.to_categorical(wd, num_classes=7)
+        #         new_row = np.concatenate([new_row, new_wd], axis=0)
+        #         vec['next_evt']['inter_attr'].append(new_row)
+        #
+        # elif 'weekday' not in columns and 'Diagnose_ohe' in columns:
+        #     for row, dg in zip(x_inter_dict.values, x_diagnose):
+        #         new_row = [np.array(x) for x in row]
+        #         new_row = np.dstack(new_row)
+        #         new_row = new_row.reshape((new_row.shape[1], new_row.shape[2]))
+        #         new_dg = ku.to_categorical(dg, num_classes=135)
+        #         new_row = np.concatenate([new_row, new_dg], axis=1)
+        #         vec['prefixes']['inter_attr'].append(new_row)
+        #
+        #     for row, dg in zip(y_inter_dict.values, y_diagnose):
+        #         new_row = [np.array(x) for x in row]
+        #         new_row = np.dstack(new_row)
+        #         new_row = new_row.reshape((new_row.shape[2]))
+        #         new_dg = ku.to_categorical(dg, num_classes=135)
+        #         new_row = np.concatenate([new_row, new_dg], axis=0)
+        #         vec['next_evt']['inter_attr'].append(new_row)
+        #
+        # elif 'weekday' not in columns and 'Diagnose_ohe' not in columns:
+        #     for row in zip(x_inter_dict.values):
+        #         new_row = [np.array(x) for x in row]
+        #         new_row = np.dstack(new_row)
+        #         new_row = new_row.reshape((new_row.shape[1], new_row.shape[2]))
+        #         new_row = np.concatenate([new_row], axis=1)
+        #         vec['prefixes']['inter_attr'].append(new_row)
+        #
+        #     for row in zip(y_inter_dict.values):
+        #         new_row = [np.array(x) for x in row]
+        #         new_row = np.dstack(new_row)
+        #         new_row = new_row.reshape((new_row.shape[2]))
+        #         new_row = np.concatenate([new_row], axis=0)
+        #         vec['next_evt']['inter_attr'].append(new_row)
 
         return vec
-        #============================================================
 
 
     def reformat_events(self, columns, one_timestamp):
@@ -299,3 +359,89 @@ class NextEventSamplesCreator():
             temp_dict = {**{'caseid': key}, **temp_dict}
             temp_data.append(temp_dict)
         return temp_data
+
+    def intercasesequence(self, columns, x_inter_dict, x_weekday, x_diagnose, y_inter_dict, y_weekday, y_diagnose):
+        vec_prefix_inter_attr = list()
+        vec_next_evt_inter_attr = list()
+        if 'weekday' in columns and 'Diagnose_ohe' in columns:
+            for row, wd, dg in zip(x_inter_dict.values, x_weekday, x_diagnose):
+                new_row = [np.array(x) for x in row]
+                new_row = np.dstack(new_row)
+                new_row = new_row.reshape((new_row.shape[1], new_row.shape[2]))
+                new_wd = ku.to_categorical(wd, num_classes=7)
+                new_dg = ku.to_categorical(dg, num_classes=135)
+                new_row = np.concatenate([new_row, new_wd, new_dg], axis=1)
+                vec_prefix_inter_attr.append(new_row)
+
+            for row, wd, dg in zip(y_inter_dict.values, y_weekday, y_diagnose):
+                new_row = [np.array(x) for x in row]
+                new_row = np.dstack(new_row)
+                new_row = new_row.reshape((new_row.shape[2]))
+                new_wd = ku.to_categorical(wd, num_classes=7)
+                new_dg = ku.to_categorical(dg, num_classes=135)
+                new_row = np.concatenate([new_row, new_wd, new_dg], axis=0)
+                vec_next_evt_inter_attr.append(new_row)
+
+        elif 'weekday' in columns and 'Diagnose_ohe' not in columns:
+            for row, wd in zip(x_inter_dict.values, x_weekday):
+                new_row = [np.array(x) for x in row]
+                new_row = np.dstack(new_row)
+                new_row = new_row.reshape((new_row.shape[1], new_row.shape[2]))
+                new_wd = ku.to_categorical(wd, num_classes=7)
+                new_row = np.concatenate([new_row, new_wd], axis=1)
+                vec_prefix_inter_attr.append(new_row)
+
+            for row, wd in zip(y_inter_dict.values, y_weekday):
+                new_row = [np.array(x) for x in row]
+                new_row = np.dstack(new_row)
+                new_row = new_row.reshape((new_row.shape[2]))
+                new_wd = ku.to_categorical(wd, num_classes=7)
+                new_row = np.concatenate([new_row, new_wd], axis=0)
+                vec_next_evt_inter_attr.append(new_row)
+
+        elif 'weekday' not in columns and 'Diagnose_ohe' in columns:
+            for row, dg in zip(x_inter_dict.values, x_diagnose):
+                new_row = [np.array(x) for x in row]
+                new_row = np.dstack(new_row)
+                new_row = new_row.reshape((new_row.shape[1], new_row.shape[2]))
+                new_dg = ku.to_categorical(dg, num_classes=135)
+                new_row = np.concatenate([new_row, new_dg], axis=1)
+                vec_prefix_inter_attr.append(new_row)
+
+            for row, dg in zip(y_inter_dict.values, y_diagnose):
+                new_row = [np.array(x) for x in row]
+                new_row = np.dstack(new_row)
+                new_row = new_row.reshape((new_row.shape[2]))
+                new_dg = ku.to_categorical(dg, num_classes=135)
+                new_row = np.concatenate([new_row, new_dg], axis=0)
+                vec_next_evt_inter_attr.append(new_row)
+
+        elif 'weekday' not in columns and 'Diagnose_ohe' not in columns:
+            # for row in zip(x_inter_dict.values):
+            #     new_row = [np.array(x) for x in row]
+            #     new_row = np.dstack(new_row)
+            #     new_row = new_row.reshape((new_row.shape[1], new_row.shape[2]))
+            #     new_row = np.concatenate([new_row], axis=1)
+            #     vec_prefix_inter_attr.append(new_row)
+            #
+            # for row in zip(y_inter_dict.values):
+            #     new_row = [np.array(x) for x in row]
+            #     new_row = np.dstack(new_row)
+            #     new_row = new_row.reshape((new_row.shape[2]))
+            #     new_row = np.concatenate([new_row], axis=0)
+            #     vec_next_evt_inter_attr.append(new_row)
+
+            for row in x_inter_dict.values:
+                new_row = [np.array(x) for x in row]
+                new_row = np.dstack(new_row)
+                new_row = new_row.reshape((new_row.shape[1], new_row.shape[2]))
+                vec_prefix_inter_attr.append(new_row)
+
+            for row in y_inter_dict.values:
+                new_row = [np.array(x) for x in row]
+                new_row = np.dstack(new_row)
+                new_row = new_row.reshape((new_row.shape[2]))
+                vec_next_evt_inter_attr.append(new_row)
+
+        return vec_prefix_inter_attr, vec_next_evt_inter_attr
+

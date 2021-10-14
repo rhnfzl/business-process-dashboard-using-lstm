@@ -5,12 +5,6 @@ Created on Tue Mar 17 20:35:53 2020
 @author: Manuel Camargo
 """
 import numpy as np
-# import pandas as pd
-# import streamlit as st
-# import time
-#
-# import math
-# import datetime
 from datetime import timedelta
 
 from support_modules import support as sup
@@ -23,24 +17,14 @@ class NextEventPredictor():
         self.model = None
         self.spl = dict()
         self.imp = 'arg_max'
-        #self.nx = 2
 
     def predict(self, params, model, spl, imp, vectorizer):
         self.model = model
-        #print("spl :", spl)
+
         self.spl = spl
-        # print("What is Imp :", imp)
+
         self.imp = imp
-        # if params['mode'] == 'next':
-        #     fltr_idx = params['nextcaseid_attr']["filter_index"]
-        #     spl_df_prefx = pd.DataFrame(self.spl['prefixes'])[fltr_idx:]
-        #     spl_df_next = pd.DataFrame(self.spl['next_evt'])[fltr_idx:]
-        #     st.subheader("Prefixes")
-        #     st.table(spl_df_prefx)
-        #     st.subheader("Next Event")
-        #     st.table(spl_df_next)
-            #print("spl :", spl_df)
-        print("Vectorizer : ", vectorizer)
+
         if params['variant'] in ['multi_pred', 'multi_pred_rand']:
             self.nx = params['multiprednum']
         predictor = self._get_predictor(params['model_type'], params['mode'], params['next_mode'])
@@ -103,10 +87,10 @@ class NextEventPredictor():
                 inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram, x_inter_ngram]
 
             pref_size = len(self.spl['prefixes']['activities'][i])
-            #print("input_time : ", x_t_ngram)
+
             # predict
             preds = self.model.predict(inputs)
-            #print("Predictions :", preds)
+
             if self.imp == 'random_choice':
                 # Use this to get a random choice following as PDF
                 pos = np.random.choice(np.arange(0, len(preds[0][0])),
@@ -128,8 +112,6 @@ class NextEventPredictor():
 
             elif self.imp == 'multi_pred':
 
-                # print("Executing Max Random")
-
                 #changing array to numpy
                 acx = np.array(preds[0][0])
                 rlx = np.array(preds[1][0])
@@ -149,8 +131,6 @@ class NextEventPredictor():
 
             elif self.imp == 'multi_pred_rand':
 
-                # print("Executing Multi Random")
-
                 acx = np.array(preds[0][0])
                 rlx = np.array(preds[1][0])
 
@@ -169,12 +149,6 @@ class NextEventPredictor():
                 for jx in range(len(pos1)):
                     # probability of role
                     pos1_prob.append(rlx[pos1[jx]])
-
-                #print("activity = ", posac)
-                #print("activity probability = ", pos_probac)
-
-                #print("role = ", pos1rl)
-                #print("role probability = ", pos1_probrl)
 
             # save results
             predictions = [pos, pos1, preds[2][0][0], pos_prob, pos1_prob]
@@ -199,11 +173,6 @@ class NextEventPredictor():
         record['rl_prob'] = preds[4]
         record['pref_size'] = pref_size
 
-        # print("ac_pred : ", record['ac_pred'])
-        # print('ac_prob : ', record['ac_prob'])
-        # print('rl_pred : ', record['rl_pred'])
-        # print('rl_prob :', record['rl_prob'])
-
         if parms['one_timestamp']:
             record['tm_prefix'] = [self.rescale(
                x, parms, parms['scale_args'])
@@ -223,7 +192,7 @@ class NextEventPredictor():
             record['tm_pred'] = self.rescale(
                 preds[2], parms, parms['scale_args'])
             #--Converting back to original timestamp for predict
-            if (len(results) == 0) or record['caseid'] != results[index - 1]['caseid']: #first time
+            if (len(results) == 0) or record['caseid'] != results[index - 1]['caseid']: # first time
                     f_time = [d['end_timestamp'] for d in parms['min_time'] if d['caseid'] == record['caseid']][0]
                     f_time.strftime(parms['read_options']['timeformat'])
                     time = f_time
@@ -251,8 +220,6 @@ class NextEventPredictor():
                 parms['scale_args']['wait'])
             record['wait_pred'] = self.rescale(
                 preds[3], parms, parms['scale_args']['wait'])
-        # print("record")
-        # print(record)
         return record
 
 

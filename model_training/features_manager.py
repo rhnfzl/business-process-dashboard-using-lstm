@@ -205,10 +205,11 @@ class FeaturesMannager():
                         # log = log.drop('Age_frq', 1)
                     elif col == 'Diagnose_ohe': #to use it as one hot encoding
                         log = self.ordinal_encoder(log, 'Diagnose', 'ohe')  # one hot encoding
-                        log, _ = self.scale_feature(log, 'Diagnose_ohe', None)
+                        log, _ = self.scale_feature(log, 'Diagnose_ohe', 'max')
+                        log['Diagnose_ohe'] = log['Diagnose_ohe_norm']
                 else:
                         log, _ = self.scale_feature(log, col, self.norm_method, True)
-        print(log.iloc[:10])
+        print(log.iloc[:20])
         return log, scale_args
 
     # =========================================================================
