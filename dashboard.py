@@ -140,7 +140,7 @@ def main(argv):
             role_threshold = formt.number_input("Role Similarity Threshold", min_value=0.50, max_value=0.95, value=0.85,
                                                 step=0.05)
             batch_size_threshold = formt.number_input("Batch Size", min_value=16, max_value=512, value=32, step=16)
-            epochs_size_threshold = formt.number_input("Epochs", min_value=50, max_value=2000, value=200, step=10)
+            epochs_size_threshold = formt.number_input("Epochs", min_value=20, max_value=2000, value=200, step=10)
             parameters['rp_sim'] = role_threshold  # Default 0.85
             parameters['batch_size'] = batch_size_threshold  # Usually 16/32/64/128/256, 0 for Automatic Determine
             parameters['epochs'] = epochs_size_threshold  # 200, for embedded training it's 100.
@@ -198,7 +198,7 @@ def main(argv):
 
                 # -- N-Gram
                 n_gram_value = formt.number_input("N-Gram Size", min_value=5, max_value=30, value=10, step=5)
-                lstm_layer_size = formt.number_input("LSTM Layer Size", min_value=50, max_value=300, value=50, step=50)
+                lstm_layer_size = formt.number_input("LSTM Layer Size", min_value=25, max_value=300, value=50, step=25)
                 parameters['n_size'] = n_gram_value
                 parameters['l_size'] = lstm_layer_size
 

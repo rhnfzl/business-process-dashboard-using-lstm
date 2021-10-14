@@ -208,7 +208,7 @@ class FeaturesMannager():
                         log, _ = self.scale_feature(log, 'Diagnose_ohe', None)
                 else:
                         log, _ = self.scale_feature(log, col, self.norm_method, True)
-        print(log)
+        print(log.iloc[:10])
         return log, scale_args
 
     # =========================================================================
@@ -281,7 +281,8 @@ class FeaturesMannager():
             _index = dict()
 
             for ix, _ in enumerate(subsec_set):
-                _index[subsec_set[ix]] = ix + 1
+                # _index[subsec_set[ix]] = ix + 1 #to start from 1
+                _index[subsec_set[ix]] = ix
 
             _idx = lambda x: _index[x[cat_label]]
 

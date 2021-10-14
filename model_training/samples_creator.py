@@ -206,7 +206,6 @@ class SequencesCreator():
             vec['next_evt']['inter_attr'] = np.concatenate(
                 [vec['next_evt']['inter_attr'], y_weekday], axis=1)
         if 'Diagnose_ohe' in columns:
-            print(x_diagnose)
             x_diagnose = ku.to_categorical(x_diagnose, num_classes=135)
             y_diagnose = ku.to_categorical(y_diagnose, num_classes=135)
             vec['prefixes']['inter_attr'] = np.concatenate(
