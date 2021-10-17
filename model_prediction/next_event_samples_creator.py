@@ -66,8 +66,8 @@ class NextEventSamplesCreator():
         Returns:
             list: list of prefixes and expected sufixes.
         """
-        print(self.log.dtypes)
-        print("Columns : ", columns)
+        # print(self.log.dtypes)
+        # print("Columns : ", columns)
 
         # print(self.log)
         times = ['dur_norm'] if parms['one_timestamp'] else ['dur_norm', 'wait_norm']
@@ -133,8 +133,8 @@ class NextEventSamplesCreator():
         Returns:
             list: list of prefixes and expected sufixes.
         """
-        print(self.log.dtypes)
-        print("Columns : ", columns)
+        # print(self.log.dtypes)
+        # print("Columns : ", columns)
 
         # print(self.log)
         times = ['dur_norm'] if parms['one_timestamp'] else ['dur_norm', 'wait_norm']
