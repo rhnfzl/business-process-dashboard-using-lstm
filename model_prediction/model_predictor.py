@@ -27,7 +27,7 @@ from model_training import features_manager as feat
 from model_prediction import interfaces as it
 from model_prediction.analyzers import sim_evaluator as ev
 # import analyzers.sim_evaluator as evp
-# pd.set_option('mode.chained_assignment', None) #supressing the warning of chained indexing
+pd.set_option('mode.chained_assignment', None) #supressing the warning of chained indexing
 
 class ModelPredictor():
     """
@@ -97,15 +97,15 @@ class ModelPredictor():
         # assesment
         evaluator = EvaluateTask()
 
-        #--predicted negative time to positive
-        if self.predictions['tm_pred'].dtypes == 'O':
-            for i in range(len(self.predictions['tm_pred'])):
-                _xc = list()
-                for j in range(len(self.predictions['tm_pred'][i])):
-                    _xc.append(abs(self.predictions['tm_pred'][i][j]))
-                self.predictions['tm_pred'][i] = _xc
-        else:
-            self.predictions['tm_pred'] = self.predictions['tm_pred'].abs()
+        # #--predicted negative time to positive
+        # if self.predictions['tm_pred'].dtypes == 'O':
+        #     for i in range(len(self.predictions['tm_pred'])):
+        #         _xc = list()
+        #         for j in range(len(self.predictions['tm_pred'][i])):
+        #             _xc.append(abs(self.predictions['tm_pred'][i][j]))
+        #         self.predictions['tm_pred'][i] = _xc
+        # else:
+        #     self.predictions['tm_pred'] = self.predictions['tm_pred'].abs()
 
         results_copy = self.predictions.copy()
 
@@ -141,8 +141,8 @@ class ModelPredictor():
             _count = df_test['caseid'].value_counts().to_frame()
             _count.reset_index(level=0, inplace=True)
             _count.sort_values(by=['caseid'], inplace=True)
-            print("Count of respective Case Id")
-            print(_count)
+            # print("Count of respective Case Id")
+            # print(_count)
         return df_test
 
     def load_parameters(self):
@@ -285,6 +285,16 @@ class ModelPredictor():
     @staticmethod
     def dashboard_prediction(pred_results_df, parms, confirmation_results):
 
+        #--predicted negative time to positive
+        if pred_results_df['tm_pred'].dtypes == 'O':
+            for i in range(len(pred_results_df['tm_pred'])):
+                _xc = list()
+                for j in range(len(pred_results_df['tm_pred'][i])):
+                    _xc.append(abs(pred_results_df['tm_pred'][i][j]))
+                pred_results_df['tm_pred'][i] = _xc
+        else:
+            pred_results_df['tm_pred'] = pred_results_df['tm_pred'].abs()
+
         # state_of_theprocess = st.empty()
         # if parms['next_mode'] == 'next_action':
         # # -----------------------------------------------------------------------------------------------------------------------------------
@@ -331,6 +341,7 @@ class ModelPredictor():
         # elif parms['mode'] == 'batch':
         results_dash = pred_results_df[['ac_prefix', 'rl_prefix', 'tm_prefix', 'run_num', 'implementation']].copy()
         results_dash = pred_results_df.drop(['ac_prefix', 'rl_prefix', 'tm_prefix', 'run_num', 'implementation'], axis=1)
+        # print(results_dash.iloc[:5])
         # Replacing from Dictionary Values to it's original name
         results_dash['ac_expect'] = results_dash.ac_expect.replace(parms['index_ac'])
         results_dash['rl_expect'] = results_dash.rl_expect.replace(parms['index_rl'])
@@ -372,7 +383,7 @@ class ModelPredictor():
 
             multipreddict = ModelPredictor.dashboard_multiprediction_columns(parms)
 
-            if parms['batchpredchoice'] == 'Prediction' and parms['batch_mode'] == 'pre_prefix':
+            if parms['batchpredchoice'] in ['Prediction', 'Generative'] and parms['batch_mode'] == 'pre_prefix':
                 _lst = [['caseid', 'pref_size', 'ac_expect'] + multipreddict["ac_pred"] + multipreddict["ac_prob"] +
                         ['rl_expect'] + multipreddict["rl_pred"] + multipreddict["rl_prob"] + ['tm_expect'] + multipreddict['tm_pred']]
             else:
@@ -406,14 +417,14 @@ class ModelPredictor():
                             results_dash.rename(
                                 columns={_jz : nw(_iz + 1, lang="en", to="ordinal_num") + " RL Confidence"}, inplace=True)
                     else:
-                        if parms['batchpredchoice'] == 'Prediction' and parms['batch_mode'] == 'pre_prefix':
+                        if parms['batchpredchoice'] in ['Prediction', 'Generative'] and parms['batch_mode'] == 'pre_prefix':
                             if _jz[:2] == 'tm':
                                 if _jz[3:8] == 'pred' + str(_iz + 1):
                                     results_dash.rename(
                                         columns={_jz: nw(_iz + 1, lang="en", to="ordinal_num") + " TM Prediction"},
                                         inplace=True)
 
-            if parms['batchpredchoice'] == 'Prediction' and parms['batch_mode'] == 'pre_prefix':
+            if parms['batchpredchoice'] in ['Prediction', 'Generative'] and parms['batch_mode'] == 'pre_prefix':
                 results_dash.rename(
                     columns={'caseid': 'Case ID', 'pref_size': 'Event_Number', 'ac_expect': 'AC Expected',
                              'rl_expect': 'RL Expected', 'tm_expect': 'TM Expected (Seconds)'}, inplace=True)
@@ -484,7 +495,7 @@ class ModelPredictor():
             results_dash[multipreddict["rl_prob"]] = pd.DataFrame(results_dash.rl_prob.tolist(),
                                                          index=results_dash.index)
 
-        if parms['next_mode'] == 'next_action' or (parms['mode'] == 'batch' and parms['batchpredchoice'] == 'Prediction' and parms['batch_mode'] == 'pre_prefix' and parms[
+        if parms['next_mode'] == 'next_action' or (parms['mode'] == 'batch' and parms['batchpredchoice'] in ['Prediction', 'Generative'] and parms['batch_mode'] == 'pre_prefix' and parms[
                     'variant'] in ['multi_pred', 'multi_pred_rand']):
             # --------------------results_dash['tm_pred']
             for ix in range(len(results_dash['tm_pred'])):
@@ -1155,7 +1166,7 @@ class ModelPredictor():
         rl_pred_lst = []
         rl_prob_lst = []
 
-        if parms['next_mode'] == 'next_action' or (parms['mode'] == 'batch' and parms['batchpredchoice'] == 'Prediction' and parms['batch_mode'] == 'pre_prefix' and parms[
+        if parms['next_mode'] == 'next_action' or (parms['mode'] == 'batch' and parms['batchpredchoice'] in ['Prediction', 'Generative'] and parms['batch_mode'] == 'pre_prefix' and parms[
                     'variant'] in ['multi_pred', 'multi_pred_rand']):
             tm_pred_lst = []
             if parms['next_mode'] == 'next_action':
@@ -1173,14 +1184,14 @@ class ModelPredictor():
             ac_prob_lst.append("ac_prob" + str(zx))
             rl_pred_lst.append("rl_pred" + str(zx))
             rl_prob_lst.append("rl_prob" + str(zx))
-            if parms['next_mode'] == 'next_action' or (parms['mode'] == 'batch' and parms['batchpredchoice'] == 'Prediction' and parms['batch_mode'] == 'pre_prefix' and parms[
+            if parms['next_mode'] == 'next_action' or (parms['mode'] == 'batch' and parms['batchpredchoice'] in ['Prediction', 'Generative'] and parms['batch_mode'] == 'pre_prefix' and parms[
                     'variant'] in ['multi_pred', 'multi_pred_rand']):
                 tm_pred_lst.append("tm_pred" + str(zx))
         multipreddict["ac_pred"] = ac_pred_lst
         multipreddict["ac_prob"] = ac_prob_lst
         multipreddict["rl_pred"] = rl_pred_lst
         multipreddict["rl_prob"] = rl_prob_lst
-        if parms['next_mode'] == 'next_action'or (parms['mode'] == 'batch' and parms['batchpredchoice'] == 'Prediction' and parms['batch_mode'] == 'pre_prefix' and parms[
+        if parms['next_mode'] == 'next_action'or (parms['mode'] == 'batch' and parms['batchpredchoice'] in ['Prediction', 'Generative'] and parms['batch_mode'] == 'pre_prefix' and parms[
                     'variant'] in ['multi_pred', 'multi_pred_rand']):
             multipreddict["tm_pred"] = tm_pred_lst
 
@@ -1369,7 +1380,7 @@ class EvaluateTask():
                 # print(data)
                 data['ac_pred'] = eval_data['ac_pred'].str[i]
                 data['rl_pred'] = eval_data['rl_pred'].str[i]
-                if parms['batchpredchoice'] == 'Prediction' and parms['batch_mode'] == 'pre_prefix' and parms[
+                if parms['batchpredchoice'] in ['Prediction', 'Generative'] and parms['batch_mode'] == 'pre_prefix' and parms[
                     'variant'] in ['multi_pred', 'multi_pred_rand']:
                     data['tm_pred'] = eval_data['tm_pred'].str[i]
                 # print("Data After")

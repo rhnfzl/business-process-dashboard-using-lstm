@@ -191,9 +191,14 @@ class SequencesCreator():
             x_inter_dict[key] = np.array(value)
             x_inter_dict[key] = x_inter_dict[key].reshape(
                 (x_inter_dict[key].shape[0], x_inter_dict[key].shape[1], 1))
+
+
         vec['prefixes']['inter_attr'] = np.dstack(list(x_inter_dict.values()))
         # Reshape y intercase attributes (suffixes, number of attributes)
         vec['next_evt']['inter_attr'] = np.dstack(list(y_inter_dict.values()))[0]
+
+        # vec['prefixes']['inter_attr'] = list()
+        # vec['next_evt']['inter_attr'] = list()
 
         #--for incorporating omehot encoding
         if 'weekday' in columns:
@@ -210,6 +215,23 @@ class SequencesCreator():
                 [vec['prefixes']['inter_attr'], x_diagnose], axis=2)
             vec['next_evt']['inter_attr'] = np.concatenate(
                 [vec['next_evt']['inter_attr'], y_diagnose], axis=1)
+
+        # print("-----Inter Case Prefixes---------")
+        # print(vec['prefixes']['inter_attr'][0])
+        # print(vec['prefixes']['inter_attr'][1])
+        # print(vec['prefixes']['inter_attr'][2])
+        # print(vec['prefixes']['inter_attr'][3])
+        # print(vec['prefixes']['inter_attr'][4])
+        # print(vec['prefixes']['inter_attr'][5])
+        # print(vec['prefixes']['inter_attr'])
+        # print("-----Inter Case Next Event---------")
+        # print(vec['next_evt']['inter_attr'][0])
+        # print(vec['next_evt']['inter_attr'][1])
+        # print(vec['next_evt']['inter_attr'][2])
+        # print(vec['next_evt']['inter_attr'][3])
+        # print(vec['next_evt']['inter_attr'][4])
+        # print(vec['next_evt']['inter_attr'][5])
+        # print(vec['next_evt']['inter_attr'])
         return vec
 
     # =============================================================================

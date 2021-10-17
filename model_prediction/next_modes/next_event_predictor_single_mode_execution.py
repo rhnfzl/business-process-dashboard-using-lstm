@@ -122,7 +122,6 @@ class NextEventPredictor():
                                                                                                'pos_rl_ss': [0]}
 
         results = list()
-        # print("Initial Session STate : ", st.session_state)
         for i, _ in enumerate(self.spl['prefixes']['activities'][:pred_fltr_idx]):
 
             x_ac_ngram = (np.append(

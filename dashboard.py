@@ -119,6 +119,7 @@ def main(argv):
 
         parameters['read_options'] = {
             'timeformat': '%Y-%m-%dT%H:%M:%S.%f',
+            # 'timeformat': '%Y-%m-%dT%H:%M:%S',
             'column_names': column_names,
             'one_timestamp': parameters['one_timestamp'],
             'ns_include': True}
@@ -193,7 +194,7 @@ def main(argv):
                                                     index=0)
                 parameters['optim'] = optimization_func  # 'Nadam'  # optimization function Keras
                 norm_method_opt = formt.selectbox("Normalization Method", ['lognorm', 'max', 'standard', 'normal'],
-                                                  index=0)
+                                                  index=1)
 
                 # -- Normalization Method to be used for Time and some Intercase Features
                 parameters['norm_method'] = norm_method_opt
@@ -681,8 +682,9 @@ def main(argv):
 
                                     with st.sidebar.expander('Choose Prefix Source'):
                                         st.info("Select **SME** for simulating the input to prediction using the log, "
-                                                "**Prediction** to use the respective prediction as the input for subsequent prediction")
-                                        parameters['batchpredchoice'] = st.radio('', ['SME', 'Prediction'],
+                                                "**Prediction** to use the respective prediction as the input for subsequent prediction, "
+                                                "**Generative** to generate the model predictions")
+                                        parameters['batchpredchoice'] = st.radio('', ['SME', 'Prediction', 'Generative'],
                                                                                  key="radio_select_pred_batch",
                                                                                  on_change=clear_cache)
 

@@ -9,6 +9,7 @@ import numpy as np
 
 import itertools
 from operator import itemgetter
+from datetime import datetime, timezone
 
 import category_encoders as ce
 
@@ -159,7 +160,7 @@ class FeaturesMannager():
                 if col == 'daytime':
                         log, _ = self.scale_feature(log, 'daytime', 'day_secs', True)
                 elif col == 'open_cases':
-                        log, _ = self.scale_feature(log, 'open_cases', self.norm_method) #max
+                        log, _ = self.scale_feature(log, 'open_cases', 'max') #max
                         #--Frequency Encoding
                         # fe = log.groupby('open_cases').size() / len(log)
                         # log.loc[:, 'open_cases_frq'] = log['open_cases'].map(fe)
@@ -190,11 +191,11 @@ class FeaturesMannager():
                         log, _ = self.scale_feature(log, 'Diagnose_ord', 'max')
 
                     if col == 'CRP':
-                        log, _ = self.scale_feature(log, 'CRP', self.norm_method)
+                        log, _ = self.scale_feature(log, 'CRP', 'max')
                     elif col == 'LacticAcid':
-                        log, _ = self.scale_feature(log, 'LacticAcid', self.norm_method)
+                        log, _ = self.scale_feature(log, 'LacticAcid', 'max')
                     elif col == 'Leucocytes':
-                        log, _ = self.scale_feature(log, 'Leucocytes', self.norm_method)
+                        log, _ = self.scale_feature(log, 'Leucocytes', 'max')
                     elif col == 'Age':
                         log, _ = self.scale_feature(log, 'Age', 'max')
                         #--Frequency Encoding
@@ -204,12 +205,14 @@ class FeaturesMannager():
                         # log = log.rename(columns={'Age_frq_norm': 'Age_norm'})
                         # log = log.drop('Age_frq', 1)
                     elif col == 'Diagnose_ohe': #to use it as one hot encoding
-                        log = self.ordinal_encoder(log, 'Diagnose', 'ohe')  # one hot encoding
+                        log = self.ordinal_encoder(log, 'Diagnose', 'ohe')  # normalized one hot encoding
                         log, _ = self.scale_feature(log, 'Diagnose_ohe', 'max')
                         log['Diagnose_ohe'] = log['Diagnose_ohe_norm']
+                        #---
+                        # log = self.ordinal_encoder(log, 'Diagnose', 'ohe')  #just one hot encoding
+                        # log, _ = self.scale_feature(log, 'Diagnose_ohe', None)
                 else:
                         log, _ = self.scale_feature(log, col, self.norm_method, True)
-        print(log.iloc[:20])
         return log, scale_args
 
     # =========================================================================

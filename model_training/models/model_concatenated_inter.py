@@ -39,6 +39,11 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
     inter_input = Input(shape=(vec['prefixes']['inter_attr'].shape[1],
                             vec['prefixes']['inter_attr'].shape[2]), name='inter_input')
 
+    # print("Shape 1 : ", vec['prefixes']['inter_attr'].shape[1])
+    # print("Shape 1 : ", vec['prefixes']['inter_attr'].shape[2])
+    # print("------inter_input--------")
+    # print(vec['prefixes']['inter_attr'])
+
 #=============================================================================
 #    Embedding layer for categorical attributes
 # =============================================================================
