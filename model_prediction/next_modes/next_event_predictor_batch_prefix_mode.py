@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Mar 17 20:35:53 2020
-
-@author: Manuel Camargo
-"""
 import numpy as np
 
 from datetime import timedelta
@@ -419,11 +414,9 @@ class NextEventPredictor():
 
                 # save results
                 if self.imp in ['multi_pred', 'multi_pred_rand']:
-
                     predictions = [pos, pos1, [preds[2][0][0]] * parameters['multiprednum'], pos_prob, pos1_prob]
 
-                elif self.imp == ['arg_max', 'random_choice']:
-
+                elif self.imp in ['arg_max', 'random_choice']:
                     predictions = [pos, pos1, preds[2][0][0], pos_prob, pos1_prob]
 
                 #-------
@@ -453,14 +446,14 @@ class NextEventPredictor():
                             _tm = np.concatenate((_tm[:-1], np.array([[_preds]])), axis=0)
                         elif i > 1:
                             _tm = np.concatenate((_tm[:-1], np.array([[_preds[lk]]])), axis=0)
-                    elif self.imp == ['arg_max', 'random_choice']:
+                    elif self.imp in ['arg_max', 'random_choice']:
                         _ac = np.append(_ac[:-1], float(_pos))
                         _rl = np.append(_rl[:-1], float(_pos1))
                         _tm = np.concatenate((_tm[:-1], np.array([[_preds]])), axis=0)
 
                     # print("As the Input : ", _ac)
                     # print("_rl : ", _rl)
-                    print("_tm : ", _tm)
+                    # print("_tm : ", _tm)
 
                     # Activities and roles input shape(1,5)
                     x_ac_ngram = (np.append(
@@ -561,7 +554,7 @@ class NextEventPredictor():
                 if self.imp in ['multi_pred', 'multi_pred_rand']:
                     # _preds = sum(_arr_pred)/len(_arr_pred)
                     _preds = _arr_pred
-                elif self.imp == ['arg_max', 'random_choice']:
+                elif self.imp in ['arg_max', 'random_choice']:
                     _preds = preds[2][0][0]
 
                 predictions = [_pos, _pos1, _preds, _arr_pos_prob, _arr_pos1_prob]
@@ -581,12 +574,6 @@ class NextEventPredictor():
 
             if enm == [0] and len(enm) == 1:
                 preds_prefix = list() # reinitiate the list
-
-            # if i == 0:
-
-                # print("_ac0 : ", _preac[i])
-                # print("_rl0 : ", _prerl[i])
-                # print("_tm0 : ", _pretm[i])
 
                 # Activities and roles input shape(1,5)
                 x_ac_ngram = (np.append(
@@ -666,8 +653,6 @@ class NextEventPredictor():
 
                 elif self.imp == 'multi_pred_rand':
 
-                    # print("Executing Multi Random")
-
                     acx = np.array(preds[0][0])
                     rlx = np.array(preds[1][0])
 
@@ -694,7 +679,7 @@ class NextEventPredictor():
 
                     preds_prefix.append([pos, pos1, [preds[2][0][0]] * parameters['multiprednum']])
 
-                elif self.imp == ['arg_max', 'random_choice']:
+                elif self.imp in ['arg_max', 'random_choice']:
 
                     predictions = [pos, pos1, preds[2][0][0], pos_prob, pos1_prob]
 
@@ -724,39 +709,38 @@ class NextEventPredictor():
 
                 for lk in range(parameters['multiprednum']):
 
+                    _temp_ac = list()
+                    _temp_rl = list()
+                    _temp_tm = list()
+
                     if self.imp in ['multi_pred', 'multi_pred_rand']:
-                        _temp_ac = list()
-                        _temp_rl = list()
-                        _temp_tm = list()
+
                         for gk in range(len(preds_prefix)):
                             _temp_ac.append(float(preds_prefix[gk][0][lk]))
                             _temp_rl.append(float(preds_prefix[gk][1][lk]))
-                            # if len(enm) == 2:
                             _temp_tm.append(float(preds_prefix[gk][2][lk]))
-                            # else:
-                            #     _temp_tm.append([float(preds_prefix[gk][2][lk])])
-                        _temp_ac = np.array(_ac[:1] + _temp_ac)
-                        _temp_rl = np.array(_rl[:1] + _temp_rl)
-                        # print("time at axis 0 : ", _tm[:1])
-                        # print("time at axis 1 orig : ", _temp_tm)
-                        # print("time at axis 1 before : ", np.array([_temp_tm]))
-                        # print("time at axis 1 after : ", np.dstack([_temp_tm])[0], type(np.dstack([_temp_tm])[0]))
-                        # _temp_tm = np.concatenate((_tm[:1], np.array([_temp_tm])), axis=0)
-                        _temp_tm = np.concatenate((_tm[:1], np.dstack([_temp_tm])[0]), axis=0)
 
-                        # _tm = np.concatenate((_tm[:-1], np.array([[_temp_tm]])), axis=0)
-                        # _ac = np.append(_ac[:-1], float(_pos[lk]))
-                        # _rl = np.append(_rl[:-1], float(_pos1[lk]))
-                        # if i == 1:
+                        # _temp_ac = np.array(_ac[:1] + _temp_ac)
+                        # _temp_rl = np.array(_rl[:1] + _temp_rl)
+                        # _temp_tm = np.concatenate((_tm[:1], np.dstack([_temp_tm])[0]), axis=0)
 
-                        # if len(enm) == 2:
-                        #     _tm = np.concatenate((_tm[:-1], np.array([[_preds]])), axis=0)
-                        # elif i > 1:
-                        #     _tm = np.concatenate((_tm[:-1], np.array([[_preds[lk]]])), axis=0)
-                    elif self.imp == ['arg_max', 'random_choice']:
-                        _ac = np.append(_ac[:-1], float(_pos))
-                        _rl = np.append(_rl[:-1], float(_pos1))
-                        _tm = np.concatenate((_tm[:-1], np.array([[_preds]])), axis=0)
+                    elif self.imp in ['arg_max', 'random_choice']:
+                        # _ac = np.append(_ac[:-1], float(_pos))
+                        # _rl = np.append(_rl[:-1], float(_pos1))
+                        # _tm = np.concatenate((_tm[:-1], np.array([[_preds]])), axis=0)
+                        #
+                        # _temp_ac = list()
+                        # _temp_rl = list()
+                        # _temp_tm = list()
+
+                        for gk in range(len(preds_prefix)):
+                            _temp_ac.append(float(preds_prefix[gk][0]))
+                            _temp_rl.append(float(preds_prefix[gk][1]))
+                            _temp_tm.append(float(preds_prefix[gk][2]))
+
+                    _temp_ac = np.array(_ac[:1] + _temp_ac)
+                    _temp_rl = np.array(_rl[:1] + _temp_rl)
+                    _temp_tm = np.concatenate((_tm[:1], np.dstack([_temp_tm])[0]), axis=0)
 
                     # print("Input _ac : ", _temp_ac)
                     # print("Input _rl : ", _temp_rl)
@@ -800,11 +784,8 @@ class NextEventPredictor():
 
                     pref_size = len(self.spl['prefixes']['activities'][i])
 
-                    # print("Input to predictor : ", inputs)
-
                     preds = self.model.predict(inputs)
 
-                    # print("Predictions :", preds)
                     if self.imp == 'random_choice':
                         # Use this to get a random choice following as PDF
                         _arr_pos = np.random.choice(np.arange(0, len(preds[0][0])),
@@ -815,12 +796,6 @@ class NextEventPredictor():
                         _arr_pos1_prob = preds[1][0][_arr_pos1]
 
                     elif self.imp == 'arg_max':
-                        # Use this to get the max prediction
-                        # pos = np.argmax(preds[0][0])
-                        # pos_prob = preds[0][0][pos]
-                        #
-                        # pos1 = np.argmax(preds[1][0])
-                        # pos1_prob = preds[1][0][pos1]
 
                         _arr_pos = np.argmax(preds[0][0])
                         _arr_pos_prob = preds[0][0][_arr_pos]
@@ -830,24 +805,6 @@ class NextEventPredictor():
 
                     elif self.imp == 'multi_pred':
 
-                        # print("Executing Max Random")
-
-                        # changing array to numpy
-                        # acx = np.array(preds[0][0])
-                        # rlx = np.array(preds[1][0])
-                        #
-                        # pos = (-acx).argsort()[:self.nx].tolist()
-                        # pos1 = (-rlx).argsort()[:self.nx].tolist()
-                        #
-                        # pos_prob = []
-                        # pos1_prob = []
-                        #
-                        # for ix in range(len(pos)):
-                        #     # probability of activity
-                        #     pos_prob.append(acx[pos[ix]])
-                        # for jx in range(len(pos1)):
-                        #     # probability of role
-                        #     pos1_prob.append(rlx[pos1[jx]])
                         if lk == 0:
                             _arr_pos = []
                             _arr_pos_prob = []
@@ -866,33 +823,12 @@ class NextEventPredictor():
 
                     elif self.imp == 'multi_pred_rand':
 
-                        # print("Executing Multi Random")
-
                         if lk == 0:
                             _arr_pos = []
                             _arr_pos_prob = []
                             _arr_pos1 = []
                             _arr_pos1_prob = []
                             _arr_pred = []
-
-                        # acx = np.array(preds[0][0])
-                        # rlx = np.array(preds[1][0])
-                        #
-                        # pos = np.random.choice(np.arange(0, len(preds[0][0])), self.nx, replace=False,
-                        #                        p=preds[0][0]).tolist()
-                        #
-                        # pos1 = np.random.choice(np.arange(0, len(preds[1][0])), self.nx, replace=False,
-                        #                         p=preds[1][0]).tolist()
-                        #
-                        # pos_prob = []
-                        # pos1_prob = []
-                        #
-                        # for ix in range(len(pos)):
-                        #     # probability of activity
-                        #     pos_prob.append(acx[pos[ix]])
-                        # for jx in range(len(pos1)):
-                        #     # probability of role
-                        #     pos1_prob.append(rlx[pos1[jx]])
 
                         _arr_pos.append(np.random.choice(np.arange(0, len(preds[0][0])), p=preds[0][0]))
                         _arr_pos_prob.append(preds[0][0][_arr_pos[lk]])
@@ -901,30 +837,19 @@ class NextEventPredictor():
 
                         _arr_pred.append(preds[2][0][0])
 
-                        # _arr_pos.append(np.argmax(preds[0][0]))
-                        # _arr_pos_prob.append(preds[0][0][_arr_pos[lk]])
-                        #
-                        # _arr_pos1.append(np.argmax(preds[1][0]))
-                        # _arr_pos1_prob.append(preds[1][0][_arr_pos1[lk]])
-                        #
-                        # _arr_pred.append(preds[2][0][0])
-
                 _pos = _arr_pos
                 _pos1 = _arr_pos1
 
                 if self.imp in ['multi_pred', 'multi_pred_rand']:
                     # _preds = sum(_arr_pred)/len(_arr_pred)
                     _preds = _arr_pred
-                elif self.imp == ['arg_max', 'random_choice']:
+                elif self.imp in ['arg_max', 'random_choice']:
                     _preds = preds[2][0][0]
 
-                # print("Predicted Time : ", _preds)
                 # save results
                 predictions = [_pos, _pos1, _preds, _arr_pos_prob, _arr_pos1_prob]
 
                 preds_prefix.append([_pos, _pos1, _preds])
-
-                # print("Prediction of the iteration  : ", preds_prefix)
 
                 if not parameters['one_timestamp']:
                     predictions.extend([preds[2][0][1]])
