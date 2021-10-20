@@ -232,6 +232,33 @@ class SequencesCreator():
         # print(vec['next_evt']['inter_attr'][4])
         # print(vec['next_evt']['inter_attr'][5])
         # print(vec['next_evt']['inter_attr'])
+
+        # print("-----Inter Case Prefixes---------")
+        #
+        # print(vec['next_evt']['inter_attr'][0])
+        # print(vec['prefixes']['inter_attr'][0])
+        # print("---------------------------------")
+        #
+        # print(vec['next_evt']['inter_attr'][1])
+        # print(vec['prefixes']['inter_attr'][1])
+        # print("---------------------------------")
+        #
+        # print(vec['next_evt']['inter_attr'][2])
+        # print(vec['prefixes']['inter_attr'][2])
+        # print("---------------------------------")
+        #
+        # print(vec['next_evt']['inter_attr'][3])
+        # print(vec['prefixes']['inter_attr'][3])
+        # print("---------------------------------")
+        #
+        # print(vec['next_evt']['inter_attr'][4])
+        # print(vec['prefixes']['inter_attr'][4])
+        # print("---------------------------------")
+        #
+        # print(vec['next_evt']['inter_attr'][5])
+        # print(vec['prefixes']['inter_attr'][5])
+        # print("---------------------------------")
+
         return vec
 
     # =============================================================================

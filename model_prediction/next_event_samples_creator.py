@@ -325,6 +325,51 @@ class NextEventSamplesCreator():
         #         new_row = np.concatenate([new_row], axis=0)
         #         vec['next_evt']['inter_attr'].append(new_row)
 
+        # print("-----Inter Case Prefixes---------")
+        #
+        # print(vec['next_evt']['inter_attr'][0])
+        # print(vec['prefixes']['inter_attr'][0])
+        # print("---------------------------------")
+        #
+        # print(vec['next_evt']['inter_attr'][1])
+        # print(vec['prefixes']['inter_attr'][1])
+        # print("---------------------------------")
+        #
+        # print(vec['next_evt']['inter_attr'][2])
+        # print(vec['prefixes']['inter_attr'][2])
+        # print("---------------------------------")
+        #
+        # print(vec['next_evt']['inter_attr'][3])
+        # print(vec['prefixes']['inter_attr'][3])
+        # print("---------------------------------")
+        #
+        # print(vec['next_evt']['inter_attr'][4])
+        # print(vec['prefixes']['inter_attr'][4])
+        # print("---------------------------------")
+        #
+        # print(vec['next_evt']['inter_attr'][5])
+        # print(vec['prefixes']['inter_attr'][5])
+        # print("---------------------------------")
+        #
+        # print(vec['next_evt']['inter_attr'])
+        # print(vec['prefixes']['inter_attr'])
+
+
+
+        # print(vec['prefixes']['inter_attr'][1])
+        # print(vec['prefixes']['inter_attr'][2])
+        # print(vec['prefixes']['inter_attr'][3])
+        # print(vec['prefixes']['inter_attr'][4])
+        # print(vec['prefixes']['inter_attr'][5])
+        # print(vec['prefixes']['inter_attr'])
+        # print("-----Inter Case Next Event---------")
+        # print(vec['next_evt']['inter_attr'][1])
+        # print(vec['next_evt']['inter_attr'][2])
+        # print(vec['next_evt']['inter_attr'][3])
+        # print(vec['next_evt']['inter_attr'][4])
+        # print(vec['next_evt']['inter_attr'][5])
+        # print(vec['next_evt']['inter_attr'])
+
         return vec
 
 

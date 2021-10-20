@@ -91,10 +91,10 @@ class ModelPredictor():
         for i in range(0, self.parms['rep']):
             self.predict_values()
             self.run_num += 1
-        # export predictions
+        # assesment
         if self.parms['mode'] == 'batch':
             self.export_predictions()
-        # assesment
+
         evaluator = EvaluateTask()
 
         # #--predicted negative time to positive
@@ -115,6 +115,10 @@ class ModelPredictor():
         #     evaluator.evaluate(self.parms, self.predictions)
         # elif self.parms['mode'] == 'batch':
         evaluator.evaluate(self.parms, self.predictions)
+        # export predictions for pm tools
+        if self.parms['mode'] == 'batch':
+            prediction_output = self.predictions.copy()
+            self.export_manuplation(prediction_output)
 
     def predict_values(self):
         # Predict values
@@ -225,6 +229,62 @@ class ModelPredictor():
         filename = self.model_name + '_' + self.parms['activity'] + '.csv'
         self.predictions.to_csv(os.path.join(output_folder, filename),
                                 index=False)
+        self.predictions.to_csv(os.path.join(output_folder, filename),
+                                index=False)
+
+    def export_manuplation(self, prediction_output):
+        _export_df = prediction_output[['ac_prefix', 'rl_prefix', 'ac_prob', 'rl_prob', 'tm_prefix', 'run_num', 'implementation']].copy()
+        _export_df = prediction_output.drop(['ac_prefix', 'rl_prefix', 'ac_prob', 'rl_prob', 'tm_prefix', 'run_num', 'implementation'], axis=1)
+        _export_df['ac_expect'] = _export_df.ac_expect.replace(self.parms['index_ac'])
+        _export_df['rl_expect'] = _export_df.rl_expect.replace(self.parms['index_rl'])
+
+        if self.parms['variant'] in ['multi_pred', 'multi_pred_rand']:
+            _numofcols = self.parms['multiprednum']
+            ac_pred_lst = []
+            rl_pred_lst = []
+            for zx in range(_numofcols):
+                zx += 1
+                ac_pred_lst.append("ac_pred" + str(zx))
+                rl_pred_lst.append("rl_pred" + str(zx))
+            # --------------------Activity
+            for ix in range(len(_export_df['ac_pred'])):
+                for jx in range(len(_export_df['ac_pred'][ix])):
+                    # replacing the value from the parms dictionary
+                    _export_df['ac_pred'][ix].append(self.parms['index_ac'][_export_df.ac_pred[ix][jx]])
+                # poping out the values from the list
+                ln = int(len(_export_df['ac_pred'][ix]) / 2)
+                #
+                del _export_df['ac_pred'][ix][:ln]
+                _export_df[ac_pred_lst] = pd.DataFrame(_export_df.ac_pred.tolist(), index=_export_df.index)
+            # --------------------Role
+            for ix in range(len(_export_df['rl_pred'])):
+                for jx in range(len(_export_df['rl_pred'][ix])):
+                    # replacing the value from the parms dictionary
+                    _export_df['rl_pred'][ix].append(self.parms['index_rl'][_export_df.rl_pred[ix][jx]])
+                # popping out the values from the list
+                ln = int(len(_export_df['rl_pred'][ix]) / 2)
+                del _export_df['rl_pred'][ix][:ln]
+                #
+                _export_df[rl_pred_lst] = pd.DataFrame(_export_df.rl_pred.tolist(), index=_export_df.index)
+
+            if self.parms['mode'] == 'batch' and self.parms['batchpredchoice'] in ['Prediction', 'Generative'] and \
+                    self.parms['batch_mode'] == 'pre_prefix' and self.parms['variant'] in ['multi_pred', 'multi_pred_rand']:
+                tm_pred_lst = []
+                for zx in range(_numofcols):
+                    zx += 1
+                    tm_pred_lst.append("tm_pred" + str(zx))
+                # --------------------Time
+                for ix in range(len(_export_df['tm_pred'])):
+                    _export_df[tm_pred_lst] = pd.DataFrame(_export_df.tm_pred.tolist(), index=_export_df.index)
+            _export_df.drop(['ac_pred', 'rl_pred'], axis=1, inplace=True)
+        else:
+            _export_df['ac_pred'] = _export_df.ac_pred.replace(self.parms['index_ac'])
+            _export_df['rl_pred'] = _export_df.rl_pred.replace(self.parms['index_rl'])
+
+        output_folder = os.path.join(self.output_route, 'results')
+        filename = self.model_name + '_' + 'pm_tool' + '.csv'
+        _export_df.to_csv(os.path.join(output_folder, filename), index=False)
+
 
     @staticmethod
     # ------This Can be removed as it is not getting used anywhere------

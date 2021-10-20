@@ -206,35 +206,35 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
         with fcol1:
             fig1 = plt.figure()
             plt.plot(history.history['act_output_loss'], label='train')
-            plt.plot(history.history['val_act_output_loss'], label='test')
+            plt.plot(history.history['val_act_output_loss'], label='validation')
             plt.plot(history.history['act_output_accuracy'], label='acc')
             plt.title('Activity Loss')
             plt.ylabel('loss/accuracy')
             plt.xlabel('epoch')
-            plt.legend(['train', 'test', 'acc'], loc='upper left')
+            plt.legend(['train', 'validation', 'acc'], loc='upper left')
             # plt.show()
             st.write(fig1);
 
         with fcol2:
             fig2 = plt.figure()
             plt.plot(history.history['role_output_loss'], label='train')
-            plt.plot(history.history['val_role_output_loss'], label='test')
+            plt.plot(history.history['val_role_output_loss'], label='validation')
             plt.plot(history.history['act_output_accuracy'], label='acc')
             plt.title('Role Loss')
             plt.ylabel('loss/accuracy')
             plt.xlabel('epoch')
-            plt.legend(['train', 'test', 'acc'], loc='upper left')
+            plt.legend(['train', 'validation', 'acc'], loc='upper left')
             st.write(fig2);
 
         with fcol3:
             fig3 = plt.figure()
             plt.plot(history.history['time_output_loss'], label='train')
-            plt.plot(history.history['val_time_output_loss'], label='test')
+            plt.plot(history.history['val_time_output_loss'], label='validation')
             plt.plot(history.history['act_output_accuracy'], label='acc')
             plt.title('Time Loss')
             plt.ylabel('loss/accuracy')
             plt.xlabel('epoch')
-            plt.legend(['train', 'test', 'acc'], loc='upper left')
+            plt.legend(['train', 'validation', 'acc'], loc='upper left')
             st.write(fig3);
 
 
@@ -243,9 +243,9 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
     # with fcol4:
     fig4 = plt.figure()
     plt.plot(history.history['loss'], label='train')
-    plt.plot(history.history['val_loss'], label='test')
+    plt.plot(history.history['val_loss'], label='validation')
     plt.title('Model Loss')
     plt.ylabel('loss')
     plt.xlabel('epoch')
-    plt.legend(['train', 'test'], loc='upper left')
+    plt.legend(['train', 'validation'], loc='upper left')
     st.write(fig4);

@@ -1,9 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Mar 12 15:07:19 2020
 
-@author: Manuel Camargo
-"""
 import os
 import glob
 
@@ -54,6 +49,8 @@ class ModelTrainer():
         self.model_def = dict()
         self.read_model_definition(params['model_type'])
         print(self.model_def)
+        #-- save to parms
+        params["model_definition"] = self.model_def
         # Preprocess the event-log
         self.preprocess(params)
         # Train model
@@ -200,10 +197,15 @@ class ModelTrainer():
         log = pd.DataFrame.from_dict(log)
         log.sort_values(by='end_timestamp', ascending=False, inplace=True)
 
+        # print("Length of full log : ", len(log))
+
         num_events = int(np.round(len(log) * percentage))
 
         df_test = log.iloc[:num_events]
         df_train = log.iloc[num_events:]
+
+        # print("Length of train log : ", len(df_train))
+        # print("Length of test log : ", len(df_test))
 
         # Incomplete final traces
         df_train = df_train.sort_values(by=['caseid', 'pos_trace'],
