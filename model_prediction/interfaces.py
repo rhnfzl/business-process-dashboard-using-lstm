@@ -8,7 +8,8 @@ from model_prediction import next_event_samples_creator as nesc
 
 from model_prediction.next_modes import next_event_predictor_batch_prefix_mode as nepe, \
     next_event_predictor_single_mode_execution as nepsmexe, next_event_predictor_batch_base_mode as nepb, \
-    next_event_predictor_single_mode_evaluation as nepsmeva, next_event_predictor_single_mode_whatif as nepsmwia
+    next_event_predictor_single_mode_evaluation as nepsmeva, next_event_predictor_single_mode_whatif as nepsmwia, \
+    next_event_predictor_single_mode_process_execution as nepsmpex
 
 
 class SamplesCreator:
@@ -32,7 +33,8 @@ class PredictionTasksExecutioner:
         if activity == 'predict_next':
             if mode == 'next':
                 if next_mode == 'history_with_next':
-                    return nepsmexe.NextEventPredictor()
+                    # return nepsmexe.NextEventPredictor()
+                    return nepsmpex.NextEventPredictor()
                 elif next_mode == 'next_action':
                     return nepsmeva.NextEventPredictor()
                 elif next_mode == 'what_if':

@@ -287,7 +287,7 @@ class NextEventPredictor():
                     pos1_prob.append(rlx[pos1[jx]])
 
             # save results
-            predictions = [pos, pos1, preds[2][0][0], pos_prob, pos1_prob]
+            predictions = [pos, pos1, abs(preds[2][0][0]), pos_prob, pos1_prob]
 
             #SME Mode assumes that Functional Knowledge person is taking action
             if i == pred_fltr_idx-1:
@@ -315,7 +315,7 @@ class NextEventPredictor():
 
                      # -Time
                     st.session_state['initial_prediction']['ss_initpredict' + str(_ik + 1)]['pos_tm_ss'].extend(
-                        [[preds[2][0][0]]])
+                        [[abs(preds[2][0][0])]])
 
                 #--Multiverse
                 for _ih in range(parameters['multiprednum']):
@@ -506,7 +506,7 @@ class NextEventPredictor():
                         st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['rl_pred'].extend(pos1[_iz:_iz + 1])
                         st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['rl_prob'].extend(pos1_prob[_iz:_iz + 1])
 
-                        st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['tm_pred'].extend([[preds[2][0][0]]])
+                        st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['tm_pred'].extend([[abs(preds[2][0][0])]])
 
                     elif parameters['multiprednum'] == 1:
 
@@ -516,7 +516,7 @@ class NextEventPredictor():
                         st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['rl_pred'].extend([pos1])
                         st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['rl_prob'].extend([pos1_prob])
 
-                        st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['tm_pred'].extend([[preds[2][0][0]]])
+                        st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['tm_pred'].extend([[abs(preds[2][0][0])]])
                 print("Multiverse Predict : ", st.session_state['multi_pred_ss'])
 
 

@@ -638,7 +638,7 @@ class ModelPredictor():
         st.header('📜 Process Historical Behaviour')
         results_dash_expected = results_dash[['ac_expect', 'rl_expect', "tm_expect"]]
         results_dash_expected.rename(
-            columns={'ac_expect': 'Activity', 'pos_rl_ss': 'Role', "pos_tm_ss": 'Time'},
+            columns={'ac_expect': 'Activity', 'rl_expect': 'Role', "tm_expect": 'Time'},
             inplace=True)
         st.dataframe(results_dash_expected.iloc[:-1])
         st.markdown("""---""")
@@ -680,69 +680,181 @@ class ModelPredictor():
             st.markdown("""---""")
         #--Predictions of Predictions
         if st.session_state['multi_pred_ss']['ss_multipredict1']['ac_pred'] != []:
-            ModelPredictor.dashboard_nextprediction_execute_multiverse(parms)
+            ModelPredictor.dashboard_nextprediction_execute_multiverse(parms, results_dash)
 
     @staticmethod
-    def dashboard_nextprediction_execute_multiverse(parms):
+    def dashboard_nextprediction_execute_multiverse(parms, results_dash):
         for lk in range(parms['multiprednum']):
-            st.header("📜 " + nw(lk + 1, lang="en", to="ordinal_num") + " Prediction " + " Historical Behaviour ")
 
-            _hist_columns = ['pos_ac_ss', 'pos_rl_ss']  # selecting the columns
-            _hist_predicted_dict = dict(
-                [(k, st.session_state['initial_prediction']['ss_initpredict' + str(lk + 1)][k]) for k in
-                 _hist_columns])  # constructing new dict fromm sessionstate
-            _hist_predicted_dict.update(dict([(k, st.session_state[k]) for k in ['pos_tm_ss']]))  # Apending time
-            # --Manuplation to see the Value properly
-            _hist_predicted_dict['pos_tm_ss'] = sum(_hist_predicted_dict['pos_tm_ss'], [])  # flattening of time
-            _hist_predicted_dict['pos_tm_ss'] = [ModelPredictor.rescale(x, parms, parms['scale_args']) for x in
-                                                 _hist_predicted_dict[
-                                                     'pos_tm_ss']]  # Normalizing back to original value
-            _hist_predicted_dict = {k: _hist_predicted_dict[k][1:] for k in
-                                    _hist_predicted_dict}  # removing first item in each key in a dictionary
+            # _hist_columns = ['pos_ac_ss', 'pos_rl_ss']  # selecting the columns
+            # _hist_predicted_dict = dict(
+            #     [(k, st.session_state['initial_prediction']['ss_initpredict' + str(lk + 1)][k]) for k in
+            #      _hist_columns])  # constructing new dict fromm sessionstate
+            # _hist_predicted_dict.update(dict([(k, st.session_state[k]) for k in ['pos_tm_ss']]))  # Apending time
+            # # --Manuplation to see the Value properly
+            # _hist_predicted_dict['pos_tm_ss'] = sum(_hist_predicted_dict['pos_tm_ss'], [])  # flattening of time
+            # _hist_predicted_dict['pos_tm_ss'] = [ModelPredictor.rescale(x, parms, parms['scale_args']) for x in
+            #                                      _hist_predicted_dict[
+            #                                          'pos_tm_ss']]  # Normalizing back to original value
+            # _hist_predicted_dict = {k: _hist_predicted_dict[k][1:] for k in
+            #                         _hist_predicted_dict}  # removing first item in each key in a dictionary
+            #
+            # _hist_predicted_df = pd.DataFrame.from_dict(_hist_predicted_dict)
+            # # Replacing from Dictionary Values to it's original name
+            # _hist_predicted_df['pos_ac_ss'] = _hist_predicted_df.pos_ac_ss.replace(parms['index_ac'])
+            # _hist_predicted_df['pos_rl_ss'] = _hist_predicted_df.pos_rl_ss.replace(parms['index_rl'])
+            # _hist_predicted_df.rename(
+            #     columns={'pos_ac_ss': 'Activity', 'pos_rl_ss': 'Role', "pos_tm_ss": 'Time'},
+            #     inplace=True)
 
-            _hist_predicted_df = pd.DataFrame.from_dict(_hist_predicted_dict)
-            # Replacing from Dictionary Values to it's original name
-            _hist_predicted_df['pos_ac_ss'] = _hist_predicted_df.pos_ac_ss.replace(parms['index_ac'])
-            _hist_predicted_df['pos_rl_ss'] = _hist_predicted_df.pos_rl_ss.replace(parms['index_rl'])
-            _hist_predicted_df.rename(
+            generative_hist_df = ModelPredictor.dashbard_execute_header_sessionstate(parms, 'initial_prediction',
+                                                                                     'ss_initpredict', 'pos_ac_ss',
+                                                                                     'pos_rl_ss', 'pos_tm_ss', lk)
+
+            generative_hist_df['pos_ac_ss'] = generative_hist_df.pos_ac_ss.replace(parms['index_ac'])
+            generative_hist_df['pos_rl_ss'] = generative_hist_df.pos_rl_ss.replace(parms['index_rl'])
+            generative_hist_df.rename(
                 columns={'pos_ac_ss': 'Activity', 'pos_rl_ss': 'Role', "pos_tm_ss": 'Time'},
                 inplace=True)
 
-            # _hist_predicted_df = _hist_predicted_df.iloc[1:]
-            st.dataframe(_hist_predicted_df.iloc[:-1])
-            st.markdown("""---""")
-            _multi_columns = ['ac_pred', 'ac_prob', 'rl_pred', 'rl_prob', 'tm_pred']
+            process_hist_df = ModelPredictor.dashbard_execute_header_sessionstate(parms, 'initial_process_prediction',
+                                                                                     'pr_initpredict', 'pr_ac_ss',
+                                                                                     'pr_rl_ss', 'process_tm_ss', lk)
 
-            _multi_predicted_dict = dict(
-                [(k, st.session_state['multi_pred_ss']['ss_multipredict' + str(lk + 1)][k]) for k in _multi_columns])
-            _multi_predicted_dict['tm_pred'] = sum(_multi_predicted_dict['tm_pred'], [])  # flattening of time
-            _multi_predicted_dict['tm_pred'] = [ModelPredictor.rescale(x, parms, parms['scale_args']) for x in
-                                                _multi_predicted_dict['tm_pred']]  # Normalizing back to original value
-            _multi_predicted_df = pd.DataFrame.from_dict(_multi_predicted_dict)
-            _multi_predicted_df = ModelPredictor.dashboard_maxprediction(_multi_predicted_df, parms)
-            _multi_predicted_df.index = _multi_predicted_df.index + 1 #to match with the index value of the main prediction
-            st.subheader("🔮 Max Probability Prediction of " + nw(lk + 1, lang="en", to="ordinal_num") + " Prediction")
-            cols1, cols2, cols3, cols4 = st.columns([2, 2, 1, 0.5])
-            with cols1:
+            process_hist_df['pr_ac_ss'] = process_hist_df.pr_ac_ss.replace(parms['index_ac'])
+            process_hist_df['pr_rl_ss'] = process_hist_df.pr_rl_ss.replace(parms['index_rl'])
+            process_hist_df.rename(
+                columns={'pr_ac_ss': 'Activity', 'pr_rl_ss': 'Role', "process_tm_ss": 'Time'},
+                inplace=True)
+
+            generative_predicted_df = ModelPredictor.dashbard_execute_prediction_sessionstate(parms, 'multi_pred_ss', "ss_multipredict", lk)
+
+            process_predicted_df = ModelPredictor.dashbard_execute_prediction_sessionstate(parms, 'process_multi_pred_ss', "pm_multipredict", lk)
+
+            headcols1, headcols2 = st.columns([2, 2])
+
+            with headcols1:
+                st.header("📜 " + nw(lk + 1, lang="en", to="ordinal_num") + " Prediction " + " Historical Behaviour ")
+                st.dataframe(process_hist_df)
+
+                # st.header("📜 " + nw(lk + 1, lang="en", to="ordinal_num") + " Generative " + " Historical Behaviour ")
+                # st.dataframe(generative_hist_df)
+
+                st.subheader(
+                    "🔮 Max Probability Prediction of " + nw(lk + 1, lang="en", to="ordinal_num") + " Prediction")
                 st.subheader('🏋️ Activity')
-                # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
-                st.write(_multi_predicted_df[["ac_pred", "ac_prob"]].rename(
+                st.write(process_predicted_df[["ac_pred", "ac_prob"]].rename(
                     columns={"ac_pred": 'Predicted', "ac_prob": 'Confidence'}, inplace=False).iloc[-1:])
-            with cols2:
                 st.subheader('👨‍💻 Role')
-                # writes Role and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
-                st.write(_multi_predicted_df[["rl_pred", "rl_prob"]].rename(
+                st.write(process_predicted_df[["rl_pred", "rl_prob"]].rename(
                     columns={"rl_pred": 'Predicted', "rl_prob": 'Confidence'}, inplace=False).iloc[-1:])
-            with cols3:
                 st.subheader('⌛ Time')
                 st.write(
-                    _multi_predicted_df[["tm_pred"]].rename(columns={"tm_pred": 'Predicted'}, inplace=False).iloc[-1:])
-            with cols4:
+                    process_predicted_df[["tm_pred"]].rename(columns={"tm_pred": 'Predicted'}, inplace=False).iloc[
+                    -1:])
                 st.subheader('🏷️ Label')
-                _lbkey = [sum(_hist_predicted_df[['Activity']].values.tolist(), [])[0]] + sum(_multi_predicted_df[["ac_pred"]].values.tolist(), []) #concatenate
-                # _lbkey = sorted(set(_lbkey), key=_lbkey.index) #remove duplicates and maintain the order
-                # print("Multiverse " + str(lk), _lbkey, [sum(_hist_predicted_df[['Activity']].values.tolist(), [])[0]], sum(_multi_predicted_df[["ac_pred"]].values.tolist(), []))
+                _lbkey = [sum(process_hist_df[['Activity']].values.tolist(), [])[0]] + sum(
+                    process_predicted_df[["ac_pred"]].values.tolist(), [])  # concatenate
                 ModelPredictor.dashboard_label_decider(_lbkey, parms)
+
+            with headcols2:
+                st.header("📜 " + nw(lk + 1, lang="en", to="ordinal_num") + " Generative " + " Historical Behaviour ")
+                st.dataframe(generative_hist_df)
+
+                st.subheader("🔮 Max Probability Prediction of " + nw(lk + 1, lang="en", to="ordinal_num") + " Prediction")
+                st.subheader('🏋️ Activity')
+                st.write(generative_predicted_df[["ac_pred", "ac_prob"]].rename(
+                    columns={"ac_pred": 'Predicted', "ac_prob": 'Confidence'}, inplace=False).iloc[-1:])
+                st.subheader('👨‍💻 Role')
+                st.write(generative_predicted_df[["rl_pred", "rl_prob"]].rename(
+                    columns={"rl_pred": 'Predicted', "rl_prob": 'Confidence'}, inplace=False).iloc[-1:])
+                st.subheader('⌛ Time')
+                st.write(generative_predicted_df[["tm_pred"]].rename(columns={"tm_pred": 'Predicted'}, inplace=False).iloc[-1:])
+                st.subheader('🏷️ Label')
+                _lbkey = [sum(generative_hist_df[['Activity']].values.tolist(), [])[0]] + sum(generative_predicted_df[["ac_pred"]].values.tolist(), [])  # concatenate
+                ModelPredictor.dashboard_label_decider(_lbkey, parms)
+
+            # st.header("📜 " + nw(lk + 1, lang="en", to="ordinal_num") + " Prediction " + " Historical Behaviour ")
+            # _hist_predicted_df = _hist_predicted_df.iloc[1:]
+            # st.dataframe(_hist_predicted_df.iloc[:-1])
+            # st.markdown("""---""")
+
+            # print(results_dash)
+
+            # _multi_columns = ['ac_pred', 'ac_prob', 'rl_pred', 'rl_prob', 'tm_pred']
+            #
+            # _multi_predicted_dict = dict(
+            #     [(k, st.session_state['multi_pred_ss']['ss_multipredict' + str(lk + 1)][k]) for k in _multi_columns])
+            # _multi_predicted_dict['tm_pred'] = sum(_multi_predicted_dict['tm_pred'], [])  # flattening of time
+            # _multi_predicted_dict['tm_pred'] = [ModelPredictor.rescale(x, parms, parms['scale_args']) for x in
+            #                                     _multi_predicted_dict['tm_pred']]  # Normalizing back to original value
+            # _multi_predicted_df = pd.DataFrame.from_dict(_multi_predicted_dict)
+            # _multi_predicted_df = ModelPredictor.dashboard_maxprediction(_multi_predicted_df, parms)
+            # _multi_predicted_df.index = _multi_predicted_df.index + 1 #to match with the index value of the main prediction
+
+            # generative_predict_df = ModelPredictor.dashbard_execute_header_sessionstate(parms, 'multi_pred_ss', "ss_multipredict", lk)
+
+
+            # st.subheader("🔮 Max Probability Prediction of " + nw(lk + 1, lang="en", to="ordinal_num") + " Prediction")
+            # cols1, cols2, cols3, cols4 = st.columns([2, 2, 1, 0.5])
+            # with cols1:
+            #     st.subheader('🏋️ Activity')
+            #     # writes Activity and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
+            #     st.write(_multi_predicted_df[["ac_pred", "ac_prob"]].rename(
+            #         columns={"ac_pred": 'Predicted', "ac_prob": 'Confidence'}, inplace=False).iloc[-1:])
+            # with cols2:
+            #     st.subheader('👨‍💻 Role')
+            #     # writes Role and it's respective confidence on the dashboard with the renamed coulumns name but not modified in the dataframe
+            #     st.write(_multi_predicted_df[["rl_pred", "rl_prob"]].rename(
+            #         columns={"rl_pred": 'Predicted', "rl_prob": 'Confidence'}, inplace=False).iloc[-1:])
+            # with cols3:
+            #     st.subheader('⌛ Time')
+            #     st.write(
+            #         _multi_predicted_df[["tm_pred"]].rename(columns={"tm_pred": 'Predicted'}, inplace=False).iloc[-1:])
+            # with cols4:
+            #     st.subheader('🏷️ Label')
+            #     _lbkey = [sum(generative_hist_df[['Activity']].values.tolist(), [])[0]] + sum(_multi_predicted_df[["ac_pred"]].values.tolist(), []) #concatenate
+            #     # _lbkey = sorted(set(_lbkey), key=_lbkey.index) #remove duplicates and maintain the order
+            #     # print("Multiverse " + str(lk), _lbkey, [sum(_hist_predicted_df[['Activity']].values.tolist(), [])[0]], sum(_multi_predicted_df[["ac_pred"]].values.tolist(), []))
+            #     ModelPredictor.dashboard_label_decider(_lbkey, parms)
+
+            st.markdown("""---""")
+
+
+    @staticmethod
+    def dashbard_execute_prediction_sessionstate(parms, master_dict, sub_dict, lk):
+
+        _multi_columns = ['ac_pred', 'ac_prob', 'rl_pred', 'rl_prob', 'tm_pred']
+
+        _multi_predicted_dict = dict(
+            [(k, st.session_state[master_dict][sub_dict + str(lk + 1)][k]) for k in _multi_columns])
+        _multi_predicted_dict['tm_pred'] = sum(_multi_predicted_dict['tm_pred'], [])  # flattening of time
+        _multi_predicted_dict['tm_pred'] = [ModelPredictor.rescale(x, parms, parms['scale_args']) for x in
+                                            _multi_predicted_dict['tm_pred']]  # Normalizing back to original value
+        _multi_predicted_df = pd.DataFrame.from_dict(_multi_predicted_dict)
+        _multi_predicted_df = ModelPredictor.dashboard_maxprediction(_multi_predicted_df, parms)
+        _multi_predicted_df.index = _multi_predicted_df.index + 1  # to match with the index value of the main prediction
+
+        return _multi_predicted_df
+
+    @staticmethod
+    def dashbard_execute_header_sessionstate(parms, master_dict, sub_dict, pos_ac, pos_rl, pos_tm, lk):
+        _hist_columns = [pos_ac, pos_rl]  # selecting the columns
+        _hist_predicted_dict = dict(
+            [(k, st.session_state[master_dict][sub_dict + str(lk + 1)][k]) for k in
+             _hist_columns])  # constructing new dict fromm sessionstate
+        _hist_predicted_dict.update(dict([(k, st.session_state[k]) for k in [pos_tm]]))  # Apending time
+        # --Manuplation to see the Value properly
+        _hist_predicted_dict[pos_tm] = sum(_hist_predicted_dict[pos_tm], [])  # flattening of time
+        _hist_predicted_dict[pos_tm] = [ModelPredictor.rescale(x, parms, parms['scale_args']) for x in
+                                             _hist_predicted_dict[
+                                                 pos_tm]]  # Normalizing back to original value
+        _hist_predicted_dict = {k: _hist_predicted_dict[k][1:] for k in
+                                _hist_predicted_dict}  # removing first item in each key in a dictionary
+
+        _hist_predicted_df = pd.DataFrame.from_dict(_hist_predicted_dict)
+
+        return _hist_predicted_df
 
     @staticmethod
     def dashboard_nextprediction_evaluate_write(results_dash, parms, result_dash_hist_execution, confirmation_results):

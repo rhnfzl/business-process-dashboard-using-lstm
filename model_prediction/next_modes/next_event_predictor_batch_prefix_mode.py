@@ -163,7 +163,7 @@ class NextEventPredictor():
                         pos1_prob.append(rlx[pos1[jx]])
 
                 # save results
-                predictions = [pos, pos1, preds[2][0][0], pos_prob, pos1_prob]
+                predictions = [pos, pos1, abs(preds[2][0][0]), pos_prob, pos1_prob]
 
                 if not parameters['one_timestamp']:
                     predictions.extend([preds[2][0][1]])
@@ -418,15 +418,15 @@ class NextEventPredictor():
 
                 # save results
                 if self.imp in ['multi_pred', 'multi_pred_rand']:
-                    predictions = [pos, pos1, [preds[2][0][0]] * parameters['multiprednum'], pos_prob, pos1_prob]
+                    predictions = [pos, pos1, [abs(preds[2][0][0])] * parameters['multiprednum'], pos_prob, pos1_prob]
 
                 elif self.imp in ['arg_max', 'random_choice']:
-                    predictions = [pos, pos1, preds[2][0][0], pos_prob, pos1_prob]
+                    predictions = [pos, pos1, abs(preds[2][0][0]), pos_prob, pos1_prob]
 
                 #-------
                 _pos = pos
                 _pos1 = pos1
-                _preds = preds[2][0][0]
+                _preds = abs(preds[2][0][0])
                 #-------
                 # print("predicted time--0-- :", _preds)
 
@@ -537,7 +537,7 @@ class NextEventPredictor():
                         _arr_pos1.append(np.argmax(preds[1][0]))
                         _arr_pos1_prob.append(preds[1][0][_arr_pos1[lk]])
 
-                        _arr_pred.append(preds[2][0][0])
+                        _arr_pred.append(abs(preds[2][0][0]))
 
                     elif self.imp == 'multi_pred_rand':
 
@@ -553,7 +553,7 @@ class NextEventPredictor():
                         _arr_pos1.append(np.random.choice(np.arange(0, len(preds[1][0])), p=preds[1][0]))
                         _arr_pos1_prob.append(preds[1][0][_arr_pos1[lk]])
 
-                        _arr_pred.append(preds[2][0][0])
+                        _arr_pred.append(abs(preds[2][0][0]))
 
 
                 _pos = _arr_pos
@@ -563,7 +563,7 @@ class NextEventPredictor():
                     # _preds = sum(_arr_pred)/len(_arr_pred)
                     _preds = _arr_pred
                 elif self.imp in ['arg_max', 'random_choice']:
-                    _preds = preds[2][0][0]
+                    _preds = abs(preds[2][0][0])
 
                 predictions = [_pos, _pos1, _preds, _arr_pos_prob, _arr_pos1_prob]
 
@@ -685,20 +685,20 @@ class NextEventPredictor():
                 # save results
                 if self.imp in ['multi_pred', 'multi_pred_rand']:
 
-                    predictions = [pos, pos1, [preds[2][0][0]] * parameters['multiprednum'], pos_prob, pos1_prob]
+                    predictions = [pos, pos1, [abs(preds[2][0][0])] * parameters['multiprednum'], pos_prob, pos1_prob]
 
-                    preds_prefix.append([pos, pos1, [preds[2][0][0]] * parameters['multiprednum']])
+                    preds_prefix.append([pos, pos1, [abs(preds[2][0][0])] * parameters['multiprednum']])
 
                 elif self.imp in ['arg_max', 'random_choice']:
 
-                    predictions = [pos, pos1, preds[2][0][0], pos_prob, pos1_prob]
+                    predictions = [pos, pos1, abs(preds[2][0][0]), pos_prob, pos1_prob]
 
-                    preds_prefix.append([pos, pos1, preds[2][0][0]])
+                    preds_prefix.append([pos, pos1, abs(preds[2][0][0])])
 
                 #-------
                 _pos = pos
                 _pos1 = pos1
-                _preds = preds[2][0][0]
+                _preds = abs(preds[2][0][0])
                 #-------
 
                 # print("Prediction of the iteration  : ", preds_prefix)
@@ -834,7 +834,7 @@ class NextEventPredictor():
                         _arr_pos1.append(np.argmax(preds[1][0]))
                         _arr_pos1_prob.append(preds[1][0][_arr_pos1[lk]])
 
-                        _arr_pred.append(preds[2][0][0])
+                        _arr_pred.append(abs(preds[2][0][0]))
 
                     elif self.imp == 'multi_pred_rand':
 
@@ -850,7 +850,7 @@ class NextEventPredictor():
                         _arr_pos1.append(np.random.choice(np.arange(0, len(preds[1][0])), p=preds[1][0]))
                         _arr_pos1_prob.append(preds[1][0][_arr_pos1[lk]])
 
-                        _arr_pred.append(preds[2][0][0])
+                        _arr_pred.append(abs(preds[2][0][0]))
 
                 _pos = _arr_pos
                 _pos1 = _arr_pos1
@@ -859,7 +859,7 @@ class NextEventPredictor():
                     # _preds = sum(_arr_pred)/len(_arr_pred)
                     _preds = _arr_pred
                 elif self.imp in ['arg_max', 'random_choice']:
-                    _preds = preds[2][0][0]
+                    _preds = abs(preds[2][0][0])
 
                 # save results
                 predictions = [_pos, _pos1, _preds, _arr_pos_prob, _arr_pos1_prob]

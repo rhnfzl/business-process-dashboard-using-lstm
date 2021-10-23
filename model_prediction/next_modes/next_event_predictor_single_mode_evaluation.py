@@ -168,7 +168,7 @@ class NextEventPredictor():
                     pos1_prob = preds[1][0][pos1]
 
                     predictions = [[pos] + [pos], [pos1] + [pos1],
-                                   [preds[2][0][0]] * (parameters['multiprednum'] + 1), [pos_prob] + [pos_prob],
+                                   [abs(preds[2][0][0])] * (parameters['multiprednum'] + 1), [pos_prob] + [pos_prob],
                                    [pos1_prob] + [pos1_prob]]
 
                     # predictions = [[pos] + [pos], [pos1] + [pos1],
@@ -194,7 +194,7 @@ class NextEventPredictor():
                         pos1_prob.append(rlx[pos1[jx]])
 
                     predictions = [[pos[0]] + pos, [pos1[0]] + pos1,
-                                   [preds[2][0][0]] * (parameters['multiprednum'] + 1), [pos_prob[0]] + pos_prob,
+                                   [abs(preds[2][0][0])] * (parameters['multiprednum'] + 1), [pos_prob[0]] + pos_prob,
                                    [pos1_prob[0]] + pos1_prob]
 
                     # print(predictions)
@@ -202,7 +202,7 @@ class NextEventPredictor():
                 #-------
                 _pos = pos
                 _pos1 = pos1
-                _preds = preds[2][0][0]
+                _preds = abs(preds[2][0][0])
                 #-------
                 # print("First Prediction Structure : ", predictions)
                 # print("First Activity Predicted: ", pos)
@@ -290,7 +290,7 @@ class NextEventPredictor():
                         _arr_pos1.append(np.argmax(preds[1][0]))
                         _arr_pos1_prob.append(preds[1][0][_arr_pos1[lk]])
 
-                        _arr_pred.append(preds[2][0][0])
+                        _arr_pred.append(abs(preds[2][0][0]))
                     elif self.imp == 'arg_max':
                         _arr_pos = np.argmax(preds[0][0])
                         _arr_pos_prob = preds[0][0][_arr_pos]
@@ -306,7 +306,7 @@ class NextEventPredictor():
                     # _preds = sum(_arr_pred)/len(_arr_pred)
                     _preds = _arr_pred
                 elif self.imp == 'arg_max':
-                    _preds = preds[2][0][0]
+                    _preds = abs(preds[2][0][0])
 
                 #--SME Input Logic
                 if vectorizer in ['basic']:
@@ -480,7 +480,7 @@ class NextEventPredictor():
         predsmerl = np.argmax(preds[1][0])
         predsmerl_prob = preds[1][0][predsmerl]
 
-        predsmetm = preds[2][0][0]
+        predsmetm = abs(preds[2][0][0])
 
         return predsmeac, predsmeac_prob, predsmerl, predsmerl_prob, predsmetm
 
@@ -544,7 +544,7 @@ class NextEventPredictor():
                     pos1 = np.argmax(preds[1][0])
                     pos1_prob = preds[1][0][pos1]
 
-                    predictions = [[pos], [pos1], [preds[2][0][0]], [pos_prob], [pos1_prob]]
+                    predictions = [[pos], [pos1], [abs(preds[2][0][0])], [pos_prob], [pos1_prob]]
 
                 elif self.imp == 'multi_pred':
 
@@ -564,7 +564,7 @@ class NextEventPredictor():
                         # probability of role
                         pos1_prob.append(rlx[pos1[jx]])
 
-                    predictions = [pos, pos1, [preds[2][0][0]], pos_prob, pos1_prob]
+                    predictions = [pos, pos1, [abs(preds[2][0][0])], pos_prob, pos1_prob]
 
                 if not parameters['one_timestamp']:
                     predictions.extend([preds[2][0][1]])

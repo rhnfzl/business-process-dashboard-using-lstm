@@ -198,7 +198,7 @@ class NextEventPredictor():
                     pos1_prob.append(rlx[pos1[jx]])
 
             # save results
-            predictions = [pos, pos1, preds[2][0][0], pos_prob, pos1_prob]
+            predictions = [pos, pos1, abs(preds[2][0][0]), pos_prob, pos1_prob]
 
             if i == pred_fltr_idx - 1:
                 for _ik in range(parameters['multiprednum']):
@@ -224,7 +224,7 @@ class NextEventPredictor():
 
                 # print("State of Dictionary for the iteration", _ik, " : ", st.session_state['initial_prediction'])
                 # -Time
-                st.session_state['pos_tm_ss'].extend([[preds[2][0][0]]])
+                st.session_state['pos_tm_ss'].extend([[abs(preds[2][0][0])]])
 
             if not parameters['one_timestamp']:
                 predictions.extend([preds[2][0][1]])
@@ -347,7 +347,7 @@ class NextEventPredictor():
                 st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]['rl_prob'].extend([pos1_prob])
 
                 st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]['tm_pred'].extend(
-                    [[preds[2][0][0]]])
+                    [[abs(preds[2][0][0])]])
 
     @staticmethod
     def rescale(value, parms, scale_args):
