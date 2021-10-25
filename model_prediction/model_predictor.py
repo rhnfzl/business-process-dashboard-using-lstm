@@ -684,6 +684,14 @@ class ModelPredictor():
 
     @staticmethod
     def dashboard_nextprediction_execute_multiverse(parms, results_dash):
+        # print("length : ", parms['execution_trace_size'], parms['nextcaseid_attr']["filter_index"])
+        if parms['execution_trace_size'] > parms['nextcaseid_attr']["filter_index"]+1:
+            st.header("⏩ One Step Ahead Predictions")
+        else:
+            st.header("⏪ Previous One Step Ahead Predictions")
+        st.info(
+            "Prediction deals with taking all the process executed so far with the respective prediction as input to the model, "
+            "Generative deals with what would have happened if the respective prediciton has been selected continiously.")
         for lk in range(parms['multiprednum']):
 
             # _hist_columns = ['pos_ac_ss', 'pos_rl_ss']  # selecting the columns
@@ -729,7 +737,20 @@ class ModelPredictor():
 
             generative_predicted_df = ModelPredictor.dashbard_execute_prediction_sessionstate(parms, 'multi_pred_ss', "ss_multipredict", lk)
 
+            if len(generative_predicted_df) == 1: #work around to fix the sequence for the first itteration
+
+                generative_predicted_df.index = generative_predicted_df.index + 1  # to match with the index value of the main prediction
+
+            print("Generative DF")
+            print(generative_predicted_df)
+
             process_predicted_df = ModelPredictor.dashbard_execute_prediction_sessionstate(parms, 'process_multi_pred_ss', "pm_multipredict", lk)
+
+            print("Generative DF After")
+            print(generative_predicted_df)
+
+            print("Prediction DF")
+            print(process_predicted_df)
 
             headcols1, headcols2 = st.columns([2, 2])
 
@@ -740,8 +761,10 @@ class ModelPredictor():
                 # st.header("📜 " + nw(lk + 1, lang="en", to="ordinal_num") + " Generative " + " Historical Behaviour ")
                 # st.dataframe(generative_hist_df)
 
-                st.subheader(
-                    "🔮 Max Probability Prediction of " + nw(lk + 1, lang="en", to="ordinal_num") + " Prediction")
+                st.subheader("🔮 " + nw(lk + 1, lang="en", to="ordinal_num") + "Prediction")
+
+                # st.subheader(
+                #     "🔮 Max Probability Prediction of " + nw(lk + 1, lang="en", to="ordinal_num") + " Prediction")
                 st.subheader('🏋️ Activity')
                 st.write(process_predicted_df[["ac_pred", "ac_prob"]].rename(
                     columns={"ac_pred": 'Predicted', "ac_prob": 'Confidence'}, inplace=False).iloc[-1:])
@@ -761,7 +784,8 @@ class ModelPredictor():
                 st.header("📜 " + nw(lk + 1, lang="en", to="ordinal_num") + " Generative " + " Historical Behaviour ")
                 st.dataframe(generative_hist_df)
 
-                st.subheader("🔮 Max Probability Prediction of " + nw(lk + 1, lang="en", to="ordinal_num") + " Prediction")
+                st.subheader("🔮 " + nw(lk + 1, lang="en", to="ordinal_num") + "Prediction")
+                # st.subheader("🔮 Max Probability Prediction of " + nw(lk + 1, lang="en", to="ordinal_num") + " Prediction")
                 st.subheader('🏋️ Activity')
                 st.write(generative_predicted_df[["ac_pred", "ac_prob"]].rename(
                     columns={"ac_pred": 'Predicted', "ac_prob": 'Confidence'}, inplace=False).iloc[-1:])
@@ -833,8 +857,9 @@ class ModelPredictor():
                                             _multi_predicted_dict['tm_pred']]  # Normalizing back to original value
         _multi_predicted_df = pd.DataFrame.from_dict(_multi_predicted_dict)
         _multi_predicted_df = ModelPredictor.dashboard_maxprediction(_multi_predicted_df, parms)
-        _multi_predicted_df.index = _multi_predicted_df.index + 1  # to match with the index value of the main prediction
-
+        # print("length : ", len(_multi_predicted_df), _multi_predicted_df.index, _multi_predicted_df.index + 1)
+        if len(_multi_predicted_df) > 1: #work around to fix the sequence for the first itteration
+            _multi_predicted_df.index = _multi_predicted_df.index + 1  # to match with the index value of the main prediction
         return _multi_predicted_df
 
     @staticmethod

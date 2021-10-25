@@ -123,6 +123,8 @@ class NextEventPredictor():
             if vectorizer in ['basic']:
                 inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram]
             elif vectorizer in ['inter']:
+                print("contextual")
+                print(self.spl['prefixes']['inter_attr'][:pred_fltr_idx][i])
                 inter_attr_num = (self.spl['prefixes']['inter_attr'][:pred_fltr_idx][i].shape[1])
                 x_inter_ngram = np.array(
                     [np.append(np.zeros((
@@ -175,7 +177,9 @@ class NextEventPredictor():
             # save results
             predictions = [pos, pos1, abs(preds[2][0][0]), pos_prob, pos1_prob]
 
-            if i == pred_fltr_idx - 1:
+            # print("length :", len(self.spl['prefixes']['activities']), pred_fltr_idx)
+
+            if (i == pred_fltr_idx - 1) and (len(self.spl['prefixes']['activities']) != pred_fltr_idx):
 
                 _activity_hist = self.spl['prefixes']['activities'][:pred_fltr_idx][i]
                 _role_hist = self.spl['prefixes']['roles'][:pred_fltr_idx][i]

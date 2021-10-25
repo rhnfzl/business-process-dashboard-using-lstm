@@ -97,8 +97,10 @@ def catch_parameter(opt):
 
 
 def clear_cache():
+    st.caching.clear_cache()
     session_state_key_list = ['multi_pred_ss', 'pos_tm_ss', 'initial_prediction',
-                              'prediction_choice_idx', 'prediction_choice_name', 'history_of_choice']
+                              'prediction_choice_idx', 'prediction_choice_name', 'history_of_choice',
+                              'process_multi_pred_ss', 'process_tm_ss', 'initial_process_prediction']
     _temp_sessionstate_keys = [*st.session_state]
     for key in _temp_sessionstate_keys:
         if key in session_state_key_list:
@@ -522,10 +524,17 @@ def main(argv):
                                 # next_button = st.sidebar.button("Process", key='next_process_action')
                                 next_button = button_of_theprocess.button("Process", key='next_process_action')
 
-                                _filterdf = filter_attr_display.iloc[[nxt_button_idx]]
-                                _filterdf.index = [""] * len(_filterdf)
-                                state_of_theprocess.dataframe(_filterdf)
-                                if (next_button) and ((nxt_button_idx) < len(filter_caseid_attr_df) + 1):
+                                # _filterdf = filter_attr_display.iloc[[nxt_button_idx]]
+                                # _filterdf.index = [""] * len(_filterdf)
+                                # state_of_theprocess.dataframe(_filterdf)
+                                # if (next_button) and ((nxt_button_idx) < len(filter_caseid_attr_df) + 1):
+
+                                parameters['execution_trace_size'] = len(filter_caseid_attr_df)
+                                if (next_button) and ((nxt_button_idx) < len(filter_caseid_attr_df)):
+
+                                    _filterdf = filter_attr_display.iloc[[nxt_button_idx]]
+                                    _filterdf.index = [""] * len(_filterdf)
+                                    state_of_theprocess.dataframe(_filterdf)
 
                                     nxt_button_idx += 1
                                     st.experimental_set_query_params(my_saved_result=nxt_button_idx,
@@ -556,7 +565,8 @@ def main(argv):
                                         # next_case_id_flag = 1
                                         # filter_attr_display, filter_caseid, filter_caseid_attr_df, filter_caseid_index = next_columns(filter_log, display_columns, filter_caseid_index, next_case_id_flag)
                                         st.error('End of Current Case Id, Select the Next Case ID')
-                                elif ((nxt_button_idx) >= len(filter_caseid_attr_df) + 1):
+                                # elif ((nxt_button_idx) >= len(filter_caseid_attr_df) + 1):
+                                elif ((nxt_button_idx) >= len(filter_caseid_attr_df)):
                                     st.experimental_set_query_params(my_saved_result=0)  # reset value
                                     st.error('End of Current Case Id, Select the Next Case ID')
 
