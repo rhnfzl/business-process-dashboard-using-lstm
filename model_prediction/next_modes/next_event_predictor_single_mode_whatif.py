@@ -58,8 +58,8 @@ class NextEventPredictor():
         """
         # Generation of predictions
         pred_fltr_idx = parameters['nextcaseid_attr']["filter_index"] + 1
-        print("In the New What-if")
-        print("Index Value :", pred_fltr_idx)
+        # print("In the New What-if")
+        # print("Index Value :", pred_fltr_idx)
 
         # print("State of the Sate Space Initially: ", st.session_state)
         # print("-------------------------------------------------------")
@@ -167,7 +167,7 @@ class NextEventPredictor():
 
                         # -Saving Histroy of the prediction
                         if 'history_of_choice' in st.session_state:
-                            print("Prediction Choice : ", parameters['predchoice'])
+                            # print("Prediction Choice : ", parameters['predchoice'])
                             st.session_state['history_of_choice']['hist_ac_prefix'].extend([y_serie_predict_ac[-1]])
                             st.session_state['history_of_choice']['hist_rl_prefix'].extend([y_serie_predict_rl[-1]])
                             st.session_state['history_of_choice']['hist_tm_prefix'].extend([y_serie_predict_tm[-1].tolist()])
@@ -186,7 +186,7 @@ class NextEventPredictor():
                                       self.spl['prefixes']['times'][:pred_fltr_idx]]  # selecting the last value from each list of list
 
                 if 'history_of_choice' in st.session_state:
-                    print("Prediction Choice : ", parameters['predchoice'])
+                    # print("Prediction Choice : ", parameters['predchoice'])
                     st.session_state['history_of_choice']['hist_ac_prefix'].extend([y_serie_predict_ac[-1]])
                     st.session_state['history_of_choice']['hist_rl_prefix'].extend([y_serie_predict_rl[-1]])
                     st.session_state['history_of_choice']['hist_tm_prefix'].extend([y_serie_predict_tm[-1].tolist()])
@@ -210,9 +210,11 @@ class NextEventPredictor():
         results = list()
         for i, _ in enumerate(self.spl['prefixes']['activities'][:pred_fltr_idx]):
 
-            print("First Activity Input : ", self.spl['prefixes']['activities'][:pred_fltr_idx])
-            print("First Role Input : ", self.spl['prefixes']['roles'][:pred_fltr_idx])
-            print("First Time Input : ", self.spl['prefixes']['times'][:pred_fltr_idx])
+            # print("main index : ", i)
+
+            # print("First Activity Input : ", self.spl['prefixes']['activities'][:pred_fltr_idx])
+            # print("First Role Input : ", self.spl['prefixes']['roles'][:pred_fltr_idx])
+            # print("First Time Input : ", self.spl['prefixes']['times'][:pred_fltr_idx])
 
             x_ac_ngram = (np.append(
                     np.zeros(parameters['dim']['time_dim']),
@@ -321,8 +323,8 @@ class NextEventPredictor():
                 for _ih in range(parameters['multiprednum']):
 
                     if "ss_initpredict" + str(_ih + 1) in st.session_state['initial_prediction']:
-                        print("Inital Prediction : ", st.session_state['initial_prediction'])
-                        print("pred_fltr_idx : ", pred_fltr_idx)
+                        # print("Inital Prediction : ", st.session_state['initial_prediction'])
+                        # print("pred_fltr_idx : ", pred_fltr_idx)
 
                         _serie_predict_ac = [
                             st.session_state['initial_prediction']["ss_initpredict" + str(_ih + 1)]["pos_ac_ss"][:idx]
@@ -345,15 +347,17 @@ class NextEventPredictor():
                         #         len(self.spl['prefixes']['roles'][:pred_fltr_idx]) == len(_serie_predict_rl)) and (
                         #         len(self.spl['prefixes']['times'][:pred_fltr_idx]) == len(_serie_predict_tm)) and (
                         #         'multi_pred_ss' in st.session_state):
-                        if 'multi_pred_ss' in st.session_state:
+
+                        # if 'multi_pred_ss' in st.session_state:
+
                             # print("--------------Input to Multiverse Prediction",(_ih+ 1), "--------------------")
                             # print("Activity Prefixes :", _serie_predict_ac)
                             # print("Role Prefixes :", _serie_predict_rl)
                             # print("Time Prefixes :", _serie_predict_tm)
 
-                            self._predict_next_event_shared_cat_pred(parameters, vectorizer, _serie_predict_ac,
-                                                                     _serie_predict_rl, _serie_predict_tm,
-                                                                     _ih)  # Control the future pred
+                            # self._predict_next_event_shared_cat_pred(parameters, vectorizer, _serie_predict_ac,
+                            #                                          _serie_predict_rl, _serie_predict_tm,
+                            #                                          _ih)  # Control the future pred
 
             if not parameters['one_timestamp']:
                 predictions.extend([preds[2][0][1]])
@@ -418,13 +422,14 @@ class NextEventPredictor():
             rl_index (dict): index of roles.
             imp (str): method of next event selection.
         """
-        print("Starting of Multi Dimention Prediction : ", index + 1)
-        print("Multi Activity Input : ", serie_predict_ac)
-        print("Multi Role Input : ", serie_predict_rl)
-        print("Multi Time Input : ", serie_predict_tm)
-        # Generation of predictions
+        # print("Starting of Multi Dimention Prediction : ", index + 1)
         pred_fltr_idx = parameters['nextcaseid_attr']["filter_index"] + 1
-        print("Index : ", pred_fltr_idx)
+        # print("Index : ", pred_fltr_idx)
+        # print("Multi Activity Input : ", serie_predict_ac)
+        # print("context len : ", len(self.spl['prefixes']['inter_attr']))
+        # print("Multi Role Input : ", serie_predict_rl)
+        # print("Multi Time Input : ", serie_predict_tm)
+        # Generation of predictions
 
         for i, _ in enumerate(serie_predict_ac):
 
@@ -450,15 +455,18 @@ class NextEventPredictor():
                     [-parameters['dim']['time_dim']:]
                     .reshape((parameters['dim']['time_dim'], times_attr_num))])
             # add intercase features if necessary
+            # print("context len loop: ", len(self.spl['prefixes']['inter_attr'][:pred_fltr_idx + 1][i]))
             # ----------------------------------------------------------------------------------
             if vectorizer in ['basic']:
                 inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram]
             elif vectorizer in ['inter']:
-                inter_attr_num = (self.spl['prefixes']['inter_attr'][:pred_fltr_idx + i][i].shape[1])
+                # print("Inter Case")
+                # print(self.spl['prefixes']['inter_attr'][:pred_fltr_idx + 1][i])
+                inter_attr_num = (self.spl['prefixes']['inter_attr'][:pred_fltr_idx + 1][i].shape[1])
                 x_inter_ngram = np.array(
                     [np.append(np.zeros((
                         parameters['dim']['time_dim'], inter_attr_num)),
-                        self.spl['prefixes']['inter_attr'][:pred_fltr_idx + i][i], axis=0)
+                        self.spl['prefixes']['inter_attr'][:pred_fltr_idx + 1][i], axis=0)
                         [-parameters['dim']['time_dim']:]
                         .reshape((parameters['dim']['time_dim'], inter_attr_num))])
                 inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram, x_inter_ngram]
@@ -517,7 +525,7 @@ class NextEventPredictor():
                         st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['rl_prob'].extend([pos1_prob])
 
                         st.session_state['multi_pred_ss']["ss_multipredict" + str(index + 1)]["multiverse_predict" + str(_iz + 1)]['tm_pred'].extend([[abs(preds[2][0][0])]])
-                print("Multiverse Predict : ", st.session_state['multi_pred_ss'])
+                # print("Multiverse Predict : ", st.session_state['multi_pred_ss'])
 
 
 

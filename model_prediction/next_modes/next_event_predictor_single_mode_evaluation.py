@@ -64,8 +64,10 @@ class NextEventPredictor():
 
         results = list()
 
-        for i, _ in enumerate(self.spl['prefixes']['activities'][pred_fltr_idx:]):
+        for i, enm in enumerate(self.spl['prefixes']['activities'][pred_fltr_idx:]):
             if i == 0:
+            # if pred_fltr_idx == len(enm):
+                preds_prefix = list()
 
                 serie_predict_ac = [self.spl['prefixes']['activities'][pred_fltr_idx:][i][:idx]
                     for idx in range(1, pred_fltr_idx + 2)]  # range starts with 1 to avoid start
@@ -175,6 +177,8 @@ class NextEventPredictor():
                     #                [preds[2][0][0]] * (parameters['multiprednum'] + 1), [pos_prob] + [pos_prob],
                     #                [pos1_prob] + [pos1_prob]]
 
+                    preds_prefix.append([pos, pos1, abs(preds[2][0][0])])
+
                 elif self.imp == 'multi_pred':
                     #changing array to numpy
                     acx = np.array(preds[0][0])
@@ -197,6 +201,8 @@ class NextEventPredictor():
                                    [abs(preds[2][0][0])] * (parameters['multiprednum'] + 1), [pos_prob[0]] + pos_prob,
                                    [pos1_prob[0]] + pos1_prob]
 
+                    preds_prefix.append([pos, pos1, [abs(preds[2][0][0])] * parameters['multiprednum']])
+
                     # print(predictions)
 
                 #-------
@@ -212,7 +218,13 @@ class NextEventPredictor():
                     predictions.extend([preds[2][0][1]])
                 results.append(self.__create_result_record_next(i, self.spl, predictions, parameters))
 
+                # print("prefix : ", preds_prefix, i)
+
             else:
+            # elif pred_fltr_idx < len(enm):
+
+                # print("prefix : ", preds_prefix, i)
+
                 _ac = self.spl['prefixes']['activities'][pred_fltr_idx:][i] #--Activity
                 _rl = self.spl['prefixes']['roles'][pred_fltr_idx:][i] #--Role
                 _tm = self.spl['prefixes']['times'][pred_fltr_idx:][i] #--Time
@@ -224,39 +236,67 @@ class NextEventPredictor():
                     # print("^ for the sub prediction : ", i+1,".", lk+1, "^")
                     # print("Time Input : ", _preds)
 
+                    _temp_ac = list()
+                    _temp_rl = list()
+                    _temp_tm = list()
+
                     if self.imp == 'multi_pred':
-                        _ac = np.append(_ac[:-1], float(_pos[lk]))
-                        _rl = np.append(_rl[:-1], float(_pos1[lk]))
-                        if i == 1:
-                            _tm = np.concatenate((_tm[:-1], np.array([[_preds]])), axis=0)
-                        elif i > 1:
-                            _tm = np.concatenate((_tm[:-1], np.array([[_preds[lk]]])), axis=0)
+                        # _ac = np.append(_ac[:-1], float(_pos[lk]))
+                        # _rl = np.append(_rl[:-1], float(_pos1[lk]))
+                        # if i == 1:
+                        #     _tm = np.concatenate((_tm[:-1], np.array([[_preds]])), axis=0)
+                        # elif i > 1:
+                        #     _tm = np.concatenate((_tm[:-1], np.array([[_preds[lk]]])), axis=0)
+
+                        for gk in range(len(preds_prefix)):
+                            _temp_ac.append(float(preds_prefix[gk][0][lk]))
+                            _temp_rl.append(float(preds_prefix[gk][1][lk]))
+                            _temp_tm.append(float(preds_prefix[gk][2][lk]))
+
                     elif self.imp == 'arg_max':
-                        _ac = np.append(_ac[:-1], float(_pos))
-                        _rl = np.append(_rl[:-1], float(_pos1))
-                        _tm = np.concatenate((_tm[:-1], np.array([[_preds]])), axis=0)
+                        # _ac = np.append(_ac[:-1], float(_pos))
+                        # _rl = np.append(_rl[:-1], float(_pos1))
+                        # _tm = np.concatenate((_tm[:-1], np.array([[_preds]])), axis=0)
+
+                        for gk in range(len(preds_prefix)):
+                            _temp_ac.append(float(preds_prefix[gk][0]))
+                            _temp_rl.append(float(preds_prefix[gk][1]))
+                            _temp_tm.append(float(preds_prefix[gk][2]))
+
 
                     # print("Time Output : ", _tm)
+
+                    # print("from the streeam : ", _ac)
+                    # print("_ac[:pred_fltr_idx] : ", _ac[:pred_fltr_idx])
+                    # print("multi : ", lk, "activity before : ", _temp_ac)
 
                     # print("Modified Activity : ", _ac, "vs the original : ", self.spl['prefixes']['activities'][pred_fltr_idx:][i])
                     # print("Modified Role : ", _rl, "vs the original : ", self.spl['prefixes']['roles'][pred_fltr_idx:][i])
 
+
+                    _temp_ac = np.array(_ac[:pred_fltr_idx+1] + _temp_ac)
+                    _temp_rl = np.array(_rl[:pred_fltr_idx+1] + _temp_rl)
+                    _temp_tm = np.concatenate((_tm[:pred_fltr_idx+1], np.dstack([_temp_tm])[0]), axis=0)
+
+                    # print("multi : ", lk, "activity after : ", _temp_ac)
+
+
                     x_ac_ngram = (np.append(
                         np.zeros(parameters['dim']['time_dim']),
-                        np.array(_ac),
+                        np.array(_temp_ac),
                         axis=0)[-parameters['dim']['time_dim']:]
                                   .reshape((1, parameters['dim']['time_dim'])))
                     x_rl_ngram = (np.append(
                         np.zeros(parameters['dim']['time_dim']),
-                        np.array(_rl),
+                        np.array(_temp_rl),
                         axis=0)[-parameters['dim']['time_dim']:]
                                   .reshape((1, parameters['dim']['time_dim'])))
                     # times input shape(1,5,1)
-                    times_attr_num = (_tm.shape[1])
+                    times_attr_num = (_temp_tm.shape[1])
                     x_t_ngram = np.array(
                         [np.append(np.zeros(
                             (parameters['dim']['time_dim'], times_attr_num)),
-                            _tm, axis=0)
+                            _temp_tm, axis=0)
                          [-parameters['dim']['time_dim']:]
                              .reshape((parameters['dim']['time_dim'], times_attr_num))]
                     )
@@ -307,6 +347,8 @@ class NextEventPredictor():
                     _preds = _arr_pred
                 elif self.imp == 'arg_max':
                     _preds = abs(preds[2][0][0])
+
+                preds_prefix.append([_pos, _pos1, _preds])
 
                 #--SME Input Logic
                 if vectorizer in ['basic']:

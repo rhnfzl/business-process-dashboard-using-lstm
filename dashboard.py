@@ -599,12 +599,17 @@ def main(argv):
                                 st.sidebar.markdown("""---""")
                                 next_button = wcols2.form_submit_button("Process")
 
-                                _filterdf = filter_attr_display.iloc[[nxt_button_idx]]
-                                _filterdf.index = [""] * len(_filterdf)
-                                state_of_theprocess.dataframe(_filterdf)
-                                # print("Prediction Choice : ", parameters['predchoice'])
+                                # _filterdf = filter_attr_display.iloc[[nxt_button_idx]]
+                                # _filterdf.index = [""] * len(_filterdf)
+                                # state_of_theprocess.dataframe(_filterdf)
+                                # # print("Prediction Choice : ", parameters['predchoice'])
 
                                 if (next_button) and ((nxt_button_idx) < len(filter_caseid_attr_df)):
+
+                                    _filterdf = filter_attr_display.iloc[[nxt_button_idx]]
+                                    _filterdf.index = [""] * len(_filterdf)
+                                    state_of_theprocess.dataframe(_filterdf)
+                                    # print("Prediction Choice : ", parameters['predchoice'])
 
                                     nxt_button_idx += 1
 
@@ -627,14 +632,13 @@ def main(argv):
                                         predictor = pr.ModelPredictor(parameters)
                                         # print("predictor : ", predictor.acc)
                                     st.success('Done')
-                                    if (nxt_button_idx) >= len(filter_caseid_attr_df):
+                                    if (nxt_button_idx) >= len(filter_caseid_attr_df) + 1:
                                         # next_button.enabled = False
                                         st.experimental_set_query_params(my_saved_result=0)
                                         st.error('End of Current Case Id, Select the Next Case ID')
                                 elif ((nxt_button_idx) >= len(filter_caseid_attr_df)):
                                     st.experimental_set_query_params(my_saved_result=0)  # reset value
                                     st.error('End of Current Case Id, Select the Next Case ID')
-
                         # ----------------------------------------------------------------------------------
                         # --             Dashboard Simulation Batch Mode Control View                  -- #
                         # ----------------------------------------------------------------------------------

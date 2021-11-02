@@ -741,16 +741,16 @@ class ModelPredictor():
 
                 generative_predicted_df.index = generative_predicted_df.index + 1  # to match with the index value of the main prediction
 
-            print("Generative DF")
-            print(generative_predicted_df)
+            # print("Generative DF")
+            # print(generative_predicted_df)
 
             process_predicted_df = ModelPredictor.dashbard_execute_prediction_sessionstate(parms, 'process_multi_pred_ss', "pm_multipredict", lk)
 
-            print("Generative DF After")
-            print(generative_predicted_df)
-
-            print("Prediction DF")
-            print(process_predicted_df)
+            # print("Generative DF After")
+            # print(generative_predicted_df)
+            #
+            # print("Prediction DF")
+            # print(process_predicted_df)
 
             headcols1, headcols2 = st.columns([2, 2])
 
