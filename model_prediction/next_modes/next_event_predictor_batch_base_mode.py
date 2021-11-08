@@ -151,7 +151,7 @@ class NextEventPredictor():
                     pos1_prob.append(rlx[pos1[jx]])
 
             # save results
-            predictions = [pos, pos1, abs(preds[2][0][0]), pos_prob, pos1_prob]
+            predictions = [pos, pos1, preds[2][0][0], pos_prob, pos1_prob]
 
             if not parameters['one_timestamp']:
                 predictions.extend([preds[2][0][1]])

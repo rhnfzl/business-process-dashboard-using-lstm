@@ -16,21 +16,9 @@ class NextEventPredictor():
 
     def predict(self, params, model, spl, imp, vectorizer):
         self.model = model
-        #print("spl :", spl)
         self.spl = spl
-        # print("What is Imp :", imp)
         self.imp = imp
-        # if params['mode'] == 'next':
-        #     fltr_idx = params['nextcaseid_attr']["filter_index"]
-        #     spl_df_prefx = pd.DataFrame(self.spl['prefixes'])[fltr_idx:]
-        #     spl_df_next = pd.DataFrame(self.spl['next_evt'])[fltr_idx:]
-        #     st.subheader("Prefixes")
-        #     st.table(spl_df_prefx)
-        #     st.subheader("Next Event")
-        #     st.table(spl_df_next)
-            #print("spl :", spl_df)
-        print("Batch Prefix Mode")
-        print("Variant : ", self.imp)
+        print("Mode Type : ", self.imp)
         if params['variant'] in ['multi_pred', 'multi_pred_rand']:
             self.nx = params['multiprednum']
         predictor = self._get_predictor(params['model_type'], params['mode'], params['next_mode'])
@@ -95,10 +83,8 @@ class NextEventPredictor():
                     inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram, x_inter_ngram]
 
                 pref_size = len(self.spl['prefixes']['activities'][i])
-                #print("input_time : ", x_t_ngram)
                 # predict
                 preds = self.model.predict(inputs)
-                #print("Predictions :", preds)
                 if self.imp == 'random_choice':
                     # Use this to get a random choice following as PDF
                     pos = np.random.choice(np.arange(0, len(preds[0][0])),
@@ -120,8 +106,6 @@ class NextEventPredictor():
 
                 elif self.imp == 'multi_pred':
 
-                    # print("Executing Max Random")
-
                     #changing array to numpy
                     acx = np.array(preds[0][0])
                     rlx = np.array(preds[1][0])
@@ -140,8 +124,6 @@ class NextEventPredictor():
                         pos1_prob.append(rlx[pos1[jx]])
 
                 elif self.imp == 'multi_pred_rand':
-
-                    # print("Executing Multi Random")
 
                     acx = np.array(preds[0][0])
                     rlx = np.array(preds[1][0])
@@ -163,7 +145,7 @@ class NextEventPredictor():
                         pos1_prob.append(rlx[pos1[jx]])
 
                 # save results
-                predictions = [pos, pos1, abs(preds[2][0][0]), pos_prob, pos1_prob]
+                predictions = [pos, pos1, preds[2][0][0], pos_prob, pos1_prob]
 
                 if not parameters['one_timestamp']:
                     predictions.extend([preds[2][0][1]])
@@ -191,8 +173,6 @@ class NextEventPredictor():
 
         # -----------------Generative Mode----------------------------------------
         elif parameters['batchpredchoice'] == 'Generative':
-
-            # self._predict_next_event_shared_cat_batch_prediction(self, parameters, results,  self.spl['prefixes']['activities'], self.spl['prefixes']['roles'], self.spl['prefixes']['times'], self.spl['prefixes']['inter_attr'])
 
             if vectorizer in ['basic']:
                 inter_case_vector = []
@@ -223,11 +203,6 @@ class NextEventPredictor():
         record['rl_pred'] = preds[1]
         record['rl_prob'] = preds[4]
         record['pref_size'] = pref_size
-
-        # print("ac_pred : ", record['ac_pred'])
-        # print('ac_prob : ', record['ac_prob'])
-        # print('rl_pred : ', record['rl_pred'])
-        # print('rl_prob :', record['rl_prob'])
 
         if parms['one_timestamp']:
             record['tm_prefix'] = [self.rescale(
@@ -279,8 +254,6 @@ class NextEventPredictor():
                 parms['scale_args']['wait'])
             record['wait_pred'] = self.rescale(
                 preds[3], parms, parms['scale_args']['wait'])
-        # print("record")
-        # print(record)
         return record
 
 
@@ -310,11 +283,7 @@ class NextEventPredictor():
         return value
 
     def _predict_next_event_shared_cat_batch_prediction(self, parameters, results,  _preac, _prerl, _pretm, _inter, vectorizer):
-        # print("parefix number :", parameters['batchprefixnum'])
         for i, enm in enumerate(self.spl['prefixes']['activities']):
-
-            # print("----------interation-------------------- : ", i)
-            # print("enumerate input tm : ", _pretm[i])
 
             if (enm == [0] and len(enm) == 1) or (parameters['batchprefixnum'] + 1 == len(enm)): #first condition is for without prefix  other one is for with prefix for the first time
                 # Activities and roles input shape(1,5)
@@ -395,8 +364,6 @@ class NextEventPredictor():
 
                 elif self.imp == 'multi_pred_rand':
 
-                    # print("Executing Multi Random")
-
                     acx = np.array(preds[0][0])
                     rlx = np.array(preds[1][0])
 
@@ -418,38 +385,33 @@ class NextEventPredictor():
 
                 # save results
                 if self.imp in ['multi_pred', 'multi_pred_rand']:
-                    predictions = [pos, pos1, [abs(preds[2][0][0])] * parameters['multiprednum'], pos_prob, pos1_prob]
+                    predictions = [pos, pos1, [preds[2][0][0]] * parameters['multiprednum'], pos_prob, pos1_prob]
 
                 elif self.imp in ['arg_max', 'random_choice']:
-                    predictions = [pos, pos1, abs(preds[2][0][0]), pos_prob, pos1_prob]
+                    predictions = [pos, pos1, preds[2][0][0], pos_prob, pos1_prob]
 
                 #-------
                 _pos = pos
                 _pos1 = pos1
-                _preds = abs(preds[2][0][0])
+                _preds = preds[2][0][0]
                 #-------
-                # print("predicted time--0-- :", _preds)
 
                 if not parameters['one_timestamp']:
                     predictions.extend([preds[2][0][1]])
                 results.append(self.create_result_record_batch(i, self.spl, predictions, parameters, pref_size, results))
 
-            # elif (enm != [0] and len(enm) != 1) or (parameters['batchprefixnum'] + 1 < len(enm)):
             elif (enm != [0] and parameters['batchprefixnum'] + 1 < len(enm)):
-            # else: # for iteration >0
 
                 _ac = _preac[i] #--Activity
                 _rl = _prerl[i] #--Role
                 _tm = _pretm[i] #--Time
-                # print("predicted time :", _preds)
 
                 for lk in range(parameters['multiprednum']):
 
                     if self.imp in ['multi_pred', 'multi_pred_rand']:
                         _ac = np.append(_ac[:-1], float(_pos[lk]))
                         _rl = np.append(_rl[:-1], float(_pos1[lk]))
-                        # if i == 1:
-                        # if len(enm) == 2:
+
                         if len(enm) == parameters['batchprefixnum'] + 2:
                             _tm = np.concatenate((_tm[:-1], np.array([[_preds]])), axis=0)
                         elif len(enm) > parameters['batchprefixnum'] + 2:
@@ -458,10 +420,6 @@ class NextEventPredictor():
                         _ac = np.append(_ac[:-1], float(_pos))
                         _rl = np.append(_rl[:-1], float(_pos1))
                         _tm = np.concatenate((_tm[:-1], np.array([[_preds]])), axis=0)
-
-                    # print("As the Input : ", _ac)
-                    # print("_rl : ", _rl)
-                    # print("As the Input : : ", _tm)
 
                     # Activities and roles input shape(1,5)
                     x_ac_ngram = (np.append(
@@ -503,7 +461,6 @@ class NextEventPredictor():
 
                     preds = self.model.predict(inputs)
 
-                    # print("Predictions :", preds)
                     if self.imp == 'random_choice':
                         # Use this to get a random choice following as PDF
                         _arr_pos = np.random.choice(np.arange(0, len(preds[0][0])),
@@ -537,7 +494,7 @@ class NextEventPredictor():
                         _arr_pos1.append(np.argmax(preds[1][0]))
                         _arr_pos1_prob.append(preds[1][0][_arr_pos1[lk]])
 
-                        _arr_pred.append(abs(preds[2][0][0]))
+                        _arr_pred.append(preds[2][0][0])
 
                     elif self.imp == 'multi_pred_rand':
 
@@ -553,17 +510,16 @@ class NextEventPredictor():
                         _arr_pos1.append(np.random.choice(np.arange(0, len(preds[1][0])), p=preds[1][0]))
                         _arr_pos1_prob.append(preds[1][0][_arr_pos1[lk]])
 
-                        _arr_pred.append(abs(preds[2][0][0]))
+                        _arr_pred.append(preds[2][0][0])
 
 
                 _pos = _arr_pos
                 _pos1 = _arr_pos1
 
                 if self.imp in ['multi_pred', 'multi_pred_rand']:
-                    # _preds = sum(_arr_pred)/len(_arr_pred)
                     _preds = _arr_pred
                 elif self.imp in ['arg_max', 'random_choice']:
-                    _preds = abs(preds[2][0][0])
+                    _preds = preds[2][0][0]
 
                 predictions = [_pos, _pos1, _preds, _arr_pos_prob, _arr_pos1_prob]
 
@@ -574,13 +530,8 @@ class NextEventPredictor():
         return results
 
     def _predict_next_event_shared_cat_batch_generative(self, parameters, results,  _preac, _prerl, _pretm, _inter, vectorizer):
-        # print("multi pred : ", parameters['multiprednum'])
         for i, enm in enumerate(self.spl['prefixes']['activities']):
 
-            # print("------------------ith Number:--------------------------", i)
-            # print("_ac - in the test log : ", _preac[i])
-
-            # if enm == [0] and len(enm) == 1:
             if (enm == [0] and len(enm) == 1) or (parameters['batchprefixnum'] + 1 == len(enm)):  # first condition is for without prefix  other one is for with prefix for the first time
 
                 preds_prefix = list() # reinitiate the list
@@ -685,34 +636,27 @@ class NextEventPredictor():
                 # save results
                 if self.imp in ['multi_pred', 'multi_pred_rand']:
 
-                    predictions = [pos, pos1, [abs(preds[2][0][0])] * parameters['multiprednum'], pos_prob, pos1_prob]
+                    predictions = [pos, pos1, [preds[2][0][0]] * parameters['multiprednum'], pos_prob, pos1_prob]
 
-                    preds_prefix.append([pos, pos1, [abs(preds[2][0][0])] * parameters['multiprednum']])
+                    preds_prefix.append([pos, pos1, [preds[2][0][0]] * parameters['multiprednum']])
 
                 elif self.imp in ['arg_max', 'random_choice']:
 
-                    predictions = [pos, pos1, abs(preds[2][0][0]), pos_prob, pos1_prob]
+                    predictions = [pos, pos1, preds[2][0][0], pos_prob, pos1_prob]
 
-                    preds_prefix.append([pos, pos1, abs(preds[2][0][0])])
+                    preds_prefix.append([pos, pos1, preds[2][0][0]])
 
                 #-------
                 _pos = pos
                 _pos1 = pos1
-                _preds = abs(preds[2][0][0])
+                _preds = preds[2][0][0]
                 #-------
-
-                # print("Prediction of the iteration  : ", preds_prefix)
 
                 if not parameters['one_timestamp']:
                     predictions.extend([preds[2][0][1]])
                 results.append(self.create_result_record_batch(i, self.spl, predictions, parameters, pref_size, results))
 
-            # elif enm != [0] and len(enm) != 1:
             elif (enm != [0] and parameters['batchprefixnum'] + 1 < len(enm)):
-            # else: # for iteration >0
-            #     print("Prediction of the iteration  : ", preds_prefix)
-                # print("_rl0 : ", _prerl)
-                # print("_tm0 : ", _pretm)
 
                 _ac = _preac[i] #--Activity
                 _rl = _prerl[i] #--Role
@@ -731,35 +675,16 @@ class NextEventPredictor():
                             _temp_rl.append(float(preds_prefix[gk][1][lk]))
                             _temp_tm.append(float(preds_prefix[gk][2][lk]))
 
-                        # _temp_ac = np.array(_ac[:1] + _temp_ac)
-                        # _temp_rl = np.array(_rl[:1] + _temp_rl)
-                        # _temp_tm = np.concatenate((_tm[:1], np.dstack([_temp_tm])[0]), axis=0)
-
                     elif self.imp in ['arg_max', 'random_choice']:
-                        # _ac = np.append(_ac[:-1], float(_pos))
-                        # _rl = np.append(_rl[:-1], float(_pos1))
-                        # _tm = np.concatenate((_tm[:-1], np.array([[_preds]])), axis=0)
-                        #
-                        # _temp_ac = list()
-                        # _temp_rl = list()
-                        # _temp_tm = list()
 
                         for gk in range(len(preds_prefix)):
                             _temp_ac.append(float(preds_prefix[gk][0]))
                             _temp_rl.append(float(preds_prefix[gk][1]))
                             _temp_tm.append(float(preds_prefix[gk][2]))
 
-                    # _temp_ac = np.array(_ac[:1] + _temp_ac)
-                    # _temp_rl = np.array(_rl[:1] + _temp_rl)
-                    # _temp_tm = np.concatenate((_tm[:1], np.dstack([_temp_tm])[0]), axis=0)
-
                     _temp_ac = np.array(_ac[:parameters['batchprefixnum'] + 1] + _temp_ac)
                     _temp_rl = np.array(_rl[:parameters['batchprefixnum'] + 1] + _temp_rl)
                     _temp_tm = np.concatenate((_tm[:parameters['batchprefixnum'] + 1], np.dstack([_temp_tm])[0]), axis=0)
-
-                    # print("Input _ac : ", _temp_ac)
-                    # print("Input _rl : ", _temp_rl)
-                    # print("Input _tm : ", _temp_tm)
 
                     # Activities and roles input shape(1,5)
                     x_ac_ngram = (np.append(
@@ -834,7 +759,7 @@ class NextEventPredictor():
                         _arr_pos1.append(np.argmax(preds[1][0]))
                         _arr_pos1_prob.append(preds[1][0][_arr_pos1[lk]])
 
-                        _arr_pred.append(abs(preds[2][0][0]))
+                        _arr_pred.append(preds[2][0][0])
 
                     elif self.imp == 'multi_pred_rand':
 
@@ -850,16 +775,15 @@ class NextEventPredictor():
                         _arr_pos1.append(np.random.choice(np.arange(0, len(preds[1][0])), p=preds[1][0]))
                         _arr_pos1_prob.append(preds[1][0][_arr_pos1[lk]])
 
-                        _arr_pred.append(abs(preds[2][0][0]))
+                        _arr_pred.append(preds[2][0][0])
 
                 _pos = _arr_pos
                 _pos1 = _arr_pos1
 
                 if self.imp in ['multi_pred', 'multi_pred_rand']:
-                    # _preds = sum(_arr_pred)/len(_arr_pred)
                     _preds = _arr_pred
                 elif self.imp in ['arg_max', 'random_choice']:
-                    _preds = abs(preds[2][0][0])
+                    _preds = preds[2][0][0]
 
                 # save results
                 predictions = [_pos, _pos1, _preds, _arr_pos_prob, _arr_pos1_prob]

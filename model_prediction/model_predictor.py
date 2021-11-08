@@ -346,14 +346,14 @@ class ModelPredictor():
     def dashboard_prediction(pred_results_df, parms, confirmation_results):
 
         #--predicted negative time to positive
-        if pred_results_df['tm_pred'].dtypes == 'O':
-            for i in range(len(pred_results_df['tm_pred'])):
-                _xc = list()
-                for j in range(len(pred_results_df['tm_pred'][i])):
-                    _xc.append(abs(pred_results_df['tm_pred'][i][j]))
-                pred_results_df['tm_pred'][i] = _xc
-        else:
-            pred_results_df['tm_pred'] = pred_results_df['tm_pred'].abs()
+        # if pred_results_df['tm_pred'].dtypes == 'O':
+        #     for i in range(len(pred_results_df['tm_pred'])):
+        #         _xc = list()
+        #         for j in range(len(pred_results_df['tm_pred'][i])):
+        #             _xc.append(abs(pred_results_df['tm_pred'][i][j]))
+        #         pred_results_df['tm_pred'][i] = _xc
+        # else:
+        #     pred_results_df['tm_pred'] = pred_results_df['tm_pred'].abs()
 
         # state_of_theprocess = st.empty()
         # if parms['next_mode'] == 'next_action':
@@ -1596,7 +1596,7 @@ class EvaluateTask():
             st.subheader("📊 Evaluation of Prediction")
             final_evaluationdf = pd.concat(evaluationdf_list)
             final_evaluationdf = final_evaluationdf[['Activity Accuracy', 'Activity Similarity', 'Role Accuracy',
-                                                     'Role Similarity','Time MAE', 'Time MAE Similarity',
+                                                     'Role Similarity', 'Time MAE Cycle',
                                                      'Control-Flow Log Similarity', 'Event Log Similarity']]
             st.write(final_evaluationdf)
             final_evaluationdf.reset_index(level=0, inplace=True)
@@ -1724,6 +1724,9 @@ class EvaluateTask():
             st.subheader("📊 Evaluation of Prediction")
             evaluationdf, similarity_measure = self._evaluate_predict_batch_subprocess(eval_data, parms)
             evaluationdf = evaluationdf.set_index('Parameter').T.rename_axis(None, axis=1)
+            evaluationdf = evaluationdf[['Activity Accuracy', 'Activity Similarity', 'Role Accuracy',
+                                                     'Role Similarity', 'Time MAE Cycle',
+                                                     'Control-Flow Log Similarity', 'Event Log Similarity']]
             # evaluationdf.index = [""] * len(evaluationdf)
             st.write(evaluationdf)
             final_similarity_measure = similarity_measure.copy()
@@ -1809,9 +1812,9 @@ class EvaluateTask():
         # els = evaluator.measure('mae_log', preddata)
 
         evaluation = {'Parameter' : ["Activity Accuracy", "Role Accuracy", "Time MAE",
-                                     "Activity Similarity", "Role Similarity", "Time MAE Similarity",
+                                     "Activity Similarity", "Role Similarity", "Time MAE Cycle",
                                      "Control-Flow Log Similarity", "Event Log Similarity"],
-                      'Mean Value' : [mean_acc_ac, mean_acc_rl, round(tm_mae_acc['mae'][0], 2),
+                      'Mean Value' : [mean_acc_ac, mean_acc_rl, round(tm_mae_acc['mae'].mean(), 2),
                                       mean_sim_ac, mean_sim_rl, mean_sim_tm,
                                       mean_dl, mean_els]}
 

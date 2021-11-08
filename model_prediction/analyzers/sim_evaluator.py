@@ -135,7 +135,7 @@ class Evaluator():
         # if self.next_mode in ['next_action']:
         #     data[(feature + '_pred')] = np.mean(data[(feature + '_pred')].tolist(), axis=1)
         data = data[[(feature + '_expect'), (feature + '_pred'),
-                     'caseid']]
+                     'caseid', 'pref_size']]
         ae = (lambda x: np.abs(x[feature + '_expect'] - x[feature + '_pred']))
         data['ae'] = data.apply(ae, axis=1)
         data = (data.groupby(['caseid'])['ae']
@@ -184,6 +184,8 @@ class Evaluator():
                 .reset_index())
         data = data[data.run_num != 'mean']
         # print("--Data--")
+        # print(data)
+        # print("similarity")
         # print(data)
         return data
 
@@ -268,6 +270,8 @@ class Evaluator():
                 .agg(['mean'])
                 .reset_index()
                 .rename(columns={'mean': 'els'}))
+        # print("ELS")
+        # print(data)
         return data
 
     def _els_min_evaluation(self, data, feature):
@@ -422,7 +426,7 @@ class Evaluator():
         return cost
 
 # =============================================================================
-# dl distance
+# Control-Flow Log Similarity
 # =============================================================================
     def _dl_distance_evaluation(self, data, feature):
         """
@@ -484,6 +488,8 @@ class Evaluator():
                 .agg(['mean'])
                 .reset_index()
                 .rename(columns={'mean': 'dl'}))
+        # print("CLFS")
+        # print(data)
         return data
 
     @staticmethod
@@ -558,8 +564,8 @@ class Evaluator():
                     #                  pred_data[i]['start_time']).total_seconds()
                     # cicle_time_s2 = (log_data[j]['end_time'] -
                     #                  log_data[j]['start_time']).total_seconds()
-                    print("CaseId and Enent No of prediction : ", pred_data[i]['caseid'], pred_data[i]['event_nr'])
-                    print("CaseId and Enent No of prediction : ", log_data[j]['caseid'], log_data[j]['event_nr'])
+                    # print("CaseId and Enent No of prediction : ", pred_data[i]['caseid'], pred_data[i]['event_nr'])
+                    # print("CaseId and Enent No of prediction : ", log_data[j]['caseid'], log_data[j]['event_nr'])
                     ae_aggr = list()
                     _length = min(len(pred_data[i]['dur']), len(log_data[j]['dur']))
                     for k in range(0, _length):
@@ -570,21 +576,21 @@ class Evaluator():
                         print("log duration : ", cicle_time_s2)
                         print("Difference ", cicle_time_s1 - cicle_time_s2)
                         ae_aggr.append(cicle_time_s1 - cicle_time_s2)
-                    print("List of difference : ", ae_aggr)
+                    # print("List of difference : ", ae_aggr)
                     ae = np.abs(ae_aggr)
                     ae_matrix[i][j] = ae
-                    print("Matrix Input")
-                    print(ae_matrix[i][j])
-                    print(type(print(ae_matrix[i][j])))
+                    # print("Matrix Input")
+                    # print(ae_matrix[i][j])
+                    # print(type(print(ae_matrix[i][j])))
             # end = timer()
             # print(end - start)
-            print("Matrix Before")
-            print(ae_matrix)
-            print(type(ae_matrix))
+            # print("Matrix Before")
+            # print(ae_matrix)
+            # print(type(ae_matrix))
             ae_matrix = np.array(ae_matrix)
-            print("Matrix After")
-            print(ae_matrix)
-            print(type(ae_matrix))
+            # print("Matrix After")
+            # print(ae_matrix)
+            # print(type(ae_matrix))
             # Matching using the hungarian algorithm
             # ae_matrix = ae_matrix.tolist()
             row_ind, col_ind = linear_sum_assignment(np.array(ae_matrix))
@@ -607,7 +613,7 @@ class Evaluator():
 # =============================================================================
     @staticmethod
     def calculate_splits(df, max_cases=1000):
-        print(len(df.caseid.unique()))
+        # print(len(df.caseid.unique()))
         # calculate the number of bytes a row occupies
         n_splits = int(np.ceil(len(df.caseid.unique()) / max_cases))
         return n_splits
