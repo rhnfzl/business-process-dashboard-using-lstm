@@ -123,8 +123,8 @@ class NextEventPredictor():
             if vectorizer in ['basic']:
                 inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram]
             elif vectorizer in ['inter']:
-                print("contextual")
-                print(self.spl['prefixes']['inter_attr'][:pred_fltr_idx][i])
+                # print("contextual")
+                # print(self.spl['prefixes']['inter_attr'][:pred_fltr_idx][i])
                 inter_attr_num = (self.spl['prefixes']['inter_attr'][:pred_fltr_idx][i].shape[1])
                 x_inter_ngram = np.array(
                     [np.append(np.zeros((

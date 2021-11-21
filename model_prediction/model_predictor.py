@@ -1281,7 +1281,7 @@ class ModelPredictor():
             if parms['next_mode'] == 'next_action': #Evaluation Mode
                 #st.subheader("🤔", nw(kz + 1, lang="en", to="ordinal_num") + "Prediction")
                 if kz == 0:
-                    st.header("👨‍💼 SME Predictions")
+                    st.header("👨‍💼 SME Prediction")
                 else:
                     if parms['variant'] == 'arg_max':
                         st.header("🤔 Max Probability Prediction")
