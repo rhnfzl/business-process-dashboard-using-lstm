@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Mar 14 19:13:15 2020
-
 @author: Manuel Camargo
+@co-author: Rehan Fazal
 """
 import itertools
 import numpy as np
@@ -19,7 +18,6 @@ class SequencesCreator():
         self.ac_index = ac_index
         self.rl_index = rl_index
         self._vectorizers = dict()
-        #this is defined in model_spec.ini
         self._vec_dispatcher = {'basic': self._vectorize_seq_base,
                                 'inter': self._vectorize_seq_inter}
 
@@ -46,7 +44,6 @@ class SequencesCreator():
         print("add_cols")
         print(add_cols)
         add_cols = [x + '_norm' if x not in ['weekday', 'Diagnose_ohe'] else x for x in add_cols] #prevents weekday to be cheked as weekday_norm
-        # add_cols = [x+'_norm' for x in add_cols]
         columns.extend(add_cols)
         if not one_timestamp:
             columns.extend(['wait_norm'])
@@ -215,49 +212,6 @@ class SequencesCreator():
                 [vec['prefixes']['inter_attr'], x_diagnose], axis=2)
             vec['next_evt']['inter_attr'] = np.concatenate(
                 [vec['next_evt']['inter_attr'], y_diagnose], axis=1)
-
-        # print("-----Inter Case Prefixes---------")
-        # print(vec['prefixes']['inter_attr'][0])
-        # print(vec['prefixes']['inter_attr'][1])
-        # print(vec['prefixes']['inter_attr'][2])
-        # print(vec['prefixes']['inter_attr'][3])
-        # print(vec['prefixes']['inter_attr'][4])
-        # print(vec['prefixes']['inter_attr'][5])
-        # print(vec['prefixes']['inter_attr'])
-        # print("-----Inter Case Next Event---------")
-        # print(vec['next_evt']['inter_attr'][0])
-        # print(vec['next_evt']['inter_attr'][1])
-        # print(vec['next_evt']['inter_attr'][2])
-        # print(vec['next_evt']['inter_attr'][3])
-        # print(vec['next_evt']['inter_attr'][4])
-        # print(vec['next_evt']['inter_attr'][5])
-        # print(vec['next_evt']['inter_attr'])
-
-        # print("-----Inter Case Prefixes---------")
-        #
-        # print(vec['next_evt']['inter_attr'][0])
-        # print(vec['prefixes']['inter_attr'][0])
-        # print("---------------------------------")
-        #
-        # print(vec['next_evt']['inter_attr'][1])
-        # print(vec['prefixes']['inter_attr'][1])
-        # print("---------------------------------")
-        #
-        # print(vec['next_evt']['inter_attr'][2])
-        # print(vec['prefixes']['inter_attr'][2])
-        # print("---------------------------------")
-        #
-        # print(vec['next_evt']['inter_attr'][3])
-        # print(vec['prefixes']['inter_attr'][3])
-        # print("---------------------------------")
-        #
-        # print(vec['next_evt']['inter_attr'][4])
-        # print(vec['prefixes']['inter_attr'][4])
-        # print("---------------------------------")
-        #
-        # print(vec['next_evt']['inter_attr'][5])
-        # print(vec['prefixes']['inter_attr'][5])
-        # print("---------------------------------")
 
         return vec
 

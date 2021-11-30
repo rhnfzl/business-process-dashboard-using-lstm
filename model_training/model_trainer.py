@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+"""
+@author: Rehan Fazal
+"""
 
 import os
 import glob
@@ -55,9 +59,6 @@ class ModelTrainer():
         self.preprocess(params)
         # Train model
         m_loader = mload.ModelLoader(params)
-        # print(self.examples)
-        # print("Activity Weight :", self.ac_weights)
-        # print("Role Weight : ", self.rl_weights)
 
         m_loader.register_model(params['model_type'],
                                 self.model_def['trainer'])
@@ -105,10 +106,6 @@ class ModelTrainer():
         ac_emb_name = 'ac_' + params['file_name'].split('.')[0] + '.emb'
         rl_emb_name = 'rl_' + params['file_name'].split('.')[0] + '.emb'
 
-        # print("Parmameter Values : ", params)
-        # print("Activity Indexed : ", self.ac_index)
-        # print("Roles Indexed : ", self.rl_index)
-
         if os.path.exists(os.path.join('input_files',
                                        'embedded_matix',
                                        ac_emb_name)):
@@ -127,12 +124,11 @@ class ModelTrainer():
     @staticmethod
     def load_log(params):
         params['read_options']['filter_d_attrib'] = False
-        # print("Input File:", os.path.join('input_files', params['file_name']),
-        #                    params['read_options'])
+
         log = lr.LogReader(os.path.join('input_files', params['file_name']),
                            params['read_options'])
         log_df = pd.DataFrame(log.data)
-        # print("log_df caseid : ", log_df.columns)
+
         if set(['Unnamed: 0', 'role']).issubset(set(log_df.columns)):
             log_df.drop(columns=['Unnamed: 0', 'role'], inplace=True)
         log_df = log_df[~log_df.task.isin(['Start', 'End'])]
@@ -185,7 +181,7 @@ class ModelTrainer():
         one_timestamp : bool, Support only one timestamp.
         """
         log = self.log.to_dict('records')
-        # print("Log : ", type(log))
+
         log = sorted(log, key=lambda x: x['caseid'])
         for key, group in itertools.groupby(log, key=lambda x: x['caseid']):
             events = list(group)
@@ -197,15 +193,10 @@ class ModelTrainer():
         log = pd.DataFrame.from_dict(log)
         log.sort_values(by='end_timestamp', ascending=False, inplace=True)
 
-        # print("Length of full log : ", len(log))
-
         num_events = int(np.round(len(log) * percentage))
 
         df_test = log.iloc[:num_events]
         df_train = log.iloc[num_events:]
-
-        # print("Length of train log : ", len(df_train))
-        # print("Length of test log : ", len(df_test))
 
         # Incomplete final traces
         df_train = df_train.sort_values(by=['caseid', 'pos_trace'],
@@ -247,9 +238,7 @@ class ModelTrainer():
             filereader = csv.reader(csvfile, delimiter=',', quotechar='"')
             for row in filereader:
                 cat_ix = int(row[0])
-                # if index[cat_ix] not in exclude_list: #Added to exclude start and end going for training
                 if index[cat_ix] == row[1].strip():
-                    # print("Load Embedded :", cat_ix, "---Index of Load Embedded : ", index[cat_ix],"---Row in Strip : ", row[1].strip(), "Weight : ", [float(x) for x in row[2:]])
                     weights.append([float(x) for x in row[2:]])
             csvfile.close()
         return np.array(weights)

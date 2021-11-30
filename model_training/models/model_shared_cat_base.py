@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Feb 28 10:15:12 2019
-
 @author: Manuel Camargo
+@co-author: Rehan Fazal
 """
-# import keras.backend as K
 
 import os
 import streamlit as st
@@ -27,8 +25,6 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
     Returns:
         bool: The return value. True for success, False otherwise.
     """
-
-    print("----------------# Shared Base Model")
 # =============================================================================
 #     Input layer
 # =============================================================================
@@ -176,7 +172,6 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
         batch_size = vec['prefixes']['activities'].shape[1]
     else:
         batch_size = args['batch_size']
-    print("Batch Size : ", batch_size)
 
     history = model.fit({'ac_input': vec['prefixes']['activities'],
                    'rl_input': vec['prefixes']['roles'],
@@ -231,10 +226,6 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
             plt.legend(['train', 'test', 'acc'], loc='upper left')
             st.write(fig3);
 
-
-    # with st.container():
-    # fcol4 = st.columns(1)
-    # with fcol4:
     fig4 = plt.figure()
     plt.plot(history.history['loss'], label='train')
     plt.plot(history.history['val_loss'], label='test')

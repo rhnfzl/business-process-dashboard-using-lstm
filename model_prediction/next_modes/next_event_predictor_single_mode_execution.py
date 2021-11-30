@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Mar 17 20:35:53 2020
-
 @author: Rehan Fazal
 """
 
@@ -18,13 +16,6 @@ class NextEventPredictor():
         self.model = None
         self.spl = dict()
         self.imp = 'arg_max'
-        #-----------------------------------------
-
-    #parms : parameters
-    #model : .h5 file
-    #spl : prefix or the event log
-    #imp : Value is 1 by default, basically signifies how many times the prediction has to be made on same event
-    #vectorizer : 'basic' value by default
 
 
     def predict(self, params, model, spl, imp, vectorizer):
@@ -34,8 +25,6 @@ class NextEventPredictor():
         self.imp = imp
         if params['mode'] == 'next':
             fltr_idx = params['nextcaseid_attr']["filter_index"]
-            # spl_df_prefx = pd.DataFrame(self.spl['prefixes'])[fltr_idx:]
-            # spl_df_next = pd.DataFrame(self.spl['next_evt'])[fltr_idx:]
         self.nx = params['multiprednum']
         predictor = self._get_predictor(params['model_type'], params['mode'], params['next_mode'])
         sup.print_performed_task('Predicting next events')
@@ -75,10 +64,6 @@ class NextEventPredictor():
             serie_predict_tm = [np.array(st.session_state['pos_tm_ss'][:idx])
                                 for idx in range(1, pred_fltr_idx + 1)]  # range starts with 1 to avoid start
 
-            y_serie_predict_tm = [x[-1] for x in
-                                  serie_predict_tm]  # selecting the last value from each list of list
-
-            # print("y-serie time:", y_serie_predict_tm)
 
         elif 'pos_tm_ss' not in st.session_state:
             st.session_state['pos_tm_ss'] = [[0]]
@@ -92,25 +77,14 @@ class NextEventPredictor():
                     serie_predict_ac = [st.session_state['initial_prediction']["ss_initpredict"+str(_ih+1)]["pos_ac_ss"][:idx]
                                         for idx in range(1, pred_fltr_idx + 1)]  # range starts with 1 to avoid start
 
-                    y_serie_predict_ac = [x[-1] for x in
-                                          serie_predict_ac]  # selecting the last value from each list of list
-
                     serie_predict_rl = [st.session_state['initial_prediction']["ss_initpredict"+str(_ih+1)]["pos_rl_ss"][:idx]
                                         for idx in range(1, pred_fltr_idx + 1)]  # range starts with 1 to avoid start
-
-                    y_serie_predict_rl = [x[-1] for x in
-                                          serie_predict_rl]  # selecting the last value from each list of list
 
                 #----Check the Vector length is same or not
                     if (len(self.spl['prefixes']['activities'][:pred_fltr_idx]) == len(serie_predict_ac)) and (
                             len(self.spl['prefixes']['roles'][:pred_fltr_idx]) == len(serie_predict_rl)) and (
                             len(self.spl['prefixes']['times'][:pred_fltr_idx]) == len(serie_predict_tm)) and (
                             'multi_pred_ss' in st.session_state):
-
-                        # print("--------------Input to Prediction",(_ih+ 1), "--------------------")
-                        # print("Activity Prefixes :", serie_predict_ac)
-                        # print("Role Prefixes :", serie_predict_rl)
-                        # print("Time Prefixes :", serie_predict_tm)
 
                         self._predict_next_event_shared_cat_pred(parameters, vectorizer, serie_predict_ac, serie_predict_rl, serie_predict_tm, _ih)
 
@@ -221,8 +195,6 @@ class NextEventPredictor():
                             [pos])
                         st.session_state['initial_prediction']['ss_initpredict' + str(_ik + 1)]['pos_rl_ss'].extend(
                             [pos1])
-
-                # print("State of Dictionary for the iteration", _ik, " : ", st.session_state['initial_prediction'])
                 # -Time
                 st.session_state['pos_tm_ss'].extend([[abs(preds[2][0][0])]])
 
@@ -288,7 +260,6 @@ class NextEventPredictor():
             rl_index (dict): index of roles.
             imp (str): method of next event selection.
         """
-        # print("Starting of Multi Dimention Prediction : ", index + 1)
         # Generation of predictions
         pred_fltr_idx = parameters['nextcaseid_attr']["filter_index"] + 1
 
@@ -305,7 +276,6 @@ class NextEventPredictor():
                     np.array(serie_predict_rl[i]),
                     axis=0)[-parameters['dim']['time_dim']:]
                 .reshape((1, parameters['dim']['time_dim'])))
-            # ----------------------------------------------------------------------------------
             # ----------------------------------------------------------------------------------
             # times input shape(1,5,1)
             times_attr_num = (serie_predict_tm[i].shape[1])

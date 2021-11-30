@@ -38,5 +38,3 @@ class CleanSavedModelsCallback(Callback):
             for f in creation_list[self.num_models:]:
                 file_list.append(f['filename'])
         return file_list
-
-        

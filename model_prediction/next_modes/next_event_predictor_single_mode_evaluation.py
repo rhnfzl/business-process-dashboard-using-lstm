@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Mar 17 20:35:53 2020
-
 @author: Rehan Fazal
 """
 import numpy as np
@@ -17,14 +15,6 @@ class NextEventPredictor():
         self.model = None
         self.spl = dict()
         self.imp = 'arg_max'
-        #-----------------------------------------
-
-    #parms : parameters
-    #model : .h5 file
-    #spl : prefix or the event log
-    #imp : Value is 1 by default, basically signifies how many times the prediction has to be made on same event
-    #vectorizer : 'basic' value by default
-
 
     def predict(self, params, model, spl, imp, vectorizer):
         self.model = model
@@ -33,8 +23,6 @@ class NextEventPredictor():
         self.imp = imp
         if params['mode'] == 'next':
             fltr_idx = params['nextcaseid_attr']["filter_index"]
-            spl_df_prefx = pd.DataFrame(self.spl['prefixes'])[fltr_idx:]
-            spl_df_next = pd.DataFrame(self.spl['next_evt'])[fltr_idx:]
         self.nx = params['multiprednum']
         predictor = self._get_predictor(params['model_type'], params['mode'], params['next_mode'])
         sup.print_performed_task('Predicting next events')
@@ -122,8 +110,6 @@ class NextEventPredictor():
                                                                   y_serie_predict_ac, y_serie_predict_rl,
                                                                   y_serie_predict_tm, y_serie_predict_intr)
 
-                # print(pd.DataFrame(conf_results))
-
                 # Activities and roles input shape(1,5)
                 x_ac_ngram = (np.append(
                         np.zeros(parameters['dim']['time_dim']),
@@ -173,10 +159,6 @@ class NextEventPredictor():
                                    [abs(preds[2][0][0])] * (parameters['multiprednum'] + 1), [pos_prob] + [pos_prob],
                                    [pos1_prob] + [pos1_prob]]
 
-                    # predictions = [[pos] + [pos], [pos1] + [pos1],
-                    #                [preds[2][0][0]] * (parameters['multiprednum'] + 1), [pos_prob] + [pos_prob],
-                    #                [pos1_prob] + [pos1_prob]]
-
                     preds_prefix.append([pos, pos1, abs(preds[2][0][0])])
 
                 elif self.imp == 'multi_pred':
@@ -209,11 +191,7 @@ class NextEventPredictor():
                 _pos = pos
                 _pos1 = pos1
                 _preds = abs(preds[2][0][0])
-                #-------
-                # print("First Prediction Structure : ", predictions)
-                # print("First Activity Predicted: ", pos)
-                # print("First Role Predicted: ", pos1)
-                # print("First Time Predicted: ", preds[2][0][0])
+
                 if not parameters['one_timestamp']:
                     predictions.extend([preds[2][0][1]])
                 results.append(self.__create_result_record_next(i, self.spl, predictions, parameters))
@@ -221,32 +199,18 @@ class NextEventPredictor():
                 # print("prefix : ", preds_prefix, i)
 
             else:
-            # elif pred_fltr_idx < len(enm):
-
-                # print("prefix : ", preds_prefix, i)
 
                 _ac = self.spl['prefixes']['activities'][pred_fltr_idx:][i] #--Activity
                 _rl = self.spl['prefixes']['roles'][pred_fltr_idx:][i] #--Role
                 _tm = self.spl['prefixes']['times'][pred_fltr_idx:][i] #--Time
 
-                # print("----For the prediction : ", i+1, "------")
-                # print("Modified Time : ", _tm, "vs the original : ", self.spl['prefixes']['times'][pred_fltr_idx:][i])
                 for lk in range(parameters['multiprednum']):
-                    #removing the last element and append the previous value
-                    # print("^ for the sub prediction : ", i+1,".", lk+1, "^")
-                    # print("Time Input : ", _preds)
 
                     _temp_ac = list()
                     _temp_rl = list()
                     _temp_tm = list()
 
                     if self.imp == 'multi_pred':
-                        # _ac = np.append(_ac[:-1], float(_pos[lk]))
-                        # _rl = np.append(_rl[:-1], float(_pos1[lk]))
-                        # if i == 1:
-                        #     _tm = np.concatenate((_tm[:-1], np.array([[_preds]])), axis=0)
-                        # elif i > 1:
-                        #     _tm = np.concatenate((_tm[:-1], np.array([[_preds[lk]]])), axis=0)
 
                         for gk in range(len(preds_prefix)):
                             _temp_ac.append(float(preds_prefix[gk][0][lk]))
@@ -254,32 +218,15 @@ class NextEventPredictor():
                             _temp_tm.append(float(preds_prefix[gk][2][lk]))
 
                     elif self.imp == 'arg_max':
-                        # _ac = np.append(_ac[:-1], float(_pos))
-                        # _rl = np.append(_rl[:-1], float(_pos1))
-                        # _tm = np.concatenate((_tm[:-1], np.array([[_preds]])), axis=0)
 
                         for gk in range(len(preds_prefix)):
                             _temp_ac.append(float(preds_prefix[gk][0]))
                             _temp_rl.append(float(preds_prefix[gk][1]))
                             _temp_tm.append(float(preds_prefix[gk][2]))
 
-
-                    # print("Time Output : ", _tm)
-
-                    # print("from the streeam : ", _ac)
-                    # print("_ac[:pred_fltr_idx] : ", _ac[:pred_fltr_idx])
-                    # print("multi : ", lk, "activity before : ", _temp_ac)
-
-                    # print("Modified Activity : ", _ac, "vs the original : ", self.spl['prefixes']['activities'][pred_fltr_idx:][i])
-                    # print("Modified Role : ", _rl, "vs the original : ", self.spl['prefixes']['roles'][pred_fltr_idx:][i])
-
-
                     _temp_ac = np.array(_ac[:pred_fltr_idx+1] + _temp_ac)
                     _temp_rl = np.array(_rl[:pred_fltr_idx+1] + _temp_rl)
                     _temp_tm = np.concatenate((_tm[:pred_fltr_idx+1], np.dstack([_temp_tm])[0]), axis=0)
-
-                    # print("multi : ", lk, "activity after : ", _temp_ac)
-
 
                     x_ac_ngram = (np.append(
                         np.zeros(parameters['dim']['time_dim']),
@@ -369,15 +316,6 @@ class NextEventPredictor():
                                                                                                                                    self.spl['prefixes']['inter_attr'][pred_fltr_idx:][i],
                                                                                                                                    vectorizer)
 
-
-                # print("Later Predicted Activity : ", i+1, " : ",_pos)
-                # print("Later Predicted Role : ", i+1, " : ",_pos1)
-                # print("Later Predicted Time : ", i+1, " : ",_preds)
-                #
-                # print("SME Predicted Activity : ", i + 1, " : ", predsmeac)
-                # print("SME Predicted Role : ", i + 1, " : ", predsmerl)
-                # print("SME Predicted Time : ", i + 1, " : ", predsmetm)
-
                 if self.imp == 'multi_pred':
                     _acfinal = [predsmeac] + _pos
                     _acprobfinal = [predsmeac_prob] + _arr_pos_prob
@@ -390,14 +328,6 @@ class NextEventPredictor():
                     _rlfinal = [predsmerl] + [_pos1]
                     _rlprobfinal = [predsmerl_prob] + [_arr_pos1_prob]
                     _tmprobfinal = [predsmetm] + [_preds]
-
-
-                # print("New Activity : ", _acfinal)
-                # print("New Activity Probability: ", _acprobfinal)
-                # print("New Role : ", _rlfinal)
-                # print("New Role Probability : ", _rlprobfinal)
-                # print("New Time : ", _tmprobfinal)
-
 
                 predictions = [_acfinal, _rlfinal, _tmprobfinal, _acprobfinal, _rlprobfinal]
                 # print("Later Prediction Structure : ", i+1, " : ",predictions)
@@ -413,7 +343,6 @@ class NextEventPredictor():
     def __create_result_record_next(self, index, spl, preds, parms):
         _fltr_idx = parms['nextcaseid_attr']["filter_index"] + 1
         record = dict()
-        #record['caseid'] = parms['caseid'][_fltr_idx:][index]
         record['ac_prefix'] = spl['prefixes']['activities'][_fltr_idx:][index]
         record['ac_expect'] = spl['next_evt']['activities'][_fltr_idx:][index]
         record['ac_pred'] = preds[0]
@@ -532,18 +461,8 @@ class NextEventPredictor():
 
         results = list()
 
-        # print("Length of AC : ", len(serie_predict_ac))
-        # print("Length of RL ", len(serie_predict_rl))
-        # print("Length of TM ", len(serie_predict_tm))
-        # print("Length of ITR ", len(serie_predict_intr))
-
         for i, _ in enumerate(serie_predict_ac):
 
-                # print("Index : ", i)
-                # print("AC Serie : ", serie_predict_ac[i])
-                # print("RL Serie : ", serie_predict_rl[i])
-
-                # Activities and roles input shape(1,5)
                 x_ac_ngram = (np.append(
                     np.zeros(parameters['dim']['time_dim']),
                     np.array(serie_predict_ac[i]),
@@ -554,7 +473,7 @@ class NextEventPredictor():
                     np.array(serie_predict_rl[i]),
                     axis=0)[-parameters['dim']['time_dim']:]
                               .reshape((1, parameters['dim']['time_dim'])))
-                # times input shape(1,5,1)
+
                 times_attr_num = (serie_predict_tm[i].shape[1])
                 x_t_ngram = np.array(
                     [np.append(np.zeros(
@@ -617,100 +536,11 @@ class NextEventPredictor():
 
         return results
 
-    # def _predict_next_event_confermance_checking(self, parameters, serie_predict_ac, serie_predict_rl, serie_predict_tm, serie_predict_intr, vectorizer, y_serie_predict_ac, y_serie_predict_rl, y_serie_predict_tm, y_serie_predict_intr):
-    #
-    #     results = list()
-    #
-    #     # print("Length of AC : ", len(serie_predict_ac))
-    #     # print("Length of RL ", len(serie_predict_rl))
-    #     # print("Length of TM ", len(serie_predict_tm))
-    #     # print("Length of ITR ", len(serie_predict_intr))
-    #
-    #     for i, _ in enumerate(serie_predict_ac):
-    #
-    #             # print("Index : ", i)
-    #             # print("AC Serie : ", serie_predict_ac[i])
-    #             # print("RL Serie : ", serie_predict_rl[i])
-    #
-    #             # Activities and roles input shape(1,5)
-    #             x_ac_ngram = (np.append(
-    #                 np.zeros(parameters['dim']['time_dim']),
-    #                 np.array(serie_predict_ac[i]),
-    #                 axis=0)[-parameters['dim']['time_dim']:]
-    #                           .reshape((1, parameters['dim']['time_dim'])))
-    #             x_rl_ngram = (np.append(
-    #                 np.zeros(parameters['dim']['time_dim']),
-    #                 np.array(serie_predict_rl[i]),
-    #                 axis=0)[-parameters['dim']['time_dim']:]
-    #                           .reshape((1, parameters['dim']['time_dim'])))
-    #             # times input shape(1,5,1)
-    #             times_attr_num = (serie_predict_tm[i].shape[1])
-    #             x_t_ngram = np.array(
-    #                 [np.append(np.zeros(
-    #                     (parameters['dim']['time_dim'], times_attr_num)),
-    #                     serie_predict_tm[i], axis=0)
-    #                  [-parameters['dim']['time_dim']:]
-    #                      .reshape((parameters['dim']['time_dim'], times_attr_num))]
-    #             )
-    #             if vectorizer in ['basic']:
-    #                 inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram]
-    #             elif vectorizer in ['inter']:
-    #                 inter_attr_num = (serie_predict_intr[i].shape[1])
-    #                 x_inter_ngram = np.array(
-    #                     [np.append(np.zeros((
-    #                         parameters['dim']['time_dim'], inter_attr_num)),
-    #                         serie_predict_intr[i], axis=0)
-    #                      [-parameters['dim']['time_dim']:]
-    #                          .reshape((parameters['dim']['time_dim'], inter_attr_num))]
-    #                 )
-    #                 inputs = [x_ac_ngram, x_rl_ngram, x_t_ngram, x_inter_ngram]
-    #             # predict
-    #             preds = self.model.predict(inputs)
-    #
-    #             if self.imp == 'arg_max':
-    #
-    #                 pos = np.argmax(preds[0][0])
-    #                 pos_prob = preds[0][0][pos]
-    #
-    #                 pos1 = np.argmax(preds[1][0])
-    #                 pos1_prob = preds[1][0][pos1]
-    #
-    #                 predictions = [[pos], [pos1], [preds[2][0][0]], [pos_prob], [pos1_prob]]
-    #
-    #             elif self.imp == 'multi_pred':
-    #
-    #                 acx = np.array(preds[0][0])
-    #                 rlx = np.array(preds[1][0])
-    #
-    #                 pos = (-acx).argsort()[:self.nx].tolist()
-    #                 pos1 = (-rlx).argsort()[:self.nx].tolist()
-    #
-    #                 pos_prob = []
-    #                 pos1_prob = []
-    #
-    #                 for ix in range(len(pos)):
-    #                     # probability of activity
-    #                     pos_prob.append(acx[pos[ix]])
-    #                 for jx in range(len(pos1)):
-    #                     # probability of role
-    #                     pos1_prob.append(rlx[pos1[jx]])
-    #
-    #                 predictions = [pos, pos1, [preds[2][0][0]], pos_prob, pos1_prob]
-    #
-    #             if not parameters['one_timestamp']:
-    #                 predictions.extend([preds[2][0][1]])
-    #             results.append(
-    #                 self._conf_create_result_record_next(i, serie_predict_ac, serie_predict_rl, serie_predict_tm,
-    #                                                      predictions, parameters, y_serie_predict_ac,
-    #                                                      y_serie_predict_rl, y_serie_predict_tm))
-    #
-    #     return results
-
 
     def _conf_create_result_record_next(self, index, serie_predict_ac, serie_predict_rl, serie_predict_tm, preds, parms, y_serie_predict_ac, y_serie_predict_rl, y_serie_predict_tm):
         _fltr_idx = parms['nextcaseid_attr']["filter_index"] + 1
         record = dict()
-        #record['caseid'] = parms['caseid'][_fltr_idx:][index]
+
         record['conf_ac_prefix'] = serie_predict_ac[index]
         record['conf_ac_expect'] = y_serie_predict_ac[index]
         record['conf_ac_pred'] = preds[0]

@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Mar 17 16:24:38 2020
-
-@author: Manuel Camargo
+@author: Rehan Fazal
 """
 from model_prediction import next_event_samples_creator as nesc
 

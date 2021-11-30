@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Mar 16 09:53:54 2020
-
 @author: Manuel Camargo
 """
 import tensorflow as tf

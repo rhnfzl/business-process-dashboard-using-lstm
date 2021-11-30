@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Feb 28 10:15:12 2019
-
 @author: Manuel Camargo
+@co-author: Rehan Fazal
 """
 import os
 import streamlit as st
 import matplotlib.pyplot as plt
-# import shap
 
 from tensorflow.keras.models import Model
 from keras.layers import Input, Embedding, Concatenate, Dot
@@ -27,7 +25,6 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
     Returns:
         bool: The return value. True for success, False otherwise.
     """
-    print("----------------# Concatenated Intercase Model")
 # =============================================================================
 #     Input layer
 # =============================================================================
@@ -38,11 +35,6 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
                            vec['prefixes']['times'].shape[2]), name='t_input')
     inter_input = Input(shape=(vec['prefixes']['inter_attr'].shape[1],
                             vec['prefixes']['inter_attr'].shape[2]), name='inter_input')
-
-    # print("Shape 1 : ", vec['prefixes']['inter_attr'].shape[1])
-    # print("Shape 1 : ", vec['prefixes']['inter_attr'].shape[2])
-    # print("------inter_input--------")
-    # print(vec['prefixes']['inter_attr'])
 
 #=============================================================================
 #    Embedding layer for categorical attributes
@@ -66,16 +58,6 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
 
     #-- With Intercase Features
     concatenate = Concatenate(name='concatenated', axis=2)([ac_embedding, rl_embedding, t_input, inter_input])
-
-    # # -- Without Intercase Features
-    # concatenate = Concatenate(name='concatenated', axis=2)([ac_embedding, rl_embedding, t_input])
-
-
-    # -- joint
-
-    # merged = Dot(name = 'dot_ac_rl', normalize = True, axes = 2)([ac_embedding, rl_embedding, inter_input])
-    # concatenate = Concatenate(name = 'concatenated', axis = 2)([merged, t_input])
-
 
     if args['lstm_act'] is not None:
         l1_c1 = LSTM(args['l_size'],
@@ -260,10 +242,6 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
             plt.legend(['train', 'test', 'acc'], loc='upper left')
             st.write(fig3);
 
-
-    # with st.container():
-    # fcol4 = st.columns(1)
-    # with fcol4:
     fig4 = plt.figure()
     plt.plot(history.history['loss'], label='train')
     plt.plot(history.history['val_loss'], label='test')
@@ -272,12 +250,3 @@ def _training_model(vec, ac_weights, rl_weights, output_folder, args):
     plt.xlabel('epoch')
     plt.legend(['train', 'test'], loc='upper left')
     st.write(fig4);
-
-    # explainer = shap.DeepExplainer(model, {'ac_input': vec['prefixes']['activities'],
-    #                     'rl_input': vec['prefixes']['roles'],
-    #                    't_input': vec['prefixes']['times'],
-    #                    'inter_input': vec['prefixes']['inter_attr']})
-    # # init the JS visualization code
-    # shap.initjs()
-    # #
-    # st.write(shap.force_plot(explainer.expected_value[:5]))

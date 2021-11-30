@@ -101,19 +101,6 @@ def calculate_times(df):
 # Standardization
 # =============================================================================
 
-#def max_min_std(df, serie):
-#    max_value, min_value = np.max(df[serie]), np.min(df[serie])
-#    std = lambda x: (x[serie] - min_value) / (max_value - min_value)
-#    df[serie+'_norm']=df.apply(std,axis=1)
-#    return df, max_value, min_value
-#
-#
-#def max_std(df, serie):
-#    max_value, min_value = np.max(df[serie]), np.min(df[serie])
-#    std = lambda x: x[serie] / max_value
-#    df[serie+'_norm']=df.apply(std,axis=1)
-#    return df, max_value, min_value
-
 def max_min_de_std(val, max_value, min_value):
     true_value = (val * (max_value - min_value)) + min_value
     return true_value

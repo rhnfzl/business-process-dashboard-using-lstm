@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Mar 14 19:18:18 2020
-
-@author: Manuel Camargo
+@author: Rehan Fazal
 """
 import pandas as pd
 import numpy as np
@@ -29,7 +27,6 @@ class FeaturesMannager():
         self._scalers = dict()
         self.scale_dispatcher = {'basic': self._scale_base,
                                  'inter': self._scale_inter}
-        # self.scale_dispatcher = {'basic': self._scale_base} #since only inter case feature models are being trained the configuration file is renamed in such a way
 
     def calculate(self, log, add_cols, type_call):
         if type_call == 'train':
@@ -37,8 +34,6 @@ class FeaturesMannager():
         elif type_call == 'predict' and 'role' not in log.columns: #if the role hasn't been calculated before hand
             log = self.add_resources(log)
         log = self.add_calculated_times(log)
-        # print("Log Properties : ", log.dtypes, "Additional Cols :", add_cols)
-        #log = self.filter_features(log, add_cols) #----Filters out the features, Preprocessing of the vlaues helps to select the required features beforehand
         return self.scale_features(log, add_cols)
 
     def add_resources(self, log):
@@ -55,9 +50,7 @@ class FeaturesMannager():
         return log
 
     def filter_features(self, log, add_cols):
-        # print("Log Properties : ", log.dtypes, log.columns)
-        # Add intercase features
-        #columns = ['caseid', 'task', 'user', 'end_timestamp', 'role', 'dur', 'label'] #filtering features which will passed to train and test
+
         columns = ['caseid', 'task', 'user', 'end_timestamp', 'role', 'dur']  # filtering features which will passed to train and test
         if not self.one_timestamp:
             columns.extend(['start_timestamp', 'wait'])
@@ -161,31 +154,10 @@ class FeaturesMannager():
                         log, _ = self.scale_feature(log, 'daytime', 'day_secs', True)
                 elif col == 'open_cases':
                         log, _ = self.scale_feature(log, 'open_cases', 'max') #max
-                        #--Frequency Encoding
-                        # fe = log.groupby('open_cases').size() / len(log)
-                        # log.loc[:, 'open_cases_frq'] = log['open_cases'].map(fe)
-                        # log, _ = self.scale_feature(log, 'open_cases_frq', None)
-                        # log = log.rename(columns={'open_cases_frq_norm': 'open_cases_norm'})
-                        # log = log.drop('open_cases_frq', 1)
                 elif col == 'weekday':
                         log, _ = self.scale_feature(log, 'weekday', None)
                 elif 'sepsis' in self.filename: #Log specific Logic
                     if col == 'Diagnose_ord': #because of large number of catagorical variable
-                        #---CatBoost Encoding----
-                        # target = log[['task']]
-                        # target = self.ordinal_encoder(target, 'task')  # ordinal encoding of target
-                        # target = target.drop('task', 1)
-                        # train = log[['Diagnose']]
-                        # cbe_encoder = ce.cat_boost.CatBoostEncoder()
-                        # train_cbe = cbe_encoder.fit_transform(train, target)
-                        # log['Diagnose_ord'] = train_cbe[['Diagnose']]
-                        # log, _ = self.scale_feature(log, 'Diagnose_ord', 'max')
-
-                        #--Frequency Encoding
-                        # fe = log.groupby('Diagnose').size() / len(log)
-                        # log.loc[:, 'Diagnose_ord'] = log['Diagnose'].map(fe)
-                        # log, _ = self.scale_feature(log, 'Diagnose_ord', None)
-
                         # --Ordinal Encoding
                         log = self.ordinal_encoder(log, 'Diagnose', 'ord') #ordinal encoding
                         log, _ = self.scale_feature(log, 'Diagnose_ord', 'max')
@@ -198,19 +170,10 @@ class FeaturesMannager():
                         log, _ = self.scale_feature(log, 'Leucocytes', 'max')
                     elif col == 'Age':
                         log, _ = self.scale_feature(log, 'Age', 'max')
-                        #--Frequency Encoding
-                        # fe = log.groupby('Age').size() / len(log)
-                        # log.loc[:, 'Age_frq'] = log['Age'].map(fe)
-                        # log, _ = self.scale_feature(log, 'Age_frq', None)
-                        # log = log.rename(columns={'Age_frq_norm': 'Age_norm'})
-                        # log = log.drop('Age_frq', 1)
                     elif col == 'Diagnose_ohe': #to use it as one hot encoding
                         log = self.ordinal_encoder(log, 'Diagnose', 'ohe')  # normalized one hot encoding
                         log, _ = self.scale_feature(log, 'Diagnose_ohe', None)
                         log['Diagnose_ohe'] = log['Diagnose_ohe_norm']
-                        #---
-                        # log = self.ordinal_encoder(log, 'Diagnose', 'ohe')  #just one hot encoding
-                        # log, _ = self.scale_feature(log, 'Diagnose_ohe', None)
                 else:
                         log, _ = self.scale_feature(log, col, self.norm_method, True)
         return log, scale_args
@@ -298,10 +261,3 @@ class FeaturesMannager():
             if replace:
                 log = log.drop(feature, axis=1)
         return log
-
-    # @staticmethod
-    # def embedding_encoder(log, feature, replace=False):
-    #
-    #     return log
-
-    #https://maxhalford.github.io/blog/target-encoding/

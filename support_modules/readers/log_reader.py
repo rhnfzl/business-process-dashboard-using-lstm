@@ -20,8 +20,6 @@ class LogReader(object):
 
     def __init__(self, input, settings):
         """constructor"""
-        #print("log reader input :", self.input)
-        # print("log reader settings :", settings)
         self.input = input
         self.file_name, self.file_extension = self.define_ftype()
         self.timeformat = settings['timeformat']
@@ -44,8 +42,6 @@ class LogReader(object):
             self.get_xes_events_data()
         elif self.file_extension == '.csv':
             self.get_csv_events_data()
-        # elif self.file_extension == '.mxml':
-        #     self.data, self.raw_data = self.get_mxml_events_data()
 
 # =============================================================================
 # xes methods
@@ -99,9 +95,7 @@ class LogReader(object):
                         except ValueError:
                             timestamp = datetime.datetime.strptime(
                                 timestamp, self.timeformat)
-                # By default remove Start and End events
-                # but will be added to standardize
-                #if task not in ['0', '-1', 'Start', 'End', 'start', 'end']: #should only have -1 and 0
+
                 if task not in ['0', '-1']:  # should only have -1 and 0
                     if ((not self.one_timestamp) or
                         (self.one_timestamp and event_type == 'complete')):
@@ -146,8 +140,6 @@ class LogReader(object):
                                          (temp_data.caseid == case)]
                                .sort_values(by='timestamp', ascending=True)
                                .to_dict('records'))
-                print("start_ev :", start_ev, "length :", len(start_ev))
-                print("complete_ev :", complete_ev, "length :", len(complete_ev))
                 if len(start_ev) == len(complete_ev):
                     temp_trace = list()
                     for i, _ in enumerate(start_ev):
@@ -169,26 +161,6 @@ class LogReader(object):
                             del complete_ev[j]
                     if match:
                         ordered_event_log.extend(temp_trace)
-            #------------------------------------------------------------------------------------------------------------------------------------------------------#
-            # for case in cases:
-            #     start_ev = sorted(list(filter(lambda x: x['event_type'] == 'start' and x['caseid'] == case, events)), key=lambda x:x['start_timestamp'])
-            #     complete_ev = sorted(list(filter(lambda x: x['event_type'] == 'complete' and x['caseid'] == case, events)), key=lambda x:x['start_timestamp'])
-            #     print("Length of the values :", len(start_ev), len(complete_ev))
-            #     if len(start_ev) == len(complete_ev):
-            #         temp_trace = list()
-            #         for i, _ in enumerate(start_events):
-            #             match = False
-            #             for j, _ in enumerate(finish_events):
-            #                 if start_events[i]['task'] == finish_events[j]['task']:
-            #                     temp_trace.append(dict(caseid=case, task=start_events[i]['task'],
-            #                          user=start_events[i]['user'], start_timestamp=start_events[i]['start_timestamp'], end_timestamp=finish_events[j]['start_timestamp']))
-            #                     match = True
-            #                     break
-            #             if match:
-            #                 del finish_events[j]
-            #         if match:
-            #             ordered_event_log.extend(temp_trace)
-            #------------------------------------------------------------------------------------------------------------------------------------------------------#
         return ordered_event_log
 
     def append_xes_start_end(self, trace):
@@ -369,71 +341,3 @@ class LogReader(object):
             zip_ref.extractall("../inputs/")
         _, fileExtension = os.path.splitext(outfilename)
         return outfilename, fileExtension
-
-#     def get_mxml_events_data(self, filename, parameters):
-#         """read and parse all the events information from a MXML file"""
-#         temp_data = list()
-#         tree = ET.parse(filename)
-#         root = tree.getroot()
-#         process = root.find('Process')
-#         procInstas = process.findall('ProcessInstance')
-#         i = 0
-#         for procIns in procInstas:
-#             sup.print_progress(((i / (len(procInstas) - 1)) * 100), 'Reading log traces ')
-#             caseid = procIns.get('id')
-#             auditTrail = procIns.findall('AuditTrailEntry')
-#             for trail in auditTrail:
-#                 task = ''
-#                 user = ''
-#                 event_type = ''
-#                 timestamp = ''
-#                 attributes = trail.find('Data').findall('Attribute')
-#                 for attr in attributes:
-#                     if (attr.get('name') == 'concept:name'):
-#                         task = attr.text
-#                     if (attr.get('name') == 'lifecycle:transition'):
-#                         event_type = attr.text
-#                     if (attr.get('name') == 'org:resource'):
-#                         user = attr.text
-#                 event_type = trail.find('EventType').text
-#                 timestamp = trail.find('Timestamp').text
-#                 timestamp = datetime.datetime.strptime(trail.find('Timestamp').text[:-6], parameters['timeformat'])
-#                 temp_data.append(
-#                     dict(caseid=caseid, task=task, event_type=event_type, user=user, start_timestamp=timestamp,
-#                          end_timestamp=timestamp))
-#             i += 1
-#         raw_data = temp_data
-#         temp_data = self.reorder_mxml(temp_data)
-#         sup.print_done_task()
-#         return temp_data, raw_data
-#     def reorder_mxml(self, temp_data):
-#         """this method joints the duplicated events on the .mxml log"""
-#         data = list()
-#         start_events = list(filter(lambda x: x['event_type'] == 'start', temp_data))
-#         finish_events = list(filter(lambda x: x['event_type'] == 'complete', temp_data))
-#         for x, y in zip(start_events, finish_events):
-#             data.append(dict(caseid=x['caseid'], task=x['task'], event_type=x['event_type'],
-#                              user=x['user'], start_timestamp=x['start_timestamp'], end_timestamp=y['start_timestamp']))
-#         return data
-#     # TODO: exception handling
-#     def find_first_task(self):
-#         """finds the first task"""
-#         cases = list()
-#         [cases.append(c['caseid']) for c in self.data]
-#         cases = sorted(list(set(cases)))
-#         first_task_names = list()
-#         for case in cases:
-#             trace = sorted(list(filter(lambda x: (x['caseid'] == case), self.data)), key=itemgetter('start_timestamp'))
-#             first_task_names.append(trace[0]['task'])
-#         first_task_names = list(set(first_task_names))
-#         return first_task_names
-#     def read_resource_task(self,task,roles):
-#         """returns the resource that performs a task"""
-#         filtered_list = list(filter(lambda x: x['task']==task, self.data))
-#         role_assignment = list()
-#         for task in filtered_list:
-#             for role in roles:
-#                 for member in role['members']:
-#                     if task['user']==member:
-#                         role_assignment.append(role['role'])
-#         return max(role_assignment)

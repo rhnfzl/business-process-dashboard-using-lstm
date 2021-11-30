@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+@author: Rehan Fazal
+"""
 import numpy as np
 
 from datetime import timedelta
@@ -154,8 +157,6 @@ class NextEventPredictor():
 
         # -----------------Prediction Mode----------------------------------------
         elif parameters['batchpredchoice'] == 'Prediction':
-
-            # self._predict_next_event_shared_cat_batch_prediction(self, parameters, results,  self.spl['prefixes']['activities'], self.spl['prefixes']['roles'], self.spl['prefixes']['times'], self.spl['prefixes']['inter_attr'])
 
             if vectorizer in ['basic']:
                 inter_case_vector = []

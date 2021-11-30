@@ -113,24 +113,3 @@ class ResourcePoolAnalyser():
                 resource_table.append({'role': record['role'],
                                        'resource': member})
         return records, resource_table
-
-    # # == support
-    # def random_color(size):
-    #     number_of_colors = size
-    #     color = ["#"+''.join([random.choice('0123456789ABCDEF')
-    #                           for j in range(6)]) for i in range(number_of_colors)]
-    #     return color
-    
-    # def graph_network(g, sub_graphs):
-    #     pos = nx.spring_layout(g, k=0.5,scale=10)
-    #     color = random_color(len(sub_graphs))
-    #     for i in range(0,len(sub_graphs)):
-    #         subgraph = sub_graphs[i]
-    #         nx.draw_networkx_nodes(g,pos, nodelist=list(subgraph),
-    #                                node_color=color[i], node_size=200, alpha=0.8)
-    #         nx.draw_networkx_edges(g,pos,width=1.0,alpha=0.5)
-    #         nx.draw_networkx_edges(g,pos, edgelist=subgraph.edges,
-    #                                width=8,alpha=0.5,edge_color=color[i])
-    #     plt.draw()
-    #     plt.show() # display
-

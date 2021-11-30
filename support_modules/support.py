@@ -150,32 +150,6 @@ def save_graph(graph, output_file):
         f.write(json.dumps(data))
         f.close()
 
-# def timeit(method) -> dict:
-#     """
-#     Decorator to measure execution times of methods
-#
-#     Parameters
-#     ----------
-#     method : Any method.
-#
-#     Returns
-#     -------
-#     dict : execution time record
-#
-#     """
-#     def timed(*args, **kw):
-#         ts = time.time()
-#         result = method(*args, **kw)
-#         te = time.time()
-#         if 'log_time' in kw:
-#             name = kw.get('log_name', method.__name__.upper())
-#             kw['log_time'][name] = int((te - ts) * 1000)
-#         else:
-#             print('%r  %2.2f ms' % \
-#                   (method.__name__, (te - ts) * 1000))
-#         return result
-#     return timed
-
 def timeit(func=None, rec_name=None) -> dict:
     """
     Decorator to measure execution times of methods
@@ -223,27 +197,5 @@ def safe_exec(method):
                 is_safe = False
         return is_safe
     return safety_check
-
-# #%%
-# import re
-# results = pd.read_csv('C:/Users/Manuel Camargo/Documents/Repositorio/experiments/sc_lstm_dev/test_data.csv')
-# results = results.drop(columns=['Unnamed: 0'])
-# def string_list_to_float(input):
-#     text = str(input).replace('[', '').replace(']', '').replace('\n', '').replace(',', '')
-#     text = re.sub(' +', ' ', text)
-#     text = text.strip()
-#     temp_list = list()
-#     for number in text.split(' '):
-#         temp_list.append(float(number))
-#     return temp_list
-# results['tm_pred'] = results.tm_pred.apply(string_list_to_float)
-# results['tm_expect'] = results.tm_expect.apply(string_list_to_float)
-
-# # results['end_timestamp'] =  pd.to_datetime(results['end_timestamp'], format='%Y-%m-%dT%H:%M:%S.%f')
-
-# evaluator = Evaluator()
-# print(evaluator.measure('mae_suffix', results, 'tm'))
-# print(evaluator.measure('similarity', results, 'ac'))
-# print(evaluator.measure('similarity', results, 'rl'))
 
 

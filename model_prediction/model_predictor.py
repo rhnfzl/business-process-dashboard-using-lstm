@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Mar 17 10:49:28 2020
-
-@author: Manuel Camargo
-@co-author : Rehan Fazal
+@author: Rehan Fazal
 """
+
 import os
 import json
 

@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Nov 21 21:23:55 2018
-
 @author: Manuel Camargo
 """
 import os
