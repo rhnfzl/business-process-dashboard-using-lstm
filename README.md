@@ -6,6 +6,8 @@ The base code of this project is taken from [GenerativeLSTM v1.1.0](https://gith
 
 [Streamlit](https://docs.streamlit.io/) has been used to create the dashboard, and a trimmed down version of this project is kept in [Streamlit based Predictive Process Monitoring powered by LSTM](https://github.com/rhnfzl/streamlit-predictive-process-monitoring-dashboard-using-lstm) for hosting it on freeware servers.
 
+#### The thesis report can be found [here](https://www.dropbox.com/s/224ydjdvf81enyn/Master_Thesis_Report_FazalR.pdf?dl=0).
+
 ## Getting Started
 
 These instructions will help you set up a development and testing copy of the project on your local machine.
